@@ -1,0 +1,3 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+TCIalgorithms = "baf62351-2e82-41dd-9129-4f5768a618e1"

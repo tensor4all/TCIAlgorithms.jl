@@ -1,0 +1,13 @@
+name = "TCIalgorithms"
+uuid = "baf62351-2e82-41dd-9129-4f5768a618e1"
+authors = ["Ritter.Marc <Ritter.Marc@physik.uni-muenchen.de> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
