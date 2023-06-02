@@ -1,6 +1,4 @@
-using TCIalgorithms
+using TCIAlgorithms
 using Test
 
-@testset "TCIalgorithms.jl" begin
-    # Write your tests here.
-end
+include("test_tensor.jl")
