@@ -3,6 +3,9 @@ uuid = "baf62351-2e82-41dd-9129-4f5768a618e1"
 authors = ["Ritter.Marc <Ritter.Marc@physik.uni-muenchen.de> and contributors"]
 version = "0.1.0"
 
+[deps]
+TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
+
 [compat]
 julia = "1.6"
 
