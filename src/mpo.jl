@@ -8,6 +8,10 @@ struct MPO{ValueType,N} <: TCI.AbstractTensorTrain{ValueType}
     T::Vector{Array{ValueType,N}}
 end
 
+function MPO(TT::TCI.AbstractTensorTrain{ValueType}) where {ValueType}
+    new{ValueType}(TT.T)
+end
+
 function contractmpotensor(
     f::AbstractArray, fleg::Int, g::AbstractArray, gleg::Int
 )
@@ -55,4 +59,26 @@ function contract(f::MPO, flegs::Vector{Int}, g::MPO, glegs::Vector{Int})
     return MPO([
         contractmpotensor(fT, fl, gT, gl)
         for (fT, fl, gT, gl) in zip(f, flegs, g, glegs)])
+end
+
+function fusephysicallegs(t::AbstractArray{T}) where {T}
+    shape = size(t)
+    return reshape(t, shape[1], prod(shape[2:end-1]), shape[end]), shape[2:end-1]
+end
+
+function splitphysicallegs(t::AbstractArray{T}, legdims::Union{AbstractVector{Int}, Tuple}) where {T}
+    return reshape(t, size(t, 1), legdims..., size(t, ndims(t)))
+end
+
+function recompress(f::MPO{T}; maxbonddim=200, tolerance=1e-8) where {T}
+    ffused = MPO([fusephysicallegs(t)[1] for t in f])
+    tt, ranks, errors = TCI.crossinterpolate2(
+        T,
+        ffused,
+        [size(t, 2) for t in ffused];
+        maxbonddim=maxbonddim,
+        tolerance=tolerance
+    )
+    result = MPO([splitphysicallegs(t, size(ft)[2:end-1]) for (t, ft) in zip(tt, f)])
+    return result, ranks, errors
 end
