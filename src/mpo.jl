@@ -66,11 +66,11 @@ function fusephysicallegs(t::AbstractArray{T}) where {T}
     return reshape(t, shape[1], prod(shape[2:end-1]), shape[end]), shape[2:end-1]
 end
 
-function splitphysicallegs(t::AbstractArray{T}, legdims::Union{AbstractVector{Int}, Tuple}) where {T}
+function splitphysicallegs(t::AbstractArray{T}, legdims::Union{AbstractVector{Int},Tuple}) where {T}
     return reshape(t, size(t, 1), legdims..., size(t, ndims(t)))
 end
 
-function recompress(f::MPO{T}; maxbonddim=200, tolerance=1e-8) where {T}
+function fitmpo(f::MPO{T}; maxbonddim=200, tolerance=1e-8) where {T}
     ffused = MPO([fusephysicallegs(t)[1] for t in f])
     tt, ranks, errors = TCI.crossinterpolate2(
         T,
@@ -81,4 +81,29 @@ function recompress(f::MPO{T}; maxbonddim=200, tolerance=1e-8) where {T}
     )
     result = MPO([splitphysicallegs(t, size(ft)[2:end-1]) for (t, ft) in zip(tt, f)])
     return result, ranks, errors
+end
+
+function fuselinks(t::AbstractArray{T}, nlinks::Int)::Array{T} where {T}
+    s = size(t)
+    return reshape(
+        t,
+        prod(s[1:nlinks]),
+        s[nlinks+1:end-nlinks]...,
+        prod(s[end-nlinks+1:end]))
+end
+
+"""
+Elementwise multiplication in indices flegs, glegs
+"""
+function multiply(
+    f::MPO{T}, flegs::Union{AbstractVector{Int},Tuple},
+    g::MPO{T}, glegs::Union{AbstractVector{Int},Tuple}
+)::MPO{T} where {T}
+    return MPO([
+        fuselinks(
+            deltaproduct(ft, flegs .+ 1, gt, glegs .+ 1),
+            2
+        )
+        for (ft, gt) in zip(f, g)
+    ])
 end
