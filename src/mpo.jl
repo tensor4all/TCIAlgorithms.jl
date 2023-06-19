@@ -61,6 +61,15 @@ function contract(f::MPO, flegs::Vector{Int}, g::MPO, glegs::Vector{Int})
         for (fT, fl, gT, gl) in zip(f, flegs, g, glegs)])
 end
 
+"""
+    function contract(f::MPO, flegs::Int, g::MPO, glegs::Int)
+
+MPO-MPO contraction between MPO f and g, on legs specified by flegs and glegs.
+"""
+function contract(f::MPO, fleg::Int, g::MPO, gleg::Int)
+    return contract(f, [fleg], g, [gleg])
+end
+
 function fusephysicallegs(t::AbstractArray{T}) where {T}
     shape = size(t)
     return reshape(t, shape[1], prod(shape[2:end-1]), shape[end]), shape[2:end-1]
