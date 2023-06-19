@@ -116,3 +116,10 @@ function multiply(
         for (ft, gt) in zip(f, g)
     ])
 end
+
+"""
+Elementwise multiplication in indices flegs, glegs
+"""
+function multiply(f::MPO{T}, fleg::Int, g::MPO{T}, gleg::Int)::MPO{T} where {T}
+    return multiply(f, [fleg], g, [gleg])
+end
