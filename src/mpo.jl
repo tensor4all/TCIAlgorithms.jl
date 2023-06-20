@@ -12,32 +12,24 @@ function MPO(TT::TCI.AbstractTensorTrain{ValueType}) where {ValueType}
     new{ValueType}(TT.T)
 end
 
-function contractmpotensor(
-    f::AbstractArray, fleg::Int, g::AbstractArray, gleg::Int
-)
-    flegsinv = setdiff(2:ndims(f)-1, fleg + 1)
-    glegsinv = setdiff(2:ndims(g)-1, gleg + 1)
+function fuselinks(t::AbstractArray{T}, nlinks::Int)::Array{T} where {T}
+    s = size(t)
+    return reshape(
+        t,
+        prod(s[1:nlinks]),
+        s[nlinks+1:end-nlinks]...,
+        prod(s[end-nlinks+1:end]))
+end
 
-    resultndims = ndims(f) + ndims(g) - 2
-
-    resultleftlinkindices = (1, ndims(f))
-    resultrightlinkindices = (ndims(f) - 1, resultndims)
-    resultfindices = 2:ndims(f)-2
-    resultgindices = (2:ndims(g)-2) .+ (ndims(f) - 1)
-
-    permutation = [
-        resultleftlinkindices...,
-        resultfindices..., resultgindices...,
-        resultrightlinkindices...]
-
-    resultleftlinksize = size(f, 1) * size(g, 1)
-    resultrightlinksize = size(f, ndims(f)) * size(g, ndims(g))
-    resultfsizes = size(f)[flegsinv]
-    resultgsizes = size(g)[glegsinv]
-
-    sizes = (resultleftlinksize, resultfsizes..., resultgsizes..., resultrightlinksize)
-
-    return reshape(permutedims(contract(f, fleg + 1, g, gleg + 1), permutation), sizes)
+function contractmpotensor(f::AbstractArray, fleg::Int, g::AbstractArray, gleg::Int)
+    sf = ndims(f) - 1
+    stot = sf + ndims(g) - 1
+    return fuselinks(
+        permutedims(
+            contract(f, fleg + 1, g, gleg + 1),
+            (1, sf + 1, 2:sf-1..., sf+2:stot-1..., sf, stot)
+        ),
+        2)
 end
 
 """
@@ -90,15 +82,6 @@ function fitmpo(f::MPO{T}; maxbonddim=200, tolerance=1e-8) where {T}
     )
     result = MPO([splitphysicallegs(t, size(ft)[2:end-1]) for (t, ft) in zip(tt, f)])
     return result, ranks, errors
-end
-
-function fuselinks(t::AbstractArray{T}, nlinks::Int)::Array{T} where {T}
-    s = size(t)
-    return reshape(
-        t,
-        prod(s[1:nlinks]),
-        s[nlinks+1:end-nlinks]...,
-        prod(s[end-nlinks+1:end]))
 end
 
 """
