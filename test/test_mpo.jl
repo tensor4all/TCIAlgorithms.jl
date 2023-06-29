@@ -1,6 +1,6 @@
 using Test
 using LinearAlgebra
-import TCIAlgorithms: MPO, contract, multiply
+import TCIAlgorithms: contract, multiply, MPO
 
 @testset "MPO-MPO contraction" begin
     A = MPO([rand(2, 3, 4, 2) for _ in 1:5])
