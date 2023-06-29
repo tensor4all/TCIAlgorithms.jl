@@ -1,5 +1,9 @@
-module TCIalgorithms
+module TCIAlgorithms
 
-# Write your package code here.
+import TensorCrossInterpolation as TCI
+import TensorCrossInterpolation: TensorTrain, ttcache, evaluate, evaluatepartial
+
+include("tensor.jl")
+include("mpo.jl")
 
 end
