@@ -6,10 +6,14 @@ Represents a Matrix Product Operator / Tensor Train with N legs on each tensor.
 """
 struct MPO{ValueType} <: TCI.CachedTensorTrain{ValueType}
     T::Vector{Array{ValueType}}
-    cache::Vector{Dict{Vector{Vector{Int}},Array{ValueType}}}
+    cacheleft::Vector{Dict{Vector{Vector{Int}},Array{ValueType}}}
+    cacheright::Vector{Dict{Vector{Vector{Int}},Array{ValueType}}}
 
     function MPO(T::AbstractVector{<:AbstractArray{ValueType}}) where {ValueType}
-        new{ValueType}(T, [Dict{Vector{Vector{Int}},Array{ValueType}}() for _ in T])
+        new{ValueType}(
+            T,
+            [Dict{Vector{Vector{Int}},Array{ValueType}}() for _ in T],
+            [Dict{Vector{Vector{Int}},Array{ValueType}}() for _ in T])
     end
 end
 
@@ -17,27 +21,54 @@ function MPO(TT::TCI.AbstractTensorTrain{ValueType}) where {ValueType}
     MPO(TT.T)
 end
 
-function ttcache(tt::MPO{V}, b::Int) where V
-    return tt.cache[b]
+function ttcache(tt::MPO{V}, leftright::Symbol, b::Int) where V
+    if leftright == :left
+        return tt.cacheleft[b]
+    elseif leftright == :right
+        return tt.cacheright[b]
+    else
+        throw(ArgumentError("Choose from left or right cache."))
+    end
 end
 
-function evaluatepartial(
+function evaluateleft(
     tt::MPO{V},
-    indexset::AbstractVector{<:AbstractVector{Int}},
-    ell::Int
+    indexset::AbstractVector{<:AbstractVector{Int}}
 ) where {V}
-    if ell < 1 || ell > length(tt)
-        throw(ArgumentError("Got site index $ell for a tensor train of length $(length(tt))."))
+    if isempty(indexset) || length(indexset) > length(tt)
+        throw(ArgumentError("For evaluateleft, number of indices must be smaller or equal to the number of MPO legs."))
     end
 
+    ell = length(indexset)
     if ell == 1
         return tt[1][:, indexset[1]..., :]
     end
 
-    cache = ttcache(tt, ell)
-    key = collect(indexset[1:ell])
+    cache = ttcache(tt, :left, ell)
+    key = collect(indexset)
     if !(key in keys(cache))
-        cache[key] = evaluatepartial(tt, indexset, ell - 1) * tt[ell][:, indexset[ell]..., :]
+        cache[key] = evaluateleft(tt, indexset[1:ell-1]) * tt[ell][:, indexset[ell]..., :]
+    end
+    return cache[key]
+end
+
+function evaluateright(
+    tt::MPO{V},
+    indexset::AbstractVector{<:AbstractVector{Int}}
+) where {V}
+    if isempty(indexset) || length(indexset) > length(tt)
+        throw(ArgumentError("For evaluateleft, number of indices must be smaller or equal to the number of MPO legs."))
+    end
+
+    if length(indexset) == 1
+        return tt[end][:, indexset[1]..., :]
+    end
+    ell = length(tt) - length(indexset) + 1
+
+    cache = ttcache(tt, :right, ell)
+    key = collect(indexset)
+    if !(key in keys(cache))
+        cache[key] = tt[ell][:, indexset[1]..., :] * evaluateright(tt, indexset[2:end])
     end
     return cache[key]
 end
@@ -51,7 +82,10 @@ function evaluate(
         throw(ArgumentError("To evaluate a tensor train of length $(length(tt)), need $(length(tt)) index values, but only got $(length(indexset))."))
     end
     if usecache
-        return only(evaluatepartial(tt, indexset, length(tt)))
+        midpoint = div(length(tt), 2)
+        return only(
+            evaluateleft(tt, indexset[1:midpoint]) *
+            evaluateright(tt, indexset[midpoint+1:end]))
     else
         return only(prod(T[:, i..., :] for (T, i) in zip(tt, indexset)))
     end
