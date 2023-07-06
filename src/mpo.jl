@@ -57,7 +57,7 @@ function evaluateright(
     indexset::AbstractVector{<:AbstractVector{Int}}
 ) where {V}
     if isempty(indexset) || length(indexset) > length(tt)
-        throw(ArgumentError("For evaluateleft, number of indices must be smaller or equal to the number of MPO legs."))
+        throw(ArgumentError("For evaluateright, number of indices must be smaller or equal to the number of MPO legs."))
     end
 
     if length(indexset) == 1
@@ -83,11 +83,11 @@ function evaluate(
     end
     if usecache
         midpoint = div(length(tt), 2)
-        return only(
+        return sum(
             evaluateleft(tt, indexset[1:midpoint]) *
             evaluateright(tt, indexset[midpoint+1:end]))
     else
-        return only(prod(T[:, i..., :] for (T, i) in zip(tt, indexset)))
+        return sum(prod(T[:, i..., :] for (T, i) in zip(tt, indexset)))
     end
 end
 

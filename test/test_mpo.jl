@@ -1,6 +1,6 @@
 using Test
 using LinearAlgebra
-import TCIAlgorithms: contract, multiply, MPO
+import TCIAlgorithms: contract, multiply, MPO, evaluate
 
 @testset "MPO-MPO contraction" begin
     N = 5
@@ -13,7 +13,7 @@ import TCIAlgorithms: contract, multiply, MPO
         @test size(r) == (2, 3, 4, 2)
         @test a ≈ r
     end
-    @test_throws DimensionMismatch contract(A, fill(2, N-1), B, fill(1, N))
+    @test_throws DimensionMismatch contract(A, fill(2, N - 1), B, fill(1, N))
     @test_throws DimensionMismatch contract(A, fill(2, N), B, fill(1, N))
 
     @test all(contract(A, fill(2, N), C, fill(1, N)) .≈ A)
@@ -31,4 +31,11 @@ end
     for bc in BC
         @test bc == reshape(diagm([0, 1, 0]), (1, 3, 3, 1))
     end
+end
+
+@testset "MPO-MPO evaluate" begin
+    N = 2
+    A = MPO([rand(2, 3, 4, 2) for _ in 1:N])
+    @test (@inferred evaluate(A, [[1, 1], [1, 1]]; usecache=true)) ==
+          (@inferred evaluate(A, [[1, 1], [1, 1]]; usecache=false))
 end
