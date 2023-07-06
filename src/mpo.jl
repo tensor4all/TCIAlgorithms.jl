@@ -21,7 +21,7 @@ function MPO(TT::TCI.AbstractTensorTrain{ValueType}) where {ValueType}
     MPO(TT.T)
 end
 
-function ttcache(tt::MPO{V}, leftright::Symbol, b::Int) where V
+function ttcache(tt::MPO{V}, leftright::Symbol, b::Int) where {V}
     if leftright == :left
         return tt.cacheleft[b]
     elseif leftright == :right
@@ -181,11 +181,11 @@ function multiplympotensor(
     D = permutedims(
         deltaproduct(ft, flegs .+ 1, gt, glegs .+ 1),
         [
-            1, nf+ncontract+1, # Left links
+            1, nf + ncontract + 1, # Left links
             2:nf-1...,
             (nf .+ (1:ncontract))...,
             (nf + ncontract .+ (2:ng-1))...,
-            nf, nf+ncontract+ng
+            nf, nf + ncontract + ng
         ])
     return fuselinks(D, 2)
 end
