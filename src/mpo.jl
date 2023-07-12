@@ -91,6 +91,43 @@ function evaluate(
     end
 end
 
+function _fusedtensor(tt::MPO{V}, i::Int)::Array{V,3} where {V}
+    T_ = tt.T[i]
+    return reshape(T_, size(T_)[1], :, size(T_)[end])
+end
+
+function batchevaluate(
+    tt::MPO{V},
+    leftindexset::AbstractVector{<:AbstractVector{<:AbstractVector{Int}}},
+    rightindexset::AbstractVector{<:AbstractVector{<:AbstractVector{Int}}},
+    ::Val{M}
+)::Array{V,M+2} where {V,M}
+    N = length(tt.T)
+    nleft = length(leftindexset[1])
+    nright = length(rightindexset[1])
+    nleftindexset = length(leftindexset)
+    nrightindexset = length(rightindexset)
+    ncent = N - nleft - nright
+    lenv = vcat([evaluateleft(tt, lindex) for (il, lindex) in enumerate(leftindexset)]...) # nleftindexset x D
+    renv = hcat([evaluateright(tt, rindex) for (ir, rindex) in enumerate(rightindexset)]...) # D x nrightindexset
+
+    localdim = zeros(Int, ncent)
+    for n in nleft+1:(N-nright)
+        # (nleftindexset, d, ..., d, D) x (D, d, D)
+        T_ = _fusedtensor(tt, n)
+        localdim[n-nleft] = size(T_, 2)
+        bonddim_ = size(T_, 1)
+        lenv = reshape(lenv, :, bonddim_) * reshape(T_, bonddim_, :)
+    end
+
+    # (nleftindexset, d...d * D) x (D, nrightindexset)
+    bonddim_ = size(renv, 1)
+    lenv = reshape(lenv, :, bonddim_) * reshape(renv, bonddim_, :)
+
+    return reshape(lenv, nleftindexset, localdim..., nrightindexset)
+end
+
+
 function evaluate(
     tt::MPO{V},
     indexset::Union{AbstractVector{Int},NTuple{N,Int}};

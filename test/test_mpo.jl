@@ -1,6 +1,6 @@
 using Test
 using LinearAlgebra
-import TCIAlgorithms: contract, multiply, MPO, evaluate
+import TCIAlgorithms: contract, multiply, MPO, evaluate, batchevaluate
 
 @testset "MPO-MPO contraction" begin
     N = 5
@@ -38,4 +38,24 @@ end
     A = MPO([rand(2, 3, 4, 2) for _ in 1:N])
     @test (@inferred evaluate(A, [[1, 1], [1, 1]]; usecache=true)) ==
           (@inferred evaluate(A, [[1, 1], [1, 1]]; usecache=false))
+end
+
+@testset "MPO-MPO batchevaluate" begin
+    N = 4
+    bonddims = fill(3, N + 1)
+    bonddims[1] = 1
+    bonddims[end] = 1
+    A = MPO([rand(bonddims[n], 2, bonddims[n+1]) for n in 1:N])
+
+    leftindexset = [[[1]], [[2]]]
+    rightindexset = [[[1]], [[2]]]
+
+    result = batchevaluate(A, leftindexset, rightindexset, Val(2))
+    for cindex in [[[1], [1]], [[1], [2]]]
+        for (il, lindex) in enumerate(leftindexset)
+            for (ir, rindex) in enumerate(rightindexset)
+                @test result[il, Iterators.flatten(cindex)..., ir] ≈ evaluate(A, vcat(lindex, cindex, rindex))
+            end
+        end
+    end
 end
