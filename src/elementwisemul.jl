@@ -3,7 +3,6 @@ Elementwise product of two tensor trains
 One site index on each site.
 """
 struct ElementwiseProduct{T} <: TCI.BatchEvaluator{T}
-    tt::Vector{TensorTrain{T,3}}
     cache::Vector{TTCache{T}}
 end
 
@@ -12,7 +11,7 @@ function ElementwiseProduct(tt::Vector{TensorTrain{T,3}}) where {T}
     if length(unique(length.(tt))) > 1
         throw(ArgumentError("Tensor trains must have the same length."))
     end
-    return ElementwiseProduct(tt, TTCache.(tt))
+    return ElementwiseProduct(TTCache.(tt))
 end
 
 
@@ -25,7 +24,7 @@ end
 
 
 function (obj::ElementwiseProduct{T})(indexset::AbstractVector{Int})::T where {T}
-    return prod(.*, (t(indexset) for t in obj.tt))
+    return prod(.*, (t(indexset) for t in obj.cache))
 end
 
 
