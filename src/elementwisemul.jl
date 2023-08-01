@@ -18,8 +18,9 @@ end
 function evaluate(
     obj::ElementwiseProduct{T},
     indexset::AbstractVector{Int};
-    usecache::Bool=true)::T where {T}
-    return prod(.*, evaluate.(obj.tt, indexset; usecache=usecache))
+    usecache::Bool = true,
+)::T where {T}
+    return prod(.*, evaluate.(obj.tt, indexset; usecache = usecache))
 end
 
 
@@ -28,14 +29,16 @@ function (obj::ElementwiseProduct{T})(indexset::AbstractVector{Int})::T where {T
 end
 
 
-function TCI.batchevaluate(obj::ElementwiseProduct{T},
+function TCI.batchevaluate(
+    obj::ElementwiseProduct{T},
     leftindexset::AbstractVector{MultiIndex},
     rightindexset::AbstractVector{MultiIndex},
-    ::Val{M})::Array{T,M + 2} where {T,M}
+    ::Val{M},
+)::Array{T,M + 2} where {T,M}
 
     res = TCI.batchevaluate(obj.cache[1], leftindexset, rightindexset, Val(M))
     for c in obj.cache[2:end]
-        res = res .* TCI.batchevaluate(c, leftindexset, rightindexset, Val(M))
+        res .*= TCI.batchevaluate(c, leftindexset, rightindexset, Val(M))
     end
     return res
 end
