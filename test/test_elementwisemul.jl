@@ -12,7 +12,7 @@ import TCIAlgorithms as TCIA
     a = TCI.TensorTrain([rand(bonddims[n], localdims[n], bonddims[n+1]) for n in 1:N])
     b = TCI.TensorTrain([rand(bonddims[n], localdims[n], bonddims[n+1]) for n in 1:N])
 
-    ab = TCIA.ElementwiseProduct(a, b)
+    ab = TCIA.ElementwiseProduct([a, b])
 
     @test TCI.isbatchevaluable(ab)
 
@@ -24,7 +24,7 @@ import TCIAlgorithms as TCIA
     for idx_ in Iterators.product((1:d for d in localdims)...)
         idx = collect(idx_)
         push!(ab_res, ab(idx))
-        push!(ab_ref, a(idx) * b(idx))
+        push!(ab_ref, a(idx) .* b(idx))
     end
 
     @test ab_res ≈ ab_ref
