@@ -100,22 +100,20 @@ function evaluateleft(
     key = collect(indexset)
     if !(key in keys(obj.leftcache))
         # (v1, v2)
-        left_ = evaluateleft(obj, indexset[1:ell-1])
-        idx_v1 = Index(size(left_, 1), "v1")
-        idx_v2 = Index(size(left_, 2), "v2")
-        left = ITensor(left_, (idx_v1, idx_v2))
+        idx_v1 = obj.links_a[ell]
+        idx_v2 = obj.links_b[ell]
+        left = ITensor(evaluateleft(obj, indexset[1:ell-1]), (idx_v1, idx_v2))
 
         i, j = indexset[end]
 
         # (v1, v2) * (v1, k, v1') = (v2, k, v1')
-        idx_v1p = Index(size(obj.mpo[1][ell], 4), "v1p")
-        idx_v2p = Index(size(obj.mpo[2][ell], 4), "v2p")
-
-        idx_k = Index(size(obj.mpo[1][ell], 3), "k")
+        idx_v1p = obj.links_a[ell+1]
+        idx_v2p = obj.links_b[ell+1]
 
         res_tensor =
-            (left * ITensor(obj.mpo[1][ell][:, i, :, :], idx_v1, idx_k, idx_v1p)) *
-            ITensor(obj.mpo[2][ell][:, :, j, :], idx_v2, idx_k, idx_v2p)
+            left *
+            (obj.a_MPO[ell] * onehot(obj.sites1[ell] => i)) *
+            (obj.b_MPO[ell] * onehot(obj.sites3[ell] => j))
 
         obj.leftcache[key] = Array(res_tensor, [idx_v1p, idx_v2p])
     end

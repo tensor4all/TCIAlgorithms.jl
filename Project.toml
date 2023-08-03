@@ -10,6 +10,7 @@ TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 
 [compat]
 julia = "1.6"
+ITensors = "0.3.34 - 0.3.37"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
