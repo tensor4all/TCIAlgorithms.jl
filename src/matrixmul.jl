@@ -1,0 +1,275 @@
+"""
+Matrix product of two tensor trains
+Two site indices on each site.
+"""
+struct MatrixProduct{T} <: TCI.BatchEvaluator{T}
+    mpo::NTuple{2,TensorTrain{T,4}}
+    leftcache::Dict{Vector{Tuple{Int,Int}},Matrix{T}}
+    rightcache::Dict{Vector{Tuple{Int,Int}},Matrix{T}}
+    a_MPO::MPO
+    b_MPO::MPO
+    sites1::Vector{Index{Int}}
+    sites2::Vector{Index{Int}}
+    sites3::Vector{Index{Int}}
+    links_a::Vector{Index{Int}}
+    links_b::Vector{Index{Int}}
+end
+
+
+Base.length(obj::MatrixProduct) = length(obj.mpo[1])
+
+function MatrixProduct(a::TensorTrain{T,4}, b::TensorTrain{T,4}) where {T}
+    mpo = a, b
+    if length(unique(length.(mpo))) > 1
+        throw(ArgumentError("Tensor trains must have the same length."))
+    end
+    for n = 1:length(mpo[1])
+        if size(mpo[1].T[n], 3) != size(mpo[2].T[n], 2)
+            throw(ArgumentError("Tensor trains must share the identical index at n=$n!"))
+        end
+    end
+
+    N = length(mpo[1])
+    localdims1 = [size(mpo[1].T[n], 2) for n = 1:length(mpo[1])]
+    localdims2 = [size(mpo[1].T[n], 3) for n = 1:length(mpo[1])]
+    localdims3 = [size(mpo[2].T[n], 3) for n = 1:length(mpo[2])]
+
+    bonddims_a = vcat([size(mpo[1].T[n], 1) for n = 1:length(mpo[1])], 1)
+    bonddims_b = vcat([size(mpo[2].T[n], 1) for n = 1:length(mpo[2])], 1)
+
+    links_a = [Index(bonddims_a[n], "Link,l=$n") for n = 1:N+1]
+    links_b = [Index(bonddims_b[n], "Link,l=$n") for n = 1:N+1]
+
+    sites1 = [Index(localdims1[n], "Site1=$n") for n = 1:N]
+    sites2 = [Index(localdims2[n], "Site2=$n") for n = 1:N]
+    sites3 = [Index(localdims3[n], "Site3=$n") for n = 1:N]
+
+    a_MPO =
+        MPO([ITensor(a.T[n], links_a[n], sites1[n], sites2[n], links_a[n+1]) for n = 1:N])
+    b_MPO =
+        MPO([ITensor(b.T[n], links_b[n], sites2[n], sites3[n], links_b[n+1]) for n = 1:N])
+
+    return MatrixProduct(
+        mpo,
+        Dict{Vector{Tuple{Int,Int}},Matrix{T}}(),
+        Dict{Vector{Tuple{Int,Int}},Matrix{T}}(),
+        a_MPO,
+        b_MPO,
+        sites1,
+        sites2,
+        sites3,
+        links_a,
+        links_b,
+    )
+end
+
+_localdims(obj::TensorTrain{<:Any,4}, n::Int)::Tuple{Int,Int} =
+    (size(obj.T[n], 2), size(obj.T[n], 3))
+_localdims(obj::MatrixProduct{<:Any}, n::Int)::Tuple{Int,Int} =
+    (size(obj.mpo[1].T[n], 2), size(obj.mpo[2].T[n], 3))
+
+function _unfuse_idx(obj::MatrixProduct{T}, n::Int, idx::Int)::Tuple{Int,Int} where {T}
+    return reverse(divrem(idx - 1, _localdims(obj, n)[1]) .+ 1)
+end
+
+function _fuse_idx(obj::MatrixProduct{T}, n::Int, idx::Tuple{Int,Int})::Int where {T}
+    return idx[1] + _localdims(obj, n)[1] * (idx[2] - 1)
+end
+
+# Compute left environment
+function evaluateleft(
+    obj::MatrixProduct{T},
+    indexset::AbstractVector{Tuple{Int,Int}},
+)::Matrix{T} where {T}
+    if length(indexset) >= length(obj.mpo[1])
+        error("Invalid indexset: $indexset")
+    end
+
+    if length(indexset) == 0
+        return ones(T, 1, 1)
+    end
+
+    ell = length(indexset)
+    if ell == 1
+        i, j = indexset[1]
+        a_ = obj.a_MPO[1] * onehot(obj.sites1[1] => i) * onehot(obj.links_a[1] => 1)
+        b_ = obj.b_MPO[1] * onehot(obj.sites3[1] => j) * onehot(obj.links_b[1] => 1)
+        return Array(a_ * b_, [obj.links_a[2], obj.links_b[2]])
+    end
+
+    key = collect(indexset)
+    if !(key in keys(obj.leftcache))
+        # (v1, v2)
+        left_ = evaluateleft(obj, indexset[1:ell-1])
+        idx_v1 = Index(size(left_, 1), "v1")
+        idx_v2 = Index(size(left_, 2), "v2")
+        left = ITensor(left_, (idx_v1, idx_v2))
+
+        i, j = indexset[end]
+
+        # (v1, v2) * (v1, k, v1') = (v2, k, v1')
+        idx_v1p = Index(size(obj.mpo[1][ell], 4), "v1p")
+        idx_v2p = Index(size(obj.mpo[2][ell], 4), "v2p")
+
+        idx_k = Index(size(obj.mpo[1][ell], 3), "k")
+
+        res_tensor =
+            (left * ITensor(obj.mpo[1][ell][:, i, :, :], idx_v1, idx_k, idx_v1p)) *
+            ITensor(obj.mpo[2][ell][:, :, j, :], idx_v2, idx_k, idx_v2p)
+
+        obj.leftcache[key] = Array(res_tensor, [idx_v1p, idx_v2p])
+    end
+
+    return obj.leftcache[key]
+end
+
+
+
+# Compute right environment
+function evaluateright(
+    obj::MatrixProduct{T},
+    indexset::AbstractVector{Tuple{Int,Int}},
+)::Matrix{T} where {T}
+    if length(indexset) >= length(obj.mpo[1])
+        error("Invalid indexset: $indexset")
+    end
+
+    N = length(obj)
+
+    if length(indexset) == 0
+        return ones(T, 1, 1)
+    elseif length(indexset) == 1
+        i, j = indexset[1]
+        a_ = obj.a_MPO[end] * onehot(obj.sites1[end] => i) * onehot(obj.links_a[end] => 1)
+        b_ = obj.b_MPO[end] * onehot(obj.sites3[end] => j) * onehot(obj.links_b[end] => 1)
+        return Array(a_ * b_, [obj.links_a[N], obj.links_b[N]])
+    end
+
+    ell = N - length(indexset) + 1
+
+    key = collect(indexset)
+    if !(key in keys(obj.rightcache))
+        # (v1, v2)
+        idx_v1 = obj.links_a[ell+1]
+        idx_v2 = obj.links_b[ell+1]
+        right = ITensor(evaluateright(obj, indexset[2:end]), (idx_v1, idx_v2))
+
+        i, j = indexset[1]
+        res_tensor =
+            right *
+            obj.a_MPO[ell] *
+            onehot(obj.sites1[ell] => i) *
+            obj.b_MPO[ell] *
+            onehot(obj.sites3[ell] => j)
+
+        obj.rightcache[key] = Array(res_tensor, [obj.links_a[ell], obj.links_b[ell]])
+    end
+
+    return obj.rightcache[key]
+end
+
+
+function evaluate(obj::MatrixProduct{T}, indexset::AbstractVector{Int})::T where {T}
+    if length(obj) != length(indexset)
+        error("Length mismatch: $(length(obj)) != $(length(indexset))")
+    end
+
+    indexset_unfused = [_unfuse_idx(obj, n, indexset[n]) for n = 1:length(obj)]
+    return evaluate(obj, indexset_unfused)
+end
+
+function evaluate(
+    obj::MatrixProduct{T},
+    indexset::AbstractVector{Tuple{Int,Int}},
+)::T where {T}
+    if length(obj) != length(indexset)
+        error("Length mismatch: $(length(obj)) != $(length(indexset))")
+    end
+
+    midpoint = div(length(obj), 2)
+    return sum(
+        evaluateleft(obj, indexset[1:midpoint]) .*
+        evaluateright(obj, indexset[midpoint+1:end]),
+    )
+end
+
+
+function (obj::MatrixProduct{T})(indexset::AbstractVector{Int})::T where {T}
+    return evaluate(obj, indexset)
+end
+
+
+function TCI.batchevaluate(
+    obj::MatrixProduct{T},
+    leftindexset::AbstractVector{MultiIndex},
+    rightindexset::AbstractVector{MultiIndex},
+    ::Val{M},
+)::Array{T,M + 2} where {T,M}
+
+    N = length(obj)
+    Nr = length(rightindexset[1])
+    s_ = length(leftindexset[1]) + 1
+    e_ = N - length(rightindexset[1])
+
+    # Unfused index
+    leftindexset_unfused = [
+        [_unfuse_idx(obj, n, idx) for (n, idx) in enumerate(idxs)] for idxs in leftindexset
+    ]
+    rightindexset_unfused = [
+        [_unfuse_idx(obj, N - Nr + n, idx) for (n, idx) in enumerate(idxs)] for
+        idxs in rightindexset
+    ]
+
+    left_ =
+        Array{T,3}(undef, dim(obj.links_a[s_]), dim(obj.links_b[s_]), length(leftindexset))
+    for (i, idx) in enumerate(leftindexset_unfused)
+        left_[:, :, i] .= evaluateleft(obj, idx)
+    end
+
+    right_ = Array{T,3}(
+        undef,
+        dim(obj.links_a[e_+1]),
+        dim(obj.links_b[e_+1]),
+        length(rightindexset),
+    )
+    for (i, idx) in enumerate(rightindexset_unfused)
+        right_[:, :, i] .= evaluateright(obj, idx)
+    end
+
+    index_left = Index(length(leftindexset), "left")
+    index_right = Index(length(rightindexset), "right")
+
+    res = ITensor(left_, obj.links_a[s_], obj.links_b[s_], index_left)
+    for n = s_:e_
+        res *= obj.a_MPO[n]
+        res *= obj.b_MPO[n]
+    end
+    res *= ITensor(right_, obj.links_a[e_+1], obj.links_b[e_+1], index_right)
+
+    res_inds = vcat(
+        index_left,
+        collect(Iterators.flatten(zip(obj.sites1[s_:e_], obj.sites3[s_:e_]))),
+        index_right,
+    )
+
+    res_size = vcat(
+        dim(index_left),
+        [dim(s1) * dim(s3) for (s1, s3) in zip(obj.sites1[s_:e_], obj.sites3[s_:e_])],
+        dim(index_right),
+    )
+
+    return reshape(Array(res, res_inds), res_size...)
+end
+
+
+function _contract(obj::MatrixProduct)::MPO
+    a_MPO = copy(obj.a_MPO)
+    a_MPO[1] *= onehot(obj.links_a[1] => 1)
+    a_MPO[end] *= onehot(obj.links_a[end] => 1)
+
+    b_MPO = copy(obj.b_MPO)
+    b_MPO[1] *= onehot(obj.links_b[1] => 1)
+    b_MPO[end] *= onehot(obj.links_b[end] => 1)
+
+    return ITensors.contract(a_MPO, b_MPO; alg = "naive")
+end
