@@ -18,6 +18,18 @@ end
 
 Base.length(obj::MatrixProduct) = length(obj.mpo[1])
 
+function Base.lastindex(obj::MatrixProduct{T}) where {T}
+    return lastindex(obj.mpo[1])
+end
+
+function Base.getindex(obj::MatrixProduct{T}, i) where {T}
+    return getindex(obj.mpo[1], i)
+end
+
+function Base.show(io::IO, obj::MatrixProduct{T}) where {T}
+    print(io, "$(typeof(obj)) of tensor trains with ranks $(TCI.rank(obj.mpo[1])) and $(TCI.rank(obj.mpo[2]))")
+end
+
 function MatrixProduct(a::TensorTrain{T,4}, b::TensorTrain{T,4}) where {T}
     mpo = a, b
     if length(unique(length.(mpo))) > 1
