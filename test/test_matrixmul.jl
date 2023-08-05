@@ -6,7 +6,7 @@ import TCIAlgorithms as TCIA
 
 using ITensors
 
-@testset "MPO-MPO contraction (evaluateleft)" begin
+@testset "MatrixProduct (evaluateleft)" begin
     N = 4
     bonddims_a = [1, 2, 3, 2, 1]
     bonddims_b = [1, 2, 3, 2, 1]
@@ -72,7 +72,7 @@ using ITensors
 end
 
 
-@testset "MPO-MPO contraction (evaluateright)" begin
+@testset "MatrixProduct (evaluateright)" begin
     N = 4
     bonddims_a = [1, 2, 3, 2, 1]
     bonddims_b = [1, 2, 3, 2, 1]
@@ -130,7 +130,7 @@ end
 end
 
 
-@testset "MPO-MPO contraction (evaluateright)" begin
+@testset "MatrixProduct (evaluateright)" begin
     N = 4
     bonddims_a = [1, 2, 3, 2, 1]
     bonddims_b = [1, 2, 3, 2, 1]
