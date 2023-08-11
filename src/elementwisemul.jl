@@ -42,3 +42,23 @@ function TCI.batchevaluate(
     end
     return res
 end
+
+function elementwiseproduct(
+    tts::TensorTrain{T, 3}...;
+    tolerance=1e-12,
+    maxbonddim=typemax(Int)
+) where {T}
+    if !allequal(length.(tts))
+        throw(ArgumentError("Cannot multiply TTs with different length: $(length.(tts))"))
+    end
+    if !all(allequal(TCI.sitedim(tt, i)[1] for tt in tts) for i in 1:length(tts[1]))
+        throw(ArgumentError("Cannot multiply TTs with different local dimensions."))
+    end
+    return TCI.crossinterpolate2(
+        T,
+        ElementwiseProduct(collect(tts)),
+        [d[1] for d in TCI.sitedims(tts[1])];
+        tolerance=tolerance,
+        maxbonddim=maxbonddim
+    )
+end
