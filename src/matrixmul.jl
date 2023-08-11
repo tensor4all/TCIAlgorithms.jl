@@ -281,5 +281,41 @@ function _contract(obj::MatrixProduct)::MPO
     b_MPO[1] *= onehot(obj.links_b[1] => 1)
     b_MPO[end] *= onehot(obj.links_b[end] => 1)
 
-    return ITensors.contract(a_MPO, b_MPO; alg = "naive")
+    return ITensors.contract(a_MPO, b_MPO; alg="naive")
+end
+
+function _reshape_fusesites(t::AbstractArray{T}) where {T}
+    shape = size(t)
+    return reshape(t, shape[1], prod(shape[2:end-1]), shape[end]), shape[2:end-1]
+end
+
+function _reshape_splitsites(
+    t::AbstractArray{T},
+    legdims::Union{AbstractVector{Int},Tuple}
+) where {T}
+    return reshape(t, size(t, 1), legdims..., size(t, ndims(t)))
+end
+
+function contractTCI(
+    A::TensorTrain{ValueType,4}, B::TensorTrain{ValueType,4};
+    tolerance::Float64=nothing,
+    maxbonddim::Int=typemax(Int)
+) where {ValueType}
+    if length(A) != length(B)
+        throw(ArgumentError("Cannot contract tensor trains with different length."))
+    end
+    if !all([TCI.sitedim(A, i)[2] == TCI.sitedim(B, i)[1] for i in 1:length(A)])
+        throw(ArgumentError("Cannot contract tensor trains with non-matching site dimensions."))
+    end
+    matrixproduct = MatrixProduct(A, B)
+    tci, ranks, errors = TCI.crossinterpolate2(
+        ValueType,
+        matrixproduct,
+        [prod(_localdims(matrixproduct, i)) for i in 1:length(A)];
+        tolerance=tolerance,
+        maxbonddim=maxbonddim
+    )
+    return TCI.TensorTrain{ValueType,4}(
+        _reshape_splitsites.(tci, [_localdims(matrixproduct, i) for i in 1:length(tci)])
+    ), ranks, errors
 end
