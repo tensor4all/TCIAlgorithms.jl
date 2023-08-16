@@ -189,3 +189,23 @@ end
         end
     end
 end
+
+@testset "MPO-MPO contraction" begin
+    N = 4
+    bonddims_a = [1, 2, 3, 2, 1]
+    bonddims_b = [1, 2, 3, 2, 1]
+    localdims1 = [2, 2, 2, 2]
+    localdims2 = [3, 3, 3, 3]
+    localdims3 = [2, 2, 2, 2]
+
+    a = TCI.TensorTrain{ComplexF64, 4}([
+        rand(ComplexF64, bonddims_a[n], localdims1[n], localdims2[n], bonddims_a[n+1]) for n = 1:N
+    ])
+    b = TCI.TensorTrain{ComplexF64, 4}([
+        rand(ComplexF64, bonddims_b[n], localdims2[n], localdims3[n], bonddims_b[n+1]) for n = 1:N
+    ])
+
+    ab = TCIA.contract(a, b)
+    @test TCI.sitedims(ab) == [[localdims1[i], localdims3[i]] for i in 1:N]
+    @test all(TCI.linkdims(ab) .<= (bonddims_a .* bonddims_b)[2:end-1])
+end

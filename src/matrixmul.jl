@@ -296,7 +296,7 @@ function _reshape_splitsites(
     return reshape(t, size(t, 1), legdims..., size(t, ndims(t)))
 end
 
-function contractTCI(
+function contract_TCI(
     A::TensorTrain{ValueType,4}, B::TensorTrain{ValueType,4};
     tolerance::Float64=nothing,
     maxbonddim::Int=typemax(Int)
@@ -317,23 +317,21 @@ function contractTCI(
     )
     return TCI.TensorTrain{ValueType,4}(
         _reshape_splitsites.(tci, [_localdims(matrixproduct, i) for i in 1:length(tci)])
-    ), ranks, errors
+    )
 end
 
 function contract(
     A::TensorTrain{ValueType,4},
     B::TensorTrain{ValueType,4};
     algorithm="TCI",
-    tolerance::Float64=nothing,
+    tolerance::Float64=1e-12,
     maxbonddim::Int=typemax(Int)
 ) where {ValueType}
-    if algorithm =="TCI"
-        return contractTCI(A, B; tolerance=tolerance, maxbonddim=maxbonddim)
-    elseif algorithm == "fit"
-        return TensorTrain(contract_fit(A, B; tolerance=tolerance))
-    elseif algorithm in ["density matrix"]
+    if algorithm == "TCI"
+        return contract_TCI(A, B; tolerance=tolerance, maxbonddim=maxbonddim)
+    elseif algorithm in ["density matrix", "fit"]
         throw(ArgumentError("Algorithm $algorithm is not implemented yet"))
     else
-        throw(ArgumentError("Unknown algorithm."))
+        throw(ArgumentError("Unknown algorithm $algorithm."))
     end
 end
