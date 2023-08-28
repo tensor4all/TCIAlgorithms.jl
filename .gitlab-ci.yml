@@ -3,6 +3,7 @@
     - |
       julia --project=@. -e '
         using Pkg
+        pkg"registry add git@gitlab.com:tensors4fields/tensors4fieldsregistry.git"
         Pkg.build()
         Pkg.test(coverage=true)'
 .coverage:
@@ -38,6 +39,7 @@ pages:
     - |
       julia --project=docs -e '
         using Pkg
+        pkg"registry add git@gitlab.com:tensors4fields/tensors4fieldsregistry.git"
         Pkg.develop(PackageSpec(path=pwd()))
         Pkg.instantiate()
         using Documenter: doctest
