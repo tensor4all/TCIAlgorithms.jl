@@ -1,6 +1,7 @@
 .script:
   script:
     - |
+      git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "ssh://git@gitlab.com/"
       julia --project=@. -e '
         using Pkg
         pkg"registry add git@gitlab.com:tensors4fields/tensors4fieldsregistry.git"
