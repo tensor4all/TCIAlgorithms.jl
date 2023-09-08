@@ -5,14 +5,17 @@
     - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "https://gitlab.com/" --add
   script:
     - |
-      julia --project=@. -e '
+       julia -e '
         using Pkg
         Pkg.Registry.add(
           RegistrySpec(url = "https://github.com/JuliaRegistries/General.git")
         )
         Pkg.Registry.add(
           RegistrySpec(url = "https://gitlab.com/tensors4fields/tensors4fieldsregistry.git")
-        )
+        )'
+    - |
+      julia --project=@. -e '
+        using Pkg
         Pkg.build()
         Pkg.test(coverage=true)'
 .coverage:
