@@ -1,16 +1,16 @@
-using TCIalgorithms
+using TCIAlgorithms
 using Documenter
 
-DocMeta.setdocmeta!(TCIalgorithms, :DocTestSetup, :(using TCIalgorithms); recursive=true)
+DocMeta.setdocmeta!(TCIAlgorithms, :DocTestSetup, :(using TCIAlgorithms); recursive=true)
 
 makedocs(;
-    modules=[TCIalgorithms],
+    modules=[TCIAlgorithms],
     authors="Ritter.Marc <Ritter.Marc@physik.uni-muenchen.de> and contributors",
-    repo="https://gitlab.com/Ritter.Marc/TCIalgorithms.jl/blob/{commit}{path}#{line}",
+    repo="https://gitlab.com/Ritter.Marc/TCIAlgorithms.jl/blob/{commit}{path}#{line}",
     sitename="TCIalgorithms.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://Ritter.Marc.gitlab.io/TCIalgorithms.jl",
+        canonical="https://Ritter.Marc.gitlab.io/TCIAlgorithms.jl",
         edit_link="main",
         assets=String[],
     ),

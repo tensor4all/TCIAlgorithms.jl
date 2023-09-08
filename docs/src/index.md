@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = TCIalgorithms
+CurrentModule = TCIAlgorithms
 ```
 
 # TCIalgorithms
 
-Documentation for [TCIalgorithms](https://gitlab.com/Ritter.Marc/TCIalgorithms.jl).
+Documentation for [TCIAlgorithms](https://gitlab.com/Ritter.Marc/TCIAlgorithms.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [TCIalgorithms]
+Modules = [TCIAlgorithms]
 ```
