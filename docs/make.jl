@@ -6,11 +6,11 @@ DocMeta.setdocmeta!(TCIAlgorithms, :DocTestSetup, :(using TCIAlgorithms); recurs
 makedocs(;
     modules=[TCIAlgorithms],
     authors="Ritter.Marc <Ritter.Marc@physik.uni-muenchen.de> and contributors",
-    repo="https://gitlab.com/Ritter.Marc/TCIAlgorithms.jl/blob/{commit}{path}#{line}",
+    repo="https://gitlab.com/tensors4fields/TCIAlgorithms.jl/blob/{commit}{path}#{line}",
     sitename="TCIAlgorithms.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://Ritter.Marc.gitlab.io/TCIAlgorithms.jl",
+        canonical="https://tensors4fields.gitlab.io/TCIAlgorithms.jl",
         edit_link="main",
         assets=String[],
     ),

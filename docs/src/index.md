@@ -4,7 +4,7 @@ CurrentModule = TCIAlgorithms
 
 # TCIAlgorithms
 
-Documentation for [TCIAlgorithms](https://gitlab.com/Ritter.Marc/TCIAlgorithms.jl).
+Documentation for [TCIAlgorithms](https://gitlab.com/tensors4fields/TCIAlgorithms.jl).
 
 ```@index
 ```
