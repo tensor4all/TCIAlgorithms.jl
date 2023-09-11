@@ -2,7 +2,7 @@
 CurrentModule = TCIAlgorithms
 ```
 
-# TCIalgorithms
+# TCIAlgorithms
 
 Documentation for [TCIAlgorithms](https://gitlab.com/Ritter.Marc/TCIAlgorithms.jl).
 

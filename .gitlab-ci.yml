@@ -50,7 +50,7 @@ Julia 1.9:
     - .script
     - .coverage
 pages:
-  image: julia:1.6
+  image: julia:1.9
   stage: deploy
   before_script:
     - which git || (apt-get update -qq && apt-get install --no-install-recommends -qqqy git)
@@ -71,8 +71,8 @@ pages:
         using Pkg
         Pkg.instantiate()
         using Documenter: doctest
-        using TCIalgorithms
-        doctest(TCIalgorithms)
+        using TCIAlgorithms
+        doctest(TCIAlgorithms)
         include("docs/make.jl")'
     - mkdir -p public
     - mv docs/build public/dev

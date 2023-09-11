@@ -7,7 +7,7 @@ makedocs(;
     modules=[TCIAlgorithms],
     authors="Ritter.Marc <Ritter.Marc@physik.uni-muenchen.de> and contributors",
     repo="https://gitlab.com/Ritter.Marc/TCIAlgorithms.jl/blob/{commit}{path}#{line}",
-    sitename="TCIalgorithms.jl",
+    sitename="TCIAlgorithms.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
         canonical="https://Ritter.Marc.gitlab.io/TCIAlgorithms.jl",
