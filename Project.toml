@@ -11,7 +11,6 @@ TCIITensorConversion = "9f0aa9f4-9415-4e6a-8795-331ebf40aa04"
 TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 
 [compat]
-ITensors = "0.3.34 - 0.3.37"
 julia = "1.6"
 
 [extras]
