@@ -1,4 +1,4 @@
-function reshapetomatrix(A::AbstractArray, firstlegs::Union{AbstractVector{Int}, Tuple})
+function reshapetomatrix(A::AbstractArray, firstlegs::Union{AbstractVector{Int},Tuple})
     lastlegs = setdiff(1:ndims(A), firstlegs)
     permutation = vcat(firstlegs, lastlegs)
     Asizes = (size(A)[firstlegs], size(A)[lastlegs])
@@ -7,8 +7,10 @@ function reshapetomatrix(A::AbstractArray, firstlegs::Union{AbstractVector{Int},
 end
 
 function contract(
-    A::AbstractArray, Alegs::Union{AbstractVector{Int}, Tuple},
-    B::AbstractArray, Blegs::Union{AbstractVector{Int}, Tuple}
+    A::AbstractArray,
+    Alegs::Union{AbstractVector{Int},Tuple},
+    B::AbstractArray,
+    Blegs::Union{AbstractVector{Int},Tuple},
 )
     Amatrix, Alegdims = reshapetomatrix(A, Alegs)
     Bmatrix, Blegdims = reshapetomatrix(B, Blegs)
@@ -26,9 +28,13 @@ Elementwise product in one index:
 """
 function deltaproduct(A::AbstractMatrix{T}, B::AbstractMatrix{T}) where {T}
     if size(A, 2) != size(B, 1)
-        throw(DimensionMismatch("Second dimension of A must have same length as first dimension of B."))
+        throw(
+            DimensionMismatch(
+                "Second dimension of A must have same length as first dimension of B.",
+            ),
+        )
     end
-    C = Array{T, 3}(undef, size(A, 1), size(A, 2), size(B, 2))
+    C = Array{T,3}(undef, size(A, 1), size(A, 2), size(B, 2))
     for j in axes(A, 2)
         C[:, j, :] = A[:, j] * transpose(B[j, :])
     end
@@ -36,8 +42,10 @@ function deltaproduct(A::AbstractMatrix{T}, B::AbstractMatrix{T}) where {T}
 end
 
 function deltaproduct(
-    A::AbstractArray, Alegs::Union{AbstractVector{Int}, Tuple},
-    B::AbstractArray, Blegs::Union{AbstractVector{Int}, Tuple}
+    A::AbstractArray,
+    Alegs::Union{AbstractVector{Int},Tuple},
+    B::AbstractArray,
+    Blegs::Union{AbstractVector{Int},Tuple},
 )
     Amatrix, Alegdims = reshapetomatrix(A, Alegs)
     Bmatrix, Blegdims = reshapetomatrix(B, Blegs)

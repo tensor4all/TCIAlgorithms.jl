@@ -20,5 +20,5 @@ end
     A = rand(4, 5)
     B = rand(4, 5)
     @test deltaproduct(A, [1, 2], B, [1, 2]) ≈ A .* B
-    @test sum(deltaproduct(A, [1], B, [1]), dims=2)[:, 1, :] ≈ transpose(A) * B
+    @test sum(deltaproduct(A, [1], B, [1]), dims = 2)[:, 1, :] ≈ transpose(A) * B
 end

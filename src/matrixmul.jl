@@ -13,6 +13,7 @@ struct MatrixProduct{T} <: TCI.BatchEvaluator{T}
     sites3::Vector{Index{Int}}
     links_a::Vector{Index{Int}}
     links_b::Vector{Index{Int}}
+    f::Union{Nothing,Function}
 end
 
 
@@ -27,10 +28,17 @@ function Base.getindex(obj::MatrixProduct{T}, i) where {T}
 end
 
 function Base.show(io::IO, obj::MatrixProduct{T}) where {T}
-    print(io, "$(typeof(obj)) of tensor trains with ranks $(TCI.rank(obj.mpo[1])) and $(TCI.rank(obj.mpo[2]))")
+    print(
+        io,
+        "$(typeof(obj)) of tensor trains with ranks $(TCI.rank(obj.mpo[1])) and $(TCI.rank(obj.mpo[2]))",
+    )
 end
 
-function MatrixProduct(a::TensorTrain{T,4}, b::TensorTrain{T,4}) where {T}
+function MatrixProduct(
+    a::TensorTrain{T,4},
+    b::TensorTrain{T,4};
+    f::Union{Nothing,Function} = nothing,
+) where {T}
     mpo = a, b
     if length(unique(length.(mpo))) > 1
         throw(ArgumentError("Tensor trains must have the same length."))
@@ -72,6 +80,7 @@ function MatrixProduct(a::TensorTrain{T,4}, b::TensorTrain{T,4}) where {T}
         sites3,
         links_a,
         links_b,
+        f,
     )
 end
 
@@ -197,10 +206,16 @@ function evaluate(
     end
 
     midpoint = div(length(obj), 2)
-    return sum(
+    res = sum(
         evaluateleft(obj, indexset[1:midpoint]) .*
         evaluateright(obj, indexset[midpoint+1:end]),
     )
+
+    if obj.f isa Function
+        return obj.f(res)
+    else
+        return res
+    end
 end
 
 
@@ -268,11 +283,18 @@ function TCI.batchevaluate(
         dim(index_right),
     )
 
+    if obj.f isa Function
+        res .= obj.f.(res)
+    end
+
     return reshape(Array(res, res_inds), res_size...)
 end
 
 
 function _contract(obj::MatrixProduct)::MPO
+    if obj.f isa Function
+        error("Cannot contract matrix product with a function.")
+    end
     a_MPO = copy(obj.a_MPO)
     a_MPO[1] *= onehot(obj.links_a[1] => 1)
     a_MPO[end] *= onehot(obj.links_a[end] => 1)
@@ -281,7 +303,7 @@ function _contract(obj::MatrixProduct)::MPO
     b_MPO[1] *= onehot(obj.links_b[1] => 1)
     b_MPO[end] *= onehot(obj.links_b[end] => 1)
 
-    return ITensors.contract(a_MPO, b_MPO; alg="naive")
+    return ITensors.contract(a_MPO, b_MPO; alg = "naive")
 end
 
 function _reshape_fusesites(t::AbstractArray{T}) where {T}
@@ -291,44 +313,51 @@ end
 
 function _reshape_splitsites(
     t::AbstractArray{T},
-    legdims::Union{AbstractVector{Int},Tuple}
+    legdims::Union{AbstractVector{Int},Tuple},
 ) where {T}
     return reshape(t, size(t, 1), legdims..., size(t, ndims(t)))
 end
 
 function contract_TCI(
-    A::TensorTrain{ValueType,4}, B::TensorTrain{ValueType,4};
-    tolerance::Float64=nothing,
-    maxbonddim::Int=typemax(Int)
+    A::TensorTrain{ValueType,4},
+    B::TensorTrain{ValueType,4};
+    tolerance::Float64 = nothing,
+    maxbonddim::Int = typemax(Int),
+    f::Union{Nothing,Function} = nothing,
 ) where {ValueType}
     if length(A) != length(B)
         throw(ArgumentError("Cannot contract tensor trains with different length."))
     end
-    if !all([TCI.sitedim(A, i)[2] == TCI.sitedim(B, i)[1] for i in 1:length(A)])
-        throw(ArgumentError("Cannot contract tensor trains with non-matching site dimensions."))
+    if !all([TCI.sitedim(A, i)[2] == TCI.sitedim(B, i)[1] for i = 1:length(A)])
+        throw(
+            ArgumentError(
+                "Cannot contract tensor trains with non-matching site dimensions.",
+            ),
+        )
     end
-    matrixproduct = MatrixProduct(A, B)
+    matrixproduct = MatrixProduct(A, B; f = f)
     tci, ranks, errors = TCI.crossinterpolate2(
         ValueType,
         matrixproduct,
-        [prod(_localdims(matrixproduct, i)) for i in 1:length(A)];
-        tolerance=tolerance,
-        maxbonddim=maxbonddim
+        [prod(_localdims(matrixproduct, i)) for i = 1:length(A)];
+        tolerance = tolerance,
+        maxbonddim = maxbonddim,
     )
     return TCI.TensorTrain{ValueType,4}(
-        _reshape_splitsites.(tci, [_localdims(matrixproduct, i) for i in 1:length(tci)])
+        _reshape_splitsites.(tci, [_localdims(matrixproduct, i) for i = 1:length(tci)]),
     )
 end
 
 function contract(
     A::TensorTrain{ValueType,4},
     B::TensorTrain{ValueType,4};
-    algorithm="TCI",
-    tolerance::Float64=1e-12,
-    maxbonddim::Int=typemax(Int)
+    algorithm = "TCI",
+    tolerance::Float64 = 1e-12,
+    maxbonddim::Int = typemax(Int),
+    f::Union{Nothing,Function} = nothing,
 ) where {ValueType}
     if algorithm == "TCI"
-        return contract_TCI(A, B; tolerance=tolerance, maxbonddim=maxbonddim)
+        return contract_TCI(A, B; tolerance = tolerance, maxbonddim = maxbonddim, f = f)
     elseif algorithm in ["density matrix", "fit"]
         throw(ArgumentError("Algorithm $algorithm is not implemented yet"))
     else

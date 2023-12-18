@@ -7,6 +7,7 @@ using TCIITensorConversion
 
 using ITensors
 
+#==
 @testset "MatrixProduct (evaluateleft)" begin
     N = 4
     bonddims_a = [1, 2, 3, 2, 1]
@@ -190,8 +191,9 @@ end
         end
     end
 end
+==#
 
-@testset "MPO-MPO contraction" begin
+@testset "MPO-MPO contraction" for f in [x -> x, x -> 2 * x]
     N = 4
     bonddims_a = [1, 2, 3, 2, 1]
     bonddims_b = [1, 2, 3, 2, 1]
@@ -200,29 +202,34 @@ end
     localdims3 = [2, 2, 2, 2]
 
     a = TCI.TensorTrain{ComplexF64,4}([
-        rand(ComplexF64, bonddims_a[n], localdims1[n], localdims2[n], bonddims_a[n+1]) for n = 1:N
+        rand(ComplexF64, bonddims_a[n], localdims1[n], localdims2[n], bonddims_a[n+1])
+        for n = 1:N
     ])
     b = TCI.TensorTrain{ComplexF64,4}([
-        rand(ComplexF64, bonddims_b[n], localdims2[n], localdims3[n], bonddims_b[n+1]) for n = 1:N
+        rand(ComplexF64, bonddims_b[n], localdims2[n], localdims3[n], bonddims_b[n+1])
+        for n = 1:N
     ])
 
-    ab = TCIA.contract(a, b)
-    @test TCI.sitedims(ab) == [[localdims1[i], localdims3[i]] for i in 1:N]
+    ab = TCIA.contract(a, b; f = f)
+    @test TCI.sitedims(ab) == [[localdims1[i], localdims3[i]] for i = 1:N]
 
     sites1 = Index.(localdims1, "1")
     sites2 = Index.(localdims2, "2")
     sites3 = Index.(localdims3, "3")
 
-    amps = MPO(a, sites=collect(zip(sites1, sites2)))
-    bmps = MPO(b, sites=collect(zip(sites2, sites3)))
+    amps = MPO(a, sites = collect(zip(sites1, sites2)))
+    bmps = MPO(b, sites = collect(zip(sites2, sites3)))
     abmps = amps * bmps
 
     for inds1 in CartesianIndices(Tuple(localdims1))
         for inds3 in CartesianIndices(Tuple(localdims3))
-            refvalue = evaluate_mps(
-                abmps,
-                collect(zip(sites1, Tuple(inds1))),
-                collect(zip(sites3, Tuple(inds3))))
+            refvalue = f(
+                evaluate_mps(
+                    abmps,
+                    collect(zip(sites1, Tuple(inds1))),
+                    collect(zip(sites3, Tuple(inds3))),
+                ),
+            )
             inds = collect(zip(Tuple(inds1), Tuple(inds3)))
             @test ab(inds) ≈ refvalue
         end

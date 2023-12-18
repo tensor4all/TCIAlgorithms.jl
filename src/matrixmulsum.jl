@@ -22,10 +22,7 @@ function Base.show(io::IO, obj::MatrixProductSum{T}) where {T}
 end
 
 
-function evaluate(
-    obj::MatrixProductSum{T},
-    indexset::AbstractVector{Int},
-)::T where T
+function evaluate(obj::MatrixProductSum{T}, indexset::AbstractVector{Int})::T where {T}
     if length(obj) != length(indexset)
         error("Length mismatch: $(length(obj)) != $(length(indexset))")
     end
@@ -44,5 +41,7 @@ function TCI.batchevaluate(
     rightindexset::AbstractVector{MultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
-    return sum(TCI.batchevaluate(p, leftindexset, rightindexset, Val(M)) for p in obj.products)
+    return sum(
+        TCI.batchevaluate(p, leftindexset, rightindexset, Val(M)) for p in obj.products
+    )
 end
