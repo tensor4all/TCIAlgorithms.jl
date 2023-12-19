@@ -1,7 +1,7 @@
 name = "TCIAlgorithms"
 uuid = "baf62351-2e82-41dd-9129-4f5768a618e1"
 authors = ["Ritter.Marc <Ritter.Marc@physik.uni-muenchen.de> and contributors"]
-version = "0.2.0"
+version = "0.3.0"
 
 [deps]
 ITensorTDVP = "25707e16-a4db-4a07-99d9-4d67b7af0342"
