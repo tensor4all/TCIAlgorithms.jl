@@ -35,13 +35,12 @@ function (obj::MatrixProductSum{T})(indexset::AbstractVector{Int})::T where {T}
 end
 
 
-function TCI.batchevaluate(
-    obj::MatrixProductSum{T},
+function (obj::MatrixProductSum{T})(
     leftindexset::AbstractVector{MultiIndex},
     rightindexset::AbstractVector{MultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
     return sum(
-        TCI.batchevaluate(p, leftindexset, rightindexset, Val(M)) for p in obj.products
+        p(leftindexset, rightindexset, Val(M)) for p in obj.products
     )
 end

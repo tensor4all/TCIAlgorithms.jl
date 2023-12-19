@@ -35,8 +35,8 @@ using ITensors
 
     @test TCI.isbatchevaluable(ab)
 
-    @test TCI.batchevaluate(ab, [Int[]], [Int[]], Val(N)) ≈
-          sum(TCI.batchevaluate(p, [Int[]], [Int[]], Val(N)) for p in products)
+    @test ab([Int[]], [Int[]], Val(N)) ≈
+          sum(p([Int[]], [Int[]], Val(N)) for p in products)
     @test ab(fill(1, N)) ≈ sum((p(fill(1, N)) for p in products))
 
 end

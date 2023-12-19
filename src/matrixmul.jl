@@ -224,8 +224,7 @@ function (obj::MatrixProduct{T})(indexset::AbstractVector{Int})::T where {T}
 end
 
 
-function TCI.batchevaluate(
-    obj::MatrixProduct{T},
+function (obj::MatrixProduct{T})(
     leftindexset::AbstractVector{MultiIndex},
     rightindexset::AbstractVector{MultiIndex},
     ::Val{M},
