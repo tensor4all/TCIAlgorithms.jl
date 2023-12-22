@@ -342,8 +342,9 @@ function contract_TCI(
         tolerance = tolerance,
         maxbonddim = maxbonddim,
     )
+    legdims = [_localdims(matrixproduct, i) for i = 1:length(tci)]
     return TCI.TensorTrain{ValueType,4}(
-        _reshape_splitsites.(tci, [_localdims(matrixproduct, i) for i = 1:length(tci)]),
+        [_reshape_splitsites(t, d) for (t,d) in zip(tci.T, legdims)]
     )
 end
 
