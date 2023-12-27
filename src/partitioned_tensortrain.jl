@@ -3,16 +3,21 @@ mutable struct PartitionedTensorTrain{T,N} <: TCI.BatchEvaluator{T}
     data::TensorTrain{T,N}
     projector::Vector{Vector{Int}} # (L, N)
     sitedims::Vector{Vector{Int}} # (L, N)
-    function PartitionedTensorTrain{T,N}(data, projector) where {T,N}
-        L = length(data)
-        length(projector) == L || error("Length mismatch: projector")
-        new{T,N}(data, projector, TCI.sitedims(data))
-    end
+end
 
-    function PartitionedTensorTrain{T,N}(data::TensorTrain{T,N}) where {T,N}
-        projector = [fill(0, N - 2) for _ in 1:length(data)]
-        new{T,N}(data, projector, TCI.sitedims(data))
-    end
+function PartitionedTensorTrain{T,N}(data::TensorTrain{T,N}) where {T,N} projector = [fill(0, N - 2) for _ in 1:length(data)]
+    PartitionedTensorTrain{T,N}(data, projector)
+end
+
+function PartitionedTensorTrain{T,N}(data, projector;
+    compression::Bool=false,
+    cutoff::Float64=1e-30,
+    maxdim::Int=typemax(Int)) where {T,N}
+    L = length(data)
+    length(projector) == L || error("Length mismatch: projector")
+    obj = PartitionedTensorTrain{T,N}(data, projector, TCI.sitedims(data))
+    partition!(obj, projector; compression=compression, cutoff=cutoff, maxdim=maxdim)
+    return obj
 end
 
 Base.length(obj::PartitionedTensorTrain{T,N}) where {T,N} = length(obj.data)
