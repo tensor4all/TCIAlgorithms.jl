@@ -4,6 +4,10 @@
     import TensorCrossInterpolation as TCI
     import TCIAlgorithms as TCIA
 
+    @testset "Projector" begin
+        @test all(TCIA.Projector([[1], [2], [3]]).data .== [[1], [2], [3]])
+    end
+
     @testset "project_is_compatible" begin
         @test_throws ErrorException TCIA.iscompatible([0, 0, 0], [0])
         @test TCIA.iscompatible([0, 0, 0], [0, 0, 0]) == true
