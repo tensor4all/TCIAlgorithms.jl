@@ -14,7 +14,7 @@ function ProjectedTensorTrainProduct{T}(tt::NTuple{2,ProjectedTensorTrain{T,4}})
         [collect(s) for s in zip(s1, s2)])
 end
 
-function partition!(
+function project!(
     obj::ProjectedTensorTrainProduct{T},
     prj::AbstractVector{<:AbstractVector{Int}};
     compression::Bool=false,
@@ -27,8 +27,8 @@ function partition!(
 
     p1 = [[p[1][1], p[2][2]] for p in zip(prj, obj.projector)]
     p2 = [[p[1][1], p[2][2]] for p in zip(obj.projector, prj)]
-    partition!(obj.tensortrain[1], p1; compression=compression, cutoff=cutoff, maxdim=maxdim)
-    partition!(obj.tensortrain[2], p2; compression=compression, cutoff=cutoff, maxdim=maxdim)
+    project!(obj.tensortrain[1], p1; compression=compression, cutoff=cutoff, maxdim=maxdim)
+    project!(obj.tensortrain[2], p2; compression=compression, cutoff=cutoff, maxdim=maxdim)
 
     return obj
 end

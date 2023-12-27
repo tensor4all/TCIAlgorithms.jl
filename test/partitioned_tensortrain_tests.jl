@@ -96,7 +96,7 @@
 
         # Projection with truncation
         ptt_truncated = TCIA.ProjectedTensorTrain{Float64,4}(tt)
-        TCIA.partition!(ptt_truncated, prj; compression=true)
+        TCIA.project!(ptt_truncated, prj; compression=true)
         indexset1 = [[1, 1], [1, 1], [1, 1], [1, 1]]
         @test tt(indexset1) ≈ ptt_truncated(indexset1) # exact equality
     end
