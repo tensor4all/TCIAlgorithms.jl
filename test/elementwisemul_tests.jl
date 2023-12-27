@@ -1,3 +1,5 @@
+@testitem "elementwisemul_tests.jl" begin
+
 using Test
 using LinearAlgebra
 import TensorCrossInterpolation as TCI
@@ -29,5 +31,7 @@ import TCIAlgorithms as TCIA
     end
 
     @test ab_res ≈ ab_ref
+
+end
 
 end
