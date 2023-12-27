@@ -12,6 +12,9 @@ include("tensor.jl")
 include("matrixmul.jl")
 include("matrixmulsum.jl")
 include("elementwisemul.jl")
-include("partitioned_tensortrain.jl")
+
+include("divideandconquer/abstracttypes.jl")
+include("divideandconquer/projected_tensortrain.jl")
+include("divideandconquer/tensortrain_product.jl")
 
 end

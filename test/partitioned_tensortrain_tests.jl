@@ -61,7 +61,7 @@
     end
 
 
-    @testset "PartitionedTensorTrain" begin
+    @testset "ProjectedTensorTrain" begin
         N = 4
         bonddims = [1, 10, 10, 10, 1]
         @assert length(bonddims) == N + 1
@@ -78,7 +78,7 @@
         prj = [[1, 0], [0, 0], [0, 0], [0, 0]]
         prj_data = deepcopy(tt.T)
         prj_data[1][:, 2, :, :] .= 0.0
-        ptt = TCIA.PartitionedTensorTrain{Float64,4}(tt, prj)
+        ptt = TCIA.ProjectedTensorTrain{Float64,4}(tt, prj)
 
         # Within the partition
         indexset1 = [[1, 1], [1, 1], [1, 1], [1, 1]]
@@ -95,7 +95,7 @@
         @test ptt(indexset3) == ptt(indexset3_li)
 
         # Projection with truncation
-        ptt_truncated = TCIA.PartitionedTensorTrain{Float64,4}(tt)
+        ptt_truncated = TCIA.ProjectedTensorTrain{Float64,4}(tt)
         TCIA.partition!(ptt_truncated, prj; compression=true)
         indexset1 = [[1, 1], [1, 1], [1, 1], [1, 1]]
         @test tt(indexset1) ≈ ptt_truncated(indexset1) # exact equality
