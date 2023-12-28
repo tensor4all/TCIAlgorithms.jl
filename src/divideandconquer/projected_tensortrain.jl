@@ -43,9 +43,7 @@ function (obj::ProjectedTensorTrain{T,N})(
 end
 
 function _multii(obj::ProjectedTensorTrain{T,N}, indexset::MultiIndex)::Vector{Vector{Int}} where {T,N}
-    return [
-        collect(Tuple(CartesianIndices(Tuple(obj.sitedims[l]))[i]))
-        for (l, i) in enumerate(indexset)]
+    return multii(obj.sitedims, indexset)
 end
 
 # Evaluate the object at a single linear indexset

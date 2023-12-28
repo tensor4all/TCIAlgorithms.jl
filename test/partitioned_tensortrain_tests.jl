@@ -4,6 +4,22 @@
     import TensorCrossInterpolation as TCI
     import TCIAlgorithms as TCIA
 
+    @testset "indexset" begin
+        multii = [
+            [[1,1]],
+            [[2,1]]
+        ]
+        lineari = [
+            [1],
+            [2]
+        ]
+        sitedims = [[2, 2]]
+        for (mi, li) in zip(multii, lineari)
+            @test TCIA.lineari(sitedims, mi) == li
+            @test TCIA.multii(sitedims, li) == mi
+        end
+    end
+
     @testset "Projector" begin
         @test all(TCIA.Projector([[1], [2], [3]]).data .== [[1], [2], [3]])
         @test (TCIA.Projector([[1], [2], [3]]) <= TCIA.Projector([[0], [2], [3]])) == true
@@ -134,7 +150,7 @@
         @test pprod.tensortrains[2].projector == TCIA.Projector([[0, 1], [1, 0], [0, 0], [0, 0]])
         @test pprod.projector == TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0]])
 
-        @show pprod([[1,1], [1,1], [1,1], [1,1]])
+        #@show pprod([[1,1], [1,1], [1,1], [1,1]])
 
     end
 end

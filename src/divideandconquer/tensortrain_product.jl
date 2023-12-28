@@ -2,6 +2,7 @@ mutable struct ProjectedTensorTrainProduct{T} <: ProjectableEvaluator{T}
     tensortrains::NTuple{2,ProjectedTensorTrain{T,4}} # holds copy of original TTs
     projector::Projector
     sitedims::Vector{Vector{Int}}
+    mp::MatrixProduct{T}
 end
 
 function ProjectedTensorTrainProduct(tt::NTuple{2,ProjectedTensorTrain{T,4}}) where {T}
@@ -32,20 +33,28 @@ function ProjectedTensorTrainProduct{T}(tt::NTuple{2,ProjectedTensorTrain{T,4}})
         end
     end
 
-    if findfirst(x->x==-1, pshared) !== nothing
+    if findfirst(x -> x == -1, pshared) !== nothing
         return nothing
     end
 
-    projector1 = Projector([[x[1], y] for (x,y) in zip(tt[1].projector, pshared)])
-    projector2 = Projector([[x, y[2]] for (x,y) in zip(pshared, tt[2].projector)])
+    projector1 = Projector([[x[1], y] for (x, y) in zip(tt[1].projector, pshared)])
+    projector2 = Projector([[x, y[2]] for (x, y) in zip(pshared, tt[2].projector)])
 
     project!(tt[1], projector1; compression=true)
     project!(tt[2], projector2; compression=true)
 
     projector = Projector([[x[1], y[2]] for (x, y) in zip(tt[1].projector, tt[2].projector)])
 
-    return ProjectedTensorTrainProduct{T}(tt, projector, tt[1].sitedims)
+    return ProjectedTensorTrainProduct{T}(tt, projector, tt[1].sitedims, MatrixProduct(tt[1].data, tt[2].data))
 end
+
+function (obj::ProjectedTensorTrainProduct{T})(indexset::Vector{Int})::T where {T}
+    return obj.mp(indexset)
+end
+
+#function (obj::ProjectedTensorTrainProduct{T})(indexset::Vector{Vector{Int}})::T where {T}
+    #return obj.mp(indexset)
+#end
 
 #==
 function project!(
