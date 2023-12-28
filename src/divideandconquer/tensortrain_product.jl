@@ -1,19 +1,53 @@
 mutable struct ProjectedTensorTrainProduct{T} <: ProjectableEvaluator{T}
-    tensortrain::NTuple{2,ProjectedTensorTrain{T,4}}
-    projector::Vector{Vector{Int}}
+    tensortrains::NTuple{2,ProjectedTensorTrain{T,4}} # holds copy of original TTs
+    projector::Projector
     sitedims::Vector{Vector{Int}}
 end
 
-function ProjectedTensorTrainProduct{T}(tt::NTuple{2,ProjectedTensorTrain{T,4}}) where {T}
-    p1 = projector(tt[1], 1)
-    p2 = projector(tt[2], 2)
-    s1 = sitedims(tt[1], 1)
-    s2 = sitedims(tt[2], 2)
-    return ProjectedTensorTrainProduct{T}(tt,
-        [collect(p) for p in zip(p1, p2)],
-        [collect(s) for s in zip(s1, s2)])
+function ProjectedTensorTrainProduct(tt::NTuple{2,ProjectedTensorTrain{T,4}}) where {T}
+    return ProjectedTensorTrainProduct{T}(tt)
 end
 
+function ProjectedTensorTrainProduct{T}(tt::NTuple{2,ProjectedTensorTrain{T,4}}) where {T}
+    pshared = Int[]
+    for l in 1:length(tt[1])
+        p1_ = tt[1].projector[l][2]
+        p2_ = tt[2].projector[l][1]
+        if p1_ == p2_
+            push!(pshared, p1_)
+        else
+            # here, p1_ != p2_
+            if p1_ == 0
+                push!(pshared, p2_)
+            elseif p2_ == 0
+                push!(pshared, p1_)
+            else
+                @assert p1_ != 0 && p2_ != 0
+                if p1_ == p2_
+                    push!(pshared, p1_)
+                else
+                    push!(pshared, -1)
+                end
+            end
+        end
+    end
+
+    if findfirst(x->x==-1, pshared) !== nothing
+        return nothing
+    end
+
+    projector1 = Projector([[x[1], y] for (x,y) in zip(tt[1].projector, pshared)])
+    projector2 = Projector([[x, y[2]] for (x,y) in zip(pshared, tt[2].projector)])
+
+    project!(tt[1], projector1; compression=true)
+    project!(tt[2], projector2; compression=true)
+
+    projector = Projector([[x[1], y[2]] for (x, y) in zip(tt[1].projector, tt[2].projector)])
+
+    return ProjectedTensorTrainProduct{T}(tt, projector, tt[1].sitedims)
+end
+
+#==
 function project!(
     obj::ProjectedTensorTrainProduct{T},
     prj::AbstractVector{<:AbstractVector{Int}};
@@ -32,3 +66,4 @@ function project!(
 
     return obj
 end
+==#

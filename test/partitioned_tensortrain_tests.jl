@@ -6,6 +6,13 @@
 
     @testset "Projector" begin
         @test all(TCIA.Projector([[1], [2], [3]]).data .== [[1], [2], [3]])
+        @test (TCIA.Projector([[1], [2], [3]]) <= TCIA.Projector([[0], [2], [3]])) == true
+        @test (TCIA.Projector([[1], [2], [3]]) < TCIA.Projector([[0], [2], [3]])) == true
+        @test (TCIA.Projector([[1], [2], [3]]) <= TCIA.Projector([[1], [2], [3]])) == true
+        @test (TCIA.Projector([[1], [0], [0]]) <= TCIA.Projector([[2], [0], [0]])) == false
+        @test (TCIA.Projector([[1], [2], [3]]) == TCIA.Projector([[1], [2], [3]])) == true
+
+        @test ([[1], [2], [3]] <= TCIA.Projector([[0], [2], [3]])) == true
     end
 
     @testset "project_is_compatible" begin
@@ -78,8 +85,7 @@
         ])
 
         # Projection 
-        #prj = [[1, 0, 0, 0], [0, 0, 0, 0]]
-        prj = [[1, 0], [0, 0], [0, 0], [0, 0]]
+        prj = TCIA.Projector([[1, 0], [0, 0], [0, 0], [0, 0]])
         prj_data = deepcopy(tt.T)
         prj_data[1][:, 2, :, :] .= 0.0
         ptt = TCIA.ProjectedTensorTrain{Float64,4}(tt, prj)
@@ -103,5 +109,32 @@
         TCIA.project!(ptt_truncated, prj; compression=true)
         indexset1 = [[1, 1], [1, 1], [1, 1], [1, 1]]
         @test tt(indexset1) ≈ ptt_truncated(indexset1) # exact equality
+    end
+
+    @testset "ProjectedTensorTrainProduct" begin
+        N = 4
+        bonddims = [1, 10, 10, 10, 1]
+
+        localdims1 = [2, 2, 2, 2]
+        localdims2 = [2, 2, 2, 2]
+
+        ptt1 = TCIA.ProjectedTensorTrain(
+            TCI.TensorTrain([rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n+1]) for n = 1:N]),
+            TCIA.Projector([[1, 0], [0, 1], [0, 0], [0, 0]])
+        )
+        ptt2 = TCIA.ProjectedTensorTrain(
+            TCI.TensorTrain([rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n+1]) for n = 1:N]),
+            TCIA.Projector([[0, 1], [0, 0], [0, 0], [0, 0]])
+        )
+
+        pprod = TCIA.ProjectedTensorTrainProduct{Float64}((ptt1, ptt2))
+
+        @show pprod.projector
+        #@show pprod.tensortrains[1].projector
+        @test pprod.tensortrains[2].projector == TCIA.Projector([[0, 1], [1, 0], [0, 0], [0, 0]])
+        @test pprod.projector == TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0]])
+
+        @show pprod([[1,1], [1,1], [1,1], [1,1]])
+
     end
 end

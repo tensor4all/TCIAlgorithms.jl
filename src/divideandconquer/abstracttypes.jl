@@ -5,6 +5,10 @@ function iscompatible(obj::ProjectableEvaluator{T}, indexsets::AbstractVector{<:
     error("Must be implemented!")
 end
 
+function projector(obj::ProjectableEvaluator{T})::Projector where {T}
+    obj.projector
+end
+
 function projector(obj::ProjectableEvaluator{T}, ilegg::Int)::Vector{Int} where {T}
     return [obj.projector[l][ilegg] for l in 1:length(obj)]
 end
@@ -16,6 +20,9 @@ end
 
 struct Projector
     data::Vector{Vector{Int}}
+    function Projector(data)
+        new(data)
+    end
 end
 
 function Base.iterate(p::Projector, state=1)
@@ -26,3 +33,34 @@ function Base.iterate(p::Projector, state=1)
 end
 
 Base.length(p::Projector) = length(p.data)
+Base.getindex(p::Projector, index::Int) = p.data[index]
+
+function (p::Projector)(isite::Int, ilegg::Int)
+    return p.data[isite][ilegg]
+end
+
+Base.:(==)(a::Projector, b::Projector)::Bool = (a.data == b.data)
+Base.:(<)(a::Projector, b::Projector)::Bool = (a <= b) && (a != b)
+Base.:(>)(a::Projector, b::Projector)::Bool = b < a
+
+function Base.:<=(a::Projector, b::Projector)::Bool
+    length(a) == length(b) || error("Length mismatch")
+    for (a_, b_) in zip(Iterators.flatten(a), Iterators.flatten(b))
+        if a_ != 0 && b_ != 0
+            if a_ != b_
+                return false
+            end
+        elseif a_ == 0
+            if b_ != 0
+                return false
+            end
+        elseif b_ == 0
+            # Everything is fine
+        end
+    end
+    return true
+end
+
+Base.:>=(a::Projector, b::Projector) = (b <= a)
+
+Base.:<=(a::Vector{Vector{Int}}, b::Projector) = (Projector(a) <= b)

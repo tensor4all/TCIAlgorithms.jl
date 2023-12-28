@@ -7,16 +7,17 @@ version = "0.3.4"
 ITensorTDVP = "25707e16-a4db-4a07-99d9-4d67b7af0342"
 ITensors = "9136182c-28ba-11e9-034c-db9fb085ebd5"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 TCIITensorConversion = "9f0aa9f4-9415-4e6a-8795-331ebf40aa04"
 TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 
 [compat]
-julia = "1.6"
 TensorCrossInterpolation = "0.3, 0.4, 0.5, 0.6"
+julia = "1.6"
 
 [extras]
-ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]

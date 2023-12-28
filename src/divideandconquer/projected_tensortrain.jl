@@ -1,11 +1,15 @@
 # TensorTrain projected on a subset of indices
 mutable struct ProjectedTensorTrain{T,N} <: ProjectableEvaluator{T}
     data::TensorTrain{T,N}
-    projector::Vector{Vector{Int}} # (L, N-2)
+    projector::Projector # (L, N-2)
     sitedims::Vector{Vector{Int}} # (L, N-2)
 end
 
-function ProjectedTensorTrain{T,N}(data, projector=[fill(0, N - 2) for _ in 1:length(data)];
+function ProjectedTensorTrain(data::TensorTrain{T,N}, projector=Projector([fill(0, N - 2) for _ in 1:length(data)]); kwargs...) where {T,N}
+    return ProjectedTensorTrain{T,N}(data, projector; kwargs...)
+end
+
+function ProjectedTensorTrain{T,N}(data, projector=Projector([fill(0, N - 2) for _ in 1:length(data)]);
     compression::Bool=false,
     cutoff::Float64=1e-30,
     maxdim::Int=typemax(Int)) where {T,N}
@@ -58,7 +62,7 @@ end
 
 function project!(
     obj::ProjectedTensorTrain{T,N},
-    prj::AbstractVector{<:AbstractVector{Int}};
+    prj::Projector;
     compression::Bool=false,
     cutoff::Float64=1e-30,
     maxdim::Int=typemax(Int)
