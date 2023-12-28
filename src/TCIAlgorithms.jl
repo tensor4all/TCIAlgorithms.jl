@@ -10,6 +10,7 @@ import ITensorTDVP
 
 #using OrderedCollections: OrederedDict
 
+include("util.jl")
 include("tensor.jl")
 include("matrixmul.jl")
 include("matrixmulsum.jl")

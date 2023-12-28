@@ -52,9 +52,9 @@ function (obj::ProjectedTensorTrainProduct{T})(indexset::Vector{Int})::T where {
     return obj.mp(indexset)
 end
 
-#function (obj::ProjectedTensorTrainProduct{T})(indexset::Vector{Vector{Int}})::T where {T}
-    #return obj.mp(indexset)
-#end
+function (obj::ProjectedTensorTrainProduct{T})(indexset::Vector{Vector{Int}})::T where {T}
+    return obj.mp(indexset)
+end
 
 #==
 function project!(
