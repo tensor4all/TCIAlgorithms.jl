@@ -40,8 +40,8 @@ function ProjectedTensorTrainProduct{T}(tt::NTuple{2,ProjectedTensorTrain{T,4}})
     projector1 = Projector([[x[1], y] for (x, y) in zip(tt[1].projector, pshared)])
     projector2 = Projector([[x, y[2]] for (x, y) in zip(pshared, tt[2].projector)])
 
-    project!(tt[1], projector1; compression=true)
-    project!(tt[2], projector2; compression=true)
+    project!(tt[1], projector1; compression=false)
+    project!(tt[2], projector2; compression=false)
 
     projector = Projector([[x[1], y[2]] for (x, y) in zip(tt[1].projector, tt[2].projector)])
 

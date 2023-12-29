@@ -14,6 +14,7 @@ struct MatrixProduct{T} <: TCI.BatchEvaluator{T}
     links_a::Vector{Index{Int}}
     links_b::Vector{Index{Int}}
     f::Union{Nothing,Function}
+    sitedims::Vector{Vector{Int}}
 end
 
 
@@ -53,6 +54,7 @@ function MatrixProduct(
     localdims1 = [size(mpo[1].T[n], 2) for n = 1:length(mpo[1])]
     localdims2 = [size(mpo[1].T[n], 3) for n = 1:length(mpo[1])]
     localdims3 = [size(mpo[2].T[n], 3) for n = 1:length(mpo[2])]
+    sitedims = [[x, y] for (x, y) in zip(localdims1, localdims3)]
 
     bonddims_a = vcat([size(mpo[1].T[n], 1) for n = 1:length(mpo[1])], 1)
     bonddims_b = vcat([size(mpo[2].T[n], 1) for n = 1:length(mpo[2])], 1)
@@ -81,6 +83,7 @@ function MatrixProduct(
         links_a,
         links_b,
         f,
+        sitedims
     )
 end
 
@@ -223,6 +226,9 @@ function (obj::MatrixProduct{T})(indexset::AbstractVector{Int})::T where {T}
     return evaluate(obj, indexset)
 end
 
+function (obj::MatrixProduct{T})(indexset::AbstractVector{<:AbstractVector{Int}})::T where {T}
+    return evaluate(obj, lineari(sitedims, indexset))
+end
 
 function (obj::MatrixProduct{T})(
     leftindexset::AbstractVector{MultiIndex},
