@@ -143,14 +143,21 @@
             TCIA.Projector([[0, 1], [0, 0], [0, 0], [0, 0]])
         )
 
-        pprod = TCIA.ProjectedTensorTrainProduct{Float64}((ptt1, ptt2))
+        pprod = TCIA.create_projected_tensortrain_product((ptt1, ptt2))
+        @test pprod !== nothing
 
-        @show pprod.projector
+        #@show pprod.projector
         #@show pprod.tensortrains[1].projector
-        @test pprod.tensortrains[2].projector == TCIA.Projector([[0, 1], [1, 0], [0, 0], [0, 0]])
+        #@test pprod.tensortrains[2].projector == TCIA.Projector([[0, 1], [1, 0], [0, 0], [0, 0]])
         @test pprod.projector == TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0]])
 
-        #@show pprod([[1,1], [1,1], [1,1], [1,1]])
+        matprod = TCIA.MatrixProduct(ptt1.data, ptt2.data)
 
+        @test matprod([[1,1], [1,1], [1,1], [1,1]]) ≈ pprod([[1,1], [1,1], [1,1], [1,1]])
+        @test pprod([[1,2], [1,1], [1,1], [1,1]]) == 0.0
+
+        leftindexset = [[1]]
+        rightindexset = [[1]]
+        @test pprod(leftindexset, rightindexset, Val(2)) ≈ matprod(leftindexset, rightindexset, Val(2))
     end
 end

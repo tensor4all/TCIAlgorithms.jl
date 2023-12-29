@@ -1,3 +1,6 @@
+"""
+Represents the product of two projected tensor trains
+"""
 mutable struct ProjectedTensorTrainProduct{T} <: ProjectableEvaluator{T}
     tensortrains::NTuple{2,ProjectedTensorTrain{T,4}} # holds copy of original TTs
     projector::Projector
@@ -5,46 +8,22 @@ mutable struct ProjectedTensorTrainProduct{T} <: ProjectableEvaluator{T}
     mp::MatrixProduct{T}
 end
 
-function ProjectedTensorTrainProduct(tt::NTuple{2,ProjectedTensorTrain{T,4}}) where {T}
-    return ProjectedTensorTrainProduct{T}(tt)
-end
+#function ProjectedTensorTrainProduct(tt::NTuple{2,ProjectedTensorTrain{T,4}}) where {T}
+    #return ProjectedTensorTrainProduct{T}(tt)
+#end
 
-function ProjectedTensorTrainProduct{T}(tt::NTuple{2,ProjectedTensorTrain{T,4}}) where {T}
-    pshared = Int[]
-    for l in 1:length(tt[1])
-        p1_ = tt[1].projector[l][2]
-        p2_ = tt[2].projector[l][1]
-        if p1_ == p2_
-            push!(pshared, p1_)
-        else
-            # here, p1_ != p2_
-            if p1_ == 0
-                push!(pshared, p2_)
-            elseif p2_ == 0
-                push!(pshared, p1_)
-            else
-                @assert p1_ != 0 && p2_ != 0
-                if p1_ == p2_
-                    push!(pshared, p1_)
-                else
-                    push!(pshared, -1)
-                end
-            end
-        end
-    end
 
-    if findfirst(x -> x == -1, pshared) !== nothing
+function create_projected_tensortrain_product(tt::NTuple{2,ProjectedTensorTrain{T,4}}) where {T}
+    @show only(tt[1].projector, 2)
+    @show only(tt[2].projector, 1)
+    if !hasoverlap(only(tt[1].projector, 2), only(tt[2].projector, 1))
         return nothing
     end
-
-    projector1 = Projector([[x[1], y] for (x, y) in zip(tt[1].projector, pshared)])
-    projector2 = Projector([[x, y[2]] for (x, y) in zip(pshared, tt[2].projector)])
-
-    project!(tt[1], projector1; compression=false)
-    project!(tt[2], projector2; compression=false)
-
+    #projector1 = Projector([[x[1], y] for (x, y) in zip(tt[1].projector, pshared)])
+    #projector2 = Projector([[x, y[2]] for (x, y) in zip(pshared, tt[2].projector)])
+    #project!(tt[1], projector1; compression=false)
+    #project!(tt[2], projector2; compression=false)
     projector = Projector([[x[1], y[2]] for (x, y) in zip(tt[1].projector, tt[2].projector)])
-
     return ProjectedTensorTrainProduct{T}(tt, projector, tt[1].sitedims, MatrixProduct(tt[1].data, tt[2].data))
 end
 
@@ -55,6 +34,44 @@ end
 function (obj::ProjectedTensorTrainProduct{T})(indexset::Vector{Vector{Int}})::T where {T}
     return obj.mp(indexset)
 end
+
+function (obj::ProjectedTensorTrainProduct{T})(
+    leftindexset::AbstractVector{MultiIndex},
+    rightindexset::AbstractVector{MultiIndex},
+    ::Val{M},
+)::Array{T,M + 2} where {T,M}
+    if length(leftindexset) * length(rightindexset) == 0
+        return zeros(T, 0, 0)
+    end
+    return obj.mp(leftindexset, rightindexset, Val(M))
+end
+
+
+"""
+Collection of the products of two projected tensor trains
+An object of this type can be projected to a subset of indices.
+"""
+mutable struct ProjectedTensorTrainProductSet{T} <: ProjectableEvaluator{T}
+    products::OrderedDict{Projector, ProjectedTensorTrainProduct{T}}
+    projector::Projector
+    sitedims::Vector{Vector{Int}}
+end
+
+
+function ProjectedTensorTrainProductSet(lefttt::AbstractVector{ProjectedTensorTrain{T,4}}, righttt::AbstractVector{ProjectedTensorTrain{T,4}}, projector, sitedims) where {T}
+    products = OrderedDict{Projector, ProjectedTensorTrainProduct{T}}()
+    for l in lefttt, r in righttt
+        p = create_projected_tensortrain_product((l, r))
+        if p !== nothing
+            products[p.projector] = p
+        end
+    end
+    for (p, v) in products
+        p < projector || error("Projector $p is not compatible with $projector")
+    end
+    return ProjectedTensorTrainProductSet{T}(products, projector, sitedims)
+end
+
 
 #==
 function project!(

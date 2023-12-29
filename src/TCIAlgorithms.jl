@@ -8,7 +8,7 @@ using TCIITensorConversion
 using ITensors
 import ITensorTDVP
 
-#using OrderedCollections: OrederedDict
+using OrderedCollections: OrderedDict, OrderedSet
 
 include("util.jl")
 include("tensor.jl")

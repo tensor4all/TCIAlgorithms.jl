@@ -41,6 +41,10 @@ function (p::Projector)(isite::Int, ilegg::Int)
     return p.data[isite][ilegg]
 end
 
+function only(p::Projector, ilegg::Int)::Projector
+    return Projector([[p.data[l][ilegg]] for l in 1:length(p)])
+end
+
 Base.:(==)(a::Projector, b::Projector)::Bool = (a.data == b.data)
 Base.:(<)(a::Projector, b::Projector)::Bool = (a <= b) && (a != b)
 Base.:(>)(a::Projector, b::Projector)::Bool = b < a
@@ -66,3 +70,14 @@ end
 Base.:>=(a::Projector, b::Projector) = (b <= a)
 
 Base.:<=(a::Vector{Vector{Int}}, b::Projector) = (Projector(a) <= b)
+
+function hasoverlap(p1::Projector, p2::Projector)::Bool
+    for (a, b) in zip(Iterators.flatten(p1), Iterators.flatten(p2))
+        if a != 0 && b != 0
+            if a != b
+                return false
+            end
+        end
+    end
+    return true
+end

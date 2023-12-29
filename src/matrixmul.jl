@@ -227,7 +227,7 @@ function (obj::MatrixProduct{T})(indexset::AbstractVector{Int})::T where {T}
 end
 
 function (obj::MatrixProduct{T})(indexset::AbstractVector{<:AbstractVector{Int}})::T where {T}
-    return evaluate(obj, lineari(sitedims, indexset))
+    return evaluate(obj, lineari(obj.sitedims, indexset))
 end
 
 function (obj::MatrixProduct{T})(

@@ -15,7 +15,7 @@ end
 
 function _lineari(dims, mi)::Integer
     ci = CartesianIndex(Tuple(mi))
-    li = LinearIndices(dims)
+    li = LinearIndices(Tuple(dims))
     return li[ci]
 end
 
