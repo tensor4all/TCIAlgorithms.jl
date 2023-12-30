@@ -1,5 +1,3 @@
-@testitem "matrixmul_tests.jl" begin
-
 using Test
 using LinearAlgebra
 import TensorCrossInterpolation as TCI
@@ -236,6 +234,4 @@ end
             @test ab(inds) ≈ refvalue
         end
     end
-end
-
 end

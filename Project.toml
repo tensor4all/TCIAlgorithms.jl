@@ -4,10 +4,12 @@ authors = ["Ritter.Marc <Ritter.Marc@physik.uni-muenchen.de> and contributors"]
 version = "0.3.4"
 
 [deps]
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 ITensorTDVP = "25707e16-a4db-4a07-99d9-4d67b7af0342"
 ITensors = "9136182c-28ba-11e9-034c-db9fb085ebd5"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+QuanticsGrids = "634c7f73-3e90-4749-a1bd-001b8efc642d"
 TCIITensorConversion = "9f0aa9f4-9415-4e6a-8795-331ebf40aa04"
 TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 
@@ -17,8 +19,7 @@ julia = "1.6"
 
 [extras]
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "ReTestItems", "Random"]
+test = ["Test", "Random"]

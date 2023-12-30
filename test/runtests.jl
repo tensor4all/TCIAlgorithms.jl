@@ -1,13 +1,15 @@
-#using TCIAlgorithms
-#using Test
+using TCIAlgorithms
+using Test
 
-#include("test_tensor.jl")
-#include("test_elementwisemul.jl")
-#include("test_matrixmul.jl")
-#include("test_matrixmulsum.jl")
+#include("tensor_tests.jl")
+#include("elementwisemul_tests.jl")
+#include("matrixmul_tests.jl")
+#include("matrixmulsum_tests.jl")
+#include("matrixmulsum_tests.jl")
+#include("partitioned_tensortrain_tests.jl")
+include("divideandconquer/adaptivepartitioning_tests.jl")
 
-
-using ReTestItems: runtests, @testitem
-using TCIAlgorithms: TCIAlgorithms
-
-runtests(TCIAlgorithms)
+#using ReTestItems: runtests, @testitem
+#using TCIAlgorithms: TCIAlgorithms
+##
+#runtests(TCIAlgorithms)

@@ -1,5 +1,3 @@
-@testitem "matrixmulsum_tests.jl" begin
-
 using Test
 using LinearAlgebra
 import TensorCrossInterpolation as TCI
@@ -40,7 +38,5 @@ using ITensors
     @test ab([Int[]], [Int[]], Val(N)) ≈
           sum(p([Int[]], [Int[]], Val(N)) for p in products)
     @test ab(fill(1, N)) ≈ sum((p(fill(1, N)) for p in products))
-
-end
 
 end

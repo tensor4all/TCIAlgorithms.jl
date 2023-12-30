@@ -1,5 +1,3 @@
-@testitem "test_tests.jl" begin
-
 using Test
 using LinearAlgebra
 import TCIAlgorithms: contract, deltaproduct
@@ -24,6 +22,3 @@ end
     @test deltaproduct(A, [1, 2], B, [1, 2]) ≈ A .* B
     @test sum(deltaproduct(A, [1], B, [1]), dims = 2)[:, 1, :] ≈ transpose(A) * B
 end
-
-end
-

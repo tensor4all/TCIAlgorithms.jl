@@ -179,7 +179,7 @@ function adaptivepartion(
     sleep_time::Float64 = 1e-6,
     maxnleaves = 100,
     verbosity = 0,
-)::Dict{MultiIndex,} where {T,M}
+)::Dict{Vector{MultiIndex},M} where {T,M}
     leaves = Dict{Vector{Int},Union{Task,PatchCreatorResult{T,M}}}()
 
     # Add root
