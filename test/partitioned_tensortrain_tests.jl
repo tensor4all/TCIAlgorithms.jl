@@ -31,13 +31,6 @@
         @test ([[1], [2], [3]] <= TCIA.Projector([[0], [2], [3]])) == true
     end
 
-    @testset "project_is_compatible" begin
-        @test_throws ErrorException TCIA.iscompatible([0, 0, 0], [0])
-        @test TCIA.iscompatible([0, 0, 0], [0, 0, 0]) == true
-        @test TCIA.iscompatible([0, 1, 0], [0, 2, 0]) == false
-        @test TCIA.iscompatible([0, 1, 0], [0, 0, 1]) == true
-    end
-
     @testset "projectat!" begin
         A_org = ones(2, 2, 2)
 
@@ -108,6 +101,7 @@
 
         # Within the partition
         indexset1 = [[1, 1], [1, 1], [1, 1], [1, 1]]
+        @test indexset1 <= ptt.projector
         @test tt(indexset1) == ptt(indexset1) # exact equality
 
         # Outside the partition
@@ -122,7 +116,7 @@
 
         # Projection with truncation
         ptt_truncated = TCIA.ProjectedTensorTrain{Float64,4}(tt)
-        TCIA.project!(ptt_truncated, prj; compression=true)
+        ptt_truncated = TCIA.project(ptt_truncated, prj; compression=true)
         indexset1 = [[1, 1], [1, 1], [1, 1], [1, 1]]
         @test tt(indexset1) ≈ ptt_truncated(indexset1) # exact equality
     end
@@ -146,14 +140,14 @@
         pprod = TCIA.create_projected_tensortrain_product((ptt1, ptt2))
         @test pprod !== nothing
 
-        #@show pprod.projector
-        #@show pprod.tensortrains[1].projector
-        #@test pprod.tensortrains[2].projector == TCIA.Projector([[0, 1], [1, 0], [0, 0], [0, 0]])
         @test pprod.projector == TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0]])
 
         matprod = TCIA.MatrixProduct(ptt1.data, ptt2.data)
 
         @test matprod([[1,1], [1,1], [1,1], [1,1]]) ≈ pprod([[1,1], [1,1], [1,1], [1,1]])
+        @test ptt2([[1, 2], [1,1], [1,1], [1,1]]) == 0.0
+
+        @test matprod([[1,2], [1,1], [1,1], [1,1]]) == 0.0
         @test pprod([[1,2], [1,1], [1,1], [1,1]]) == 0.0
 
         leftindexset = [[1]]

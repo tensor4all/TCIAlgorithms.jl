@@ -81,3 +81,16 @@ function hasoverlap(p1::Projector, p2::Projector)::Bool
     end
     return true
 end
+
+function leftindexset_contained(p1::Projector, p2::Projector)::Bool
+    for (a, b) in zip(Iterators.flatten(p1), Iterators.flatten(p2))
+        if a != 0 && b != 0
+            if a != b
+                return false
+            end
+        elseif a == 0 && b != 0
+            return false
+        end
+    end
+    return true
+end

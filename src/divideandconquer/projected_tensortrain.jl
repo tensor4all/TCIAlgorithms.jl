@@ -16,27 +16,15 @@ function ProjectedTensorTrain{T,N}(data, projector=Projector([fill(0, N - 2) for
     L = length(data)
     length(projector) == L || error("Length mismatch: projector")
     obj = ProjectedTensorTrain{T,N}(data, projector, TCI.sitedims(data))
-    project!(obj, projector; compression=compression, cutoff=cutoff, maxdim=maxdim)
+    obj = project(obj, projector; force=true, compression=compression, cutoff=cutoff, maxdim=maxdim)
     return obj
 end
 
 Base.length(obj::ProjectedTensorTrain{T,N}) where {T,N} = length(obj.data)
 
-function iscompatible(obj::ProjectedTensorTrain{T,N},
-    indexsets::AbstractVector{<:AbstractVector{LocalIndex}})::Bool where {T,N}
-    for n in 1:N-2
-        if !iscompatible(
-            [p[n] for p in obj.projector],
-            [i[n] for i in indexsets])
-            return false
-        end
-    end
-    return true
-end
-
 function (obj::ProjectedTensorTrain{T,N})(
     indexsets::AbstractVector{<:AbstractVector{LocalIndex}})::T where {T,N}
-    if !iscompatible(obj, indexsets)
+    if !(indexsets <= projector(obj))
         return zero(T)
     end
     return obj.data(indexsets)
@@ -58,32 +46,41 @@ function projectat!(A::Array{T,N}, idxpos, targetidx)::Array{T,N} where {T,N}
     return A
 end
 
-function project!(
+function project(
     obj::ProjectedTensorTrain{T,N},
     prj::Projector;
+    force::Bool=false,
     compression::Bool=false,
     cutoff::Float64=1e-30,
     maxdim::Int=typemax(Int)
-)::ProjectedTensorTrain{T,N} where {T,N}
+)::Union{ProjectedTensorTrain{T,N},Nothing} where {T,N}
+    prj <= obj.projector || error("Projector $prj is not compatible with $obj.projector")
 
-    # TODO: Introduce check for projector compatibility
-    obj.projector = deepcopy(prj)
+    if prj == obj.projector && !force
+        return obj
+    end
+
+    # Make a copy
+    projector = deepcopy(prj)
+    data = deepcopy(obj.data)
 
     # Projection
     for l in 1:length(obj.sitedims)
         for n in 1:N-2
-            if obj.projector[l][n] == 0
+            if projector[l][n] == 0
                 continue
             end
-            projectat!(obj.data.T[l], n + 1, obj.projector[l][n])
+            if (force && projector[l][n] > 0) || projector[l][n] != obj.projector[l][n]
+                projectat!(data.T[l], n + 1, projector[l][n])
+            end
         end
     end
 
     if compression
-        obj.data = truncate(obj.data; cutoff=cutoff, maxdim=maxdim)
+        data = truncate(data; cutoff=cutoff, maxdim=maxdim)
     end
 
-    return obj
+    return ProjectedTensorTrain{T,N}(data, projector, obj.sitedims)
 end
 
 
@@ -139,6 +136,7 @@ Return if two partitions are compatible.
 Entry 0 denotes this dimension is not partitioned.
 Positive enttries denote the indices of the partition.
 """
+#==
 function iscompatible(p1::Vector{Int}, p2::Vector{Int})::Bool
     all(p1 .>= 0) || error("p1 must be non-negative")
     all(p2 .>= 0) || error("p2 must be non-negative")
@@ -154,3 +152,4 @@ function iscompatible(p1::Vector{Int}, p2::Vector{Int})::Bool
     end
     return true
 end
+==#
