@@ -140,15 +140,18 @@ end
 
     @test pprod.projector == TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0]])
 
-    matprod = TCIA.MatrixProduct(ptt1.data, ptt2.data)
+    ref = TCIA.MatrixProduct(ptt1.data, ptt2.data)
 
-    @test matprod([[1, 1], [1, 1], [1, 1], [1, 1]]) ≈ pprod([[1, 1], [1, 1], [1, 1], [1, 1]])
+    @test ref([[1, 1], [1, 1], [1, 1], [1, 1]]) ≈ pprod([[1, 1], [1, 1], [1, 1], [1, 1]])
     @test ptt2([[1, 2], [1, 1], [1, 1], [1, 1]]) == 0.0
 
-    @test matprod([[1, 2], [1, 1], [1, 1], [1, 1]]) == 0.0
+    @test ref([[1, 2], [1, 1], [1, 1], [1, 1]]) == 0.0
     @test pprod([[1, 2], [1, 1], [1, 1], [1, 1]]) == 0.0
 
     leftindexset = [[1]]
     rightindexset = [[1]]
-    @test pprod(leftindexset, rightindexset, Val(2)) ≈ matprod(leftindexset, rightindexset, Val(2))
+    @test pprod(leftindexset, rightindexset, Val(2)) ≈ ref(leftindexset, rightindexset, Val(2))
+
+    multiplier = TCIA.create_multiplier([ptt1], [ptt2], pprod.projector)
+    @test multiplier([[1, 1], [1, 1], [1, 1], [1, 1]]) ≈ ref([[1, 1], [1, 1], [1, 1], [1, 1]])
 end

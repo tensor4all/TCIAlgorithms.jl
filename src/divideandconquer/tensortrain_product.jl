@@ -41,27 +41,32 @@ end
 Collection of the products of two projected tensor trains
 An object of this type can be projected to a subset of indices.
 """
-mutable struct TensorTrainMutiplier{T} <: ProjectableEvaluator{T}
-    products::OrderedSet{ProjectedTensorTrainProduct{T}}
-    projector::Projector
-    sitedims::Vector{Vector{Int}}
-end
+#mutable struct TensorTrainMutiplier{T} <: ProjectableEvaluator{T}
+#products::OrderedSet{ProjectedTensorTrainProduct{T}}
+#projector::Projector
+#sitedims::Vector{Vector{Int}}
+#end
 
 
-function TensorTrainMutiplier(lefttt::AbstractVector{ProjectedTensorTrain{T,4}}, righttt::AbstractVector{ProjectedTensorTrain{T,4}}, projector, sitedims) where {T}
-    products = OrderedSet{ProjectedTensorTrainProduct{T}}()
+function create_multiplier(
+    lefttt::AbstractVector{ProjectedTensorTrain{T,4}},
+    righttt::AbstractVector{ProjectedTensorTrain{T,4}}, projector) where {T}
+    sitedims = [[x[1], y[2]] for (x, y) in zip(lefttt[1].sitedims, righttt[1].sitedims)]
+
+    products = Vector{ProjectedTensorTrainProduct{T}}()
     for l in lefttt, r in righttt
         p = create_projected_tensortrain_product((l, r))
         if p !== nothing
-            push!(products[p.projector], p)
+            push!(products, p)
         end
     end
     for v in products
-        v.p <= projector || error("Projector $p is not compatible with $projector")
+        v.projector <= projector || error("Projector $(v.projector) is not compatible with $projector")
     end
-    return TensorTrainMutiplier{T}(products, projector, sitedims)
+    return PartitionedTensorTrain{T}(products, projector, sitedims)
 end
 
+#==
 function project(
     obj::TensorTrainMutiplier{T},
     prj::Projector;
@@ -98,3 +103,4 @@ function (obj::TensorTrainMutiplier{T})(
     # TODO: Optimize
     return sum((v(indexset) for v in obj.products))
 end
+==#
