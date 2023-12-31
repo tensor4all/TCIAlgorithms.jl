@@ -1,4 +1,3 @@
-#==
 mutable struct PartitionedTensorTrain{T,N} <: ProjectableEvaluator{T}
     tensortrains::OrderedSet{ProjectedTensorTrain{T,N}}
     # This PartitionedTensorTrain is projected on the indices specified by this projector
@@ -24,15 +23,28 @@ function (obj::PartitionedTensorTrain{T,N})(
     return sum((t(indexsets) for t in obj.tensortrains))
 end
 
-function project!(
+
+function (obj::PartitionedTensorTrain{T,N})(
+    leftindexset::AbstractVector{MultiIndex},
+    rightindexset::AbstractVector{MultiIndex},
+    ::Val{M},
+)::Array{T,N,M + 2} where {T,M}
+    if length(leftindexset) * length(rightindexset) == 0
+        return zeros(T, 0, 0)
+    end
+    # TODO: Optimize
+    return sum((v(indexset) for v in obj.products))
+end
+
+
+function project(
     obj::PartitionedTensorTrain{T,N},
     prj::Projector
 )::PartitionedTensorTrain{T,N} where {T,N}
     prj <= projector(obj) || error("Projector mismatch")
-    for t in obj.tensortrains
-        project!(t, prj)
+    for (i, t) in enumerate(obj.tensortrains)
+        obj.tensortrains[i] = prj
     end
     obj.projector = prj
-    obj
+    return obj
 end
-==#
