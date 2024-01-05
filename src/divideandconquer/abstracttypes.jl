@@ -1,4 +1,11 @@
-# Type for an object that can be projected on a subset of indices
+
+"""
+Type for an object that can be projected on a subset of indices
+
+Attributes:
+- projector: Projector object
+- sitedims: Vector{Vector{Int}} of the dimensions of the local indices
+"""
 abstract type ProjectableEvaluator{T} <: TCI.BatchEvaluator{T} end
 
 function iscompatible(obj::ProjectableEvaluator{T}, indexsets::AbstractVector{<:AbstractVector{LocalIndex}})::Bool where {T}
@@ -16,8 +23,6 @@ end
 function sitedims(obj::ProjectableEvaluator{T}, ilegg::Int)::Vector{Int} where {T}
     return [obj.sitedims[l][ilegg] for l in 1:length(obj)]
 end
-
-
 
 
 struct Projector

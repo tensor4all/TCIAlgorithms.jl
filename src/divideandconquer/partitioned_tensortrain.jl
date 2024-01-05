@@ -1,3 +1,6 @@
+"""
+Collection of ProjectableEvaluator objects
+"""
 mutable struct PartitionedTensorTrain{T}
     tensortrains::Vector{ProjectableEvaluator{T}}
     # This PartitionedTensorTrain is projected on the indices specified by this projector
