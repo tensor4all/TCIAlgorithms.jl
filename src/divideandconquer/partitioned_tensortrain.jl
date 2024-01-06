@@ -37,45 +37,46 @@ function (obj::PartitionedTensorTrain{T})(
     leftindexset::AbstractVector{MultiIndex},
     rightindexset::AbstractVector{MultiIndex},
     ::Val{M},
-)::Array{T,N,M + 2} where {T,M}
+)::Array{T,M + 2} where {T,M}
     if length(leftindexset) * length(rightindexset) == 0
         return zeros(T, 0, 0)
     end
-    L = length(obj.products[1].sitedims)
+    L = length(obj.tensortrains[1].sitedims)
 
-    left_mask = [Int[] for _ in 1:obj.products]
-    right_mask = [Int[] for _ in 1:obj.products]
-    leftindexset_ = [MultiIndex[] for _ in 1:obj.products]
-    rightindexset_ = [MultiIndex[] for _ in 1:obj.products]
+    left_mask = [Int[] for _ in obj.tensortrains]
+    right_mask = [Int[] for _ in obj.tensortrains]
+    leftindexset_ = [MultiIndex[] for _ in obj.tensortrains]
+    rightindexset_ = [MultiIndex[] for _ in obj.tensortrains]
 
-    # Find out which products are needed for the given left indexsets
-    for l in leftindexset
-        l_full = vcat(l, fill(0, L - length(l)))
-        for (ip, p) in enumerate(1:obj.products)
-            if l_full <= obj.tensortrains[p].projector
-                push!(left_mask[p], ip)
-                push!(leftindexset_[p], l_full)
+    # Find out which tensortrains are needed for the given left indexsets
+    for (il, l) in enumerate(leftindexset)
+        l_full = multii(obj.sitedims, vcat(l, fill(0, L - length(l))))
+        for (ip, p) in enumerate(obj.tensortrains)
+            if hasoverlap(Projector(l_full), obj.tensortrains[ip].projector)
+                push!(left_mask[ip], il)
+                push!(leftindexset_[ip], l)
             end
         end
     end
 
-    # Find out which products are needed for the given right indexsets
-    for r in rightindexset
-        r_full = vcat(fill(0, L - length(r)), r)
-        for (ip, p) in enumerate(1:obj.products)
-            if r_full <= obj.tensortrains[p].projector
-                push!(right_mask[p], ip)
-                push!(rightindexset_[p], r_full)
+    # Find out which tensortrains are needed for the given right indexsets
+    for (ir, r) in enumerate(rightindexset)
+        r_full = multii(obj.sitedims, vcat(fill(0, L - length(r)), r))
+        for (ip, p) in enumerate(obj.tensortrains)
+            if hasoverlap(Projector(r_full), obj.tensortrains[ip].projector)
+                push!(right_mask[ip], ir)
+                push!(rightindexset_[ip], r)
             end
         end
     end
 
+    nl = length(first(leftindexset))
     result = zeros(T, length(leftindexset), prod.(obj.sitedims[nl+1:nl+M])..., length(rightindexset))
-    for ip in 1:obj.products
+    for ip in 1:length(obj.tensortrains)
         if length(leftindexset_[ip]) * length(rightindexset_[ip]) == 0
             continue
         end
-        result_ = obj.products[ip](leftindexset_[ip], rightindexset_[ip], Val(M))
+        result_ = obj.tensortrains[ip](leftindexset_[ip], rightindexset_[ip], Val(M))
         result[left_mask[ip], .., right_mask[ip]] .+= result_
     end
 

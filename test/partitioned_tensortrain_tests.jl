@@ -154,4 +154,8 @@ end
 
     multiplier = TCIA.create_multiplier([ptt1], [ptt2], pprod.projector)
     @test multiplier([[1, 1], [1, 1], [1, 1], [1, 1]]) ≈ ref([[1, 1], [1, 1], [1, 1], [1, 1]])
+
+    leftindexsets = [[1]]
+    rightindexsets = [[1]]
+    @test multiplier(leftindexsets, rightindexsets, Val(2)) ≈ ref(leftindexsets, rightindexsets, Val(2))
 end

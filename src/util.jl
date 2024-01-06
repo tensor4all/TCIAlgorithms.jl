@@ -7,10 +7,15 @@ function allequal(collection)
     return all(collection .== c)
 end
 
+
+
+function _multii(sitedims::Vector{Int}, i::Int)::Vector{Int}
+    i <= prod(sitedims) || error("Index out of range $i, $sitedims")
+    i == 0 ? fill(0, length(sitedims)) : collect(Tuple(CartesianIndices(Tuple(sitedims))[i]))
+end
+
 function multii(sitedims::Vector{Vector{Int}}, indexset::MultiIndex)::Vector{Vector{Int}}
-    return [
-        collect(Tuple(CartesianIndices(Tuple(sitedims[l]))[i]))
-        for (l, i) in enumerate(indexset)]
+    return [_multii(sitedims[l], i) for (l, i) in enumerate(indexset)]
 end
 
 function _lineari(dims, mi)::Integer
