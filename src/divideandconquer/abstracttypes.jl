@@ -1,4 +1,3 @@
-
 """
 Type for an object that can be projected on a subset of indices
 
@@ -8,9 +7,21 @@ Attributes:
 """
 abstract type ProjectableEvaluator{T} <: TCI.BatchEvaluator{T} end
 
-function iscompatible(obj::ProjectableEvaluator{T}, indexsets::AbstractVector{<:AbstractVector{LocalIndex}})::Bool where {T}
+struct Projector
+    data::Vector{Vector{Int}}
+    function Projector(data)
+        new(data)
+    end
+end
+
+
+function project(
+    obj::ProjectableEvaluator{T},
+    prj::Projector
+)::ProjectableEvaluator{T} where {T}
     error("Must be implemented!")
 end
+
 
 function projector(obj::ProjectableEvaluator{T})::Projector where {T}
     obj.projector
@@ -25,11 +36,9 @@ function sitedims(obj::ProjectableEvaluator{T}, ilegg::Int)::Vector{Int} where {
 end
 
 
-struct Projector
-    data::Vector{Vector{Int}}
-    function Projector(data)
-        new(data)
-    end
+
+function Base.copy(obj::Projector)
+    Projector(deepcopy(obj.data))
 end
 
 function Base.iterate(p::Projector, state=1)
@@ -99,3 +108,4 @@ function leftindexset_contained(p1::Projector, p2::Projector)::Bool
     end
     return true
 end
+

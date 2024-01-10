@@ -1,5 +1,7 @@
 """
 Collection of ProjectableEvaluator objects
+
+The underlying data will be copied when projected.
 """
 mutable struct PartitionedTensorTrain{T}
     tensortrains::Vector{ProjectableEvaluator{T}}
@@ -7,21 +9,18 @@ mutable struct PartitionedTensorTrain{T}
     projector::Projector
     sitedims::Vector{Vector{Int}}
 
-    # Cache
-    #cache_leftindexset::Dict{MultiIndex,Vector{Int}}
-    #cache_rightindexset::Dict{MultiIndex,Vector{Int}}
-
-    function PartitionedTensorTrain{T}(tensortrains, projector, sitedims) where {T}
+    function PartitionedTensorTrain(tensortrains::AbstractVector{<:ProjectableEvaluator{T}}, projector, sitedims) where {T}
         for t in tensortrains
             t.projector <= projector || error("Projector mismatch")
         end
         return new{T}(tensortrains, projector, sitedims)
     end
 
+    function PartitionedTensorTrain(internalobj::ProjectableEvaluator{T}) where {T}
+        return new{T}([internalobj], internalobj.projector, internalobj.sitedims)
+    end
+
 end
-
-
-#PartitionedTensorTrain(tensortrains::ProjectedTensorTrain{T,N}, projector, sitedims) where {T,N} = PartitionedTensorTrain{T,N}(tensortrains::ProjectedTensorTrain{T,N}, projector, sitedims)
 
 
 function (obj::PartitionedTensorTrain{T})(
@@ -93,7 +92,30 @@ function project(
         obj.tensortrains[i] = prj
     end
     obj.projector = prj
-    #empty!(obj.cache_leftindexset)
-    #empty!(obj.cache_rightindexset)
     return obj
+end
+
+
+
+function partitionat(
+    obj::PartitionedTensorTrain{T},
+    siteidx::Int;
+    compression::Bool=false,
+    cutoff::Float64=1e-30,
+    maxdim::Int=typemax(Int)
+)::PartitionedTensorTrain{T} where {T}
+    tts = ProjectableEvaluator{T}[]
+
+    new_indices = collect(typesafe_iterators_product(Val(length(obj.sitedims[siteidx])), obj.sitedims[siteidx]))
+    for internal_obj in obj.tensortrains
+        all(internal_obj.projector[siteidx] .== 0) || error("Some of site indices at $siteidx are already projected")
+
+        for (i, new_idx) in enumerate(new_indices)
+            prj_new = copy(internal_obj.projector)
+            prj_new.data[siteidx] .= new_idx
+            push!(tts, project(internal_obj, prj_new; compression=compression, cutoff=cutoff, maxdim=maxdim))
+        end
+    end
+
+    return PartitionedTensorTrain(tts, obj.projector, obj.sitedims)
 end

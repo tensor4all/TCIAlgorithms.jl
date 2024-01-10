@@ -27,3 +27,7 @@ end
 function lineari(sitedims::Vector{Vector{Int}}, indexset::Vector{MultiIndex})::Vector{Int}
     return [_lineari(sitedims[l], indexset[l]) for l in 1:length(indexset)]
 end
+
+function typesafe_iterators_product(::Val{N}, dims) where {N}
+    Iterators.product(ntuple(i->1:dims[i], N)...)
+end

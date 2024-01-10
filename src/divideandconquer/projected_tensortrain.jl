@@ -1,4 +1,8 @@
-# TensorTrain projected on a subset of indices
+"""
+TensorTrain projected on a subset of indices
+
+The underlying data will be copied when projected.
+"""
 mutable struct ProjectedTensorTrain{T,N} <: ProjectableEvaluator{T}
     data::TensorTrain{T,N}
     projector::Projector # (L, N-2)
@@ -16,7 +20,9 @@ function ProjectedTensorTrain{T,N}(data, projector=Projector([fill(0, N - 2) for
     L = length(data)
     length(projector) == L || error("Length mismatch: projector")
     obj = ProjectedTensorTrain{T,N}(data, projector, TCI.sitedims(data))
-    obj = project(obj, projector; force=true, compression=compression, cutoff=cutoff, maxdim=maxdim)
+    # Why do we need force option?
+    globalprojector = Projector([fill(0, N - 2) for _ in 1:length(data)])
+    obj = project(obj, projector; force=(project!=globalprojector), compression=compression, cutoff=cutoff, maxdim=maxdim)
     return obj
 end
 
@@ -129,27 +135,3 @@ function truncate(obj::TensorTrain{T,N}; cutoff=1e-30, maxdim=typemax(Int))::Ten
 
     return TensorTrain{T,N}(tensors_truncated)
 end
-
-
-"""
-Return if two partitions are compatible.
-Entry 0 denotes this dimension is not partitioned.
-Positive enttries denote the indices of the partition.
-"""
-#==
-function iscompatible(p1::Vector{Int}, p2::Vector{Int})::Bool
-    all(p1 .>= 0) || error("p1 must be non-negative")
-    all(p2 .>= 0) || error("p2 must be non-negative")
-    length(p1) == length(p2) || error("Length mismatch")
-
-    for (i, j) in zip(p1, p2)
-        if i == 0 || j == 0
-            continue
-        end
-        if i != j
-            return false
-        end
-    end
-    return true
-end
-==#

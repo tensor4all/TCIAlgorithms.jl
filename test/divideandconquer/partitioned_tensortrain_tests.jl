@@ -2,22 +2,6 @@ using Test
 import TensorCrossInterpolation as TCI
 import TCIAlgorithms as TCIA
 
-@testset "indexset" begin
-    multii = [
-        [[1, 1]],
-        [[2, 1]]
-    ]
-    lineari = [
-        [1],
-        [2]
-    ]
-    sitedims = [[2, 2]]
-    for (mi, li) in zip(multii, lineari)
-        @test TCIA.lineari(sitedims, mi) == li
-        @test TCIA.multii(sitedims, li) == mi
-    end
-end
-
 @testset "Projector" begin
     @test all(TCIA.Projector([[1], [2], [3]]).data .== [[1], [2], [3]])
     @test (TCIA.Projector([[1], [2], [3]]) <= TCIA.Projector([[0], [2], [3]])) == true
@@ -119,6 +103,38 @@ end
     @test tt(indexset1) ≈ ptt_truncated(indexset1) # exact equality
 end
 
+
+@testset "PartitionedTensorTrain" for compression in [false, true]
+    N = 4
+    bonddims = [1, 10, 10, 10, 1]
+    @assert length(bonddims) == N + 1
+
+    localdims1 = [2, 2, 2, 2]
+    localdims2 = [2, 2, 2, 2]
+
+    tt = TCI.TensorTrain([
+        rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n+1]) for n = 1:N
+    ])
+
+    outer_prj = TCIA.Projector([[0, 0], [0, 0], [0, 0], [0, 0]])
+
+    ptt = TCIA.PartitionedTensorTrain(TCIA.ProjectedTensorTrain(tt, outer_prj))
+
+    ptt2 = TCIA.partitionat(ptt, 1; compression=compression)
+    ref = [[1,1], [2, 1], [1, 2], [2,2]]
+    for (i, obj) in enumerate(ptt2.tensortrains)
+        @test obj.projector[1] == ref[i]
+    end
+
+    ptt3 = TCIA.partitionat(ptt2, N; compression=compression)
+    idx = 1
+    for i in ref, j in ref
+        @test ptt3.tensortrains[idx].projector[1] == i
+        @test ptt3.tensortrains[idx].projector[N] == j
+        idx += 1
+    end
+end
+
 @testset "ProjectedTensorTrainProduct" begin
     N = 4
     bonddims = [1, 10, 10, 10, 1]
@@ -155,7 +171,16 @@ end
     multiplier = TCIA.create_multiplier([ptt1], [ptt2], pprod.projector)
     @test multiplier([[1, 1], [1, 1], [1, 1], [1, 1]]) ≈ ref([[1, 1], [1, 1], [1, 1], [1, 1]])
 
-    leftindexsets = [[1]]
-    rightindexsets = [[1]]
-    @test multiplier(leftindexsets, rightindexsets, Val(2)) ≈ ref(leftindexsets, rightindexsets, Val(2))
+    let
+        leftindexsets = [[1], [2]]
+        rightindexsets = [[1], [2]]
+        @test multiplier(leftindexsets, rightindexsets, Val(2)) ≈ ref(leftindexsets, rightindexsets, Val(2))
+    end
+
+    let
+        leftindexsets = [[1,1], [2,1], [1,2], [2,2]]
+        rightindexsets = [[1], [2]]
+        @test multiplier(leftindexsets, rightindexsets, Val(1)) ≈ ref(leftindexsets, rightindexsets, Val(1))
+    end
+
 end

@@ -63,7 +63,7 @@ function create_multiplier(
     for v in products
         v.projector <= projector || error("Projector $(v.projector) is not compatible with $projector")
     end
-    return PartitionedTensorTrain{T}(products, projector, sitedims)
+    return PartitionedTensorTrain(products, projector, sitedims)
 end
 
 #==
