@@ -250,11 +250,13 @@ function (obj::MatrixProduct{T})(
         idxs in rightindexset
     ]
 
+    t1 = time_ns()
     left_ =
         Array{T,3}(undef, dim(obj.links_a[s_]), dim(obj.links_b[s_]), length(leftindexset))
     for (i, idx) in enumerate(leftindexset_unfused)
         left_[:, :, i] .= evaluateleft(obj, idx)
     end
+    t2 = time_ns()
 
     right_ = Array{T,3}(
         undef,
@@ -265,6 +267,7 @@ function (obj::MatrixProduct{T})(
     for (i, idx) in enumerate(rightindexset_unfused)
         right_[:, :, i] .= evaluateright(obj, idx)
     end
+    t3 = time_ns()
 
     index_left = Index(length(leftindexset), "left")
     index_right = Index(length(rightindexset), "right")
@@ -274,6 +277,7 @@ function (obj::MatrixProduct{T})(
         res *= obj.a_MPO[n]
         res *= obj.b_MPO[n]
     end
+    t4 = time_ns()
     res *= ITensor(right_, obj.links_a[e_+1], obj.links_b[e_+1], index_right)
 
     res_inds = vcat(
@@ -287,10 +291,15 @@ function (obj::MatrixProduct{T})(
         [dim(s1) * dim(s3) for (s1, s3) in zip(obj.sites1[s_:e_], obj.sites3[s_:e_])],
         dim(index_right),
     )
+    t5 = time_ns()
 
     if obj.f isa Function
         res .= obj.f.(res)
     end
+    #println("1: ", (t2 - t1)*1e-9, " sec")
+    #println("2: ", (t3 - t2)*1e-9, " sec")
+    #println("3: ", (t4 - t3)*1e-9, " sec")
+    #println("4: ", (t5 - t4)*1e-9, " sec")
 
     return reshape(Array(res, res_inds), res_size...)
 end

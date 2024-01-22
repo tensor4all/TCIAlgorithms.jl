@@ -51,14 +51,15 @@ end
             ComplexF64,
             f,
             localdims;
-            maxbonddim=100,
+            maxbonddim=50,
             rtol=tol,
             verbosity=1,
             ntry=10,
         )
 
         tree = TCIA.adaptivepartion(creator, pordering; verbosity=1, maxnleaves=1000)
-        #@show tree
+        @show collect(keys(tree))
+        @show length(tree)
 
         #_evaluate(x, idx) = FMPOC.evaluate(x, [[i] for i in idx])
         #for _ = 1:100
