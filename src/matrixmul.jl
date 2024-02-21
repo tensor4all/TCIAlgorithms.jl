@@ -44,18 +44,18 @@ function MatrixProduct(
         throw(ArgumentError("Tensor trains must have the same length."))
     end
     for n = 1:length(mpo[1])
-        if size(mpo[1].T[n], 3) != size(mpo[2].T[n], 2)
+        if size(mpo[1][n], 3) != size(mpo[2][n], 2)
             throw(ArgumentError("Tensor trains must share the identical index at n=$n!"))
         end
     end
 
     N = length(mpo[1])
-    localdims1 = [size(mpo[1].T[n], 2) for n = 1:length(mpo[1])]
-    localdims2 = [size(mpo[1].T[n], 3) for n = 1:length(mpo[1])]
-    localdims3 = [size(mpo[2].T[n], 3) for n = 1:length(mpo[2])]
+    localdims1 = [size(mpo[1][n], 2) for n = 1:length(mpo[1])]
+    localdims2 = [size(mpo[1][n], 3) for n = 1:length(mpo[1])]
+    localdims3 = [size(mpo[2][n], 3) for n = 1:length(mpo[2])]
 
-    bonddims_a = vcat([size(mpo[1].T[n], 1) for n = 1:length(mpo[1])], 1)
-    bonddims_b = vcat([size(mpo[2].T[n], 1) for n = 1:length(mpo[2])], 1)
+    bonddims_a = vcat([size(mpo[1][n], 1) for n = 1:length(mpo[1])], 1)
+    bonddims_b = vcat([size(mpo[2][n], 1) for n = 1:length(mpo[2])], 1)
 
     links_a = [Index(bonddims_a[n], "Link,l=$n") for n = 1:N+1]
     links_b = [Index(bonddims_b[n], "Link,l=$n") for n = 1:N+1]
@@ -65,9 +65,9 @@ function MatrixProduct(
     sites3 = [Index(localdims3[n], "Site3=$n") for n = 1:N]
 
     a_MPO =
-        MPO([ITensor(a.T[n], links_a[n], sites1[n], sites2[n], links_a[n+1]) for n = 1:N])
+        MPO([ITensor(a[n], links_a[n], sites1[n], sites2[n], links_a[n+1]) for n = 1:N])
     b_MPO =
-        MPO([ITensor(b.T[n], links_b[n], sites2[n], sites3[n], links_b[n+1]) for n = 1:N])
+        MPO([ITensor(b[n], links_b[n], sites2[n], sites3[n], links_b[n+1]) for n = 1:N])
 
     return MatrixProduct(
         mpo,
@@ -85,9 +85,9 @@ function MatrixProduct(
 end
 
 _localdims(obj::TensorTrain{<:Any,4}, n::Int)::Tuple{Int,Int} =
-    (size(obj.T[n], 2), size(obj.T[n], 3))
+    (size(obj[n], 2), size(obj[n], 3))
 _localdims(obj::MatrixProduct{<:Any}, n::Int)::Tuple{Int,Int} =
-    (size(obj.mpo[1].T[n], 2), size(obj.mpo[2].T[n], 3))
+    (size(obj.mpo[1][n], 2), size(obj.mpo[2][n], 3))
 
 function _unfuse_idx(obj::MatrixProduct{T}, n::Int, idx::Int)::Tuple{Int,Int} where {T}
     return reverse(divrem(idx - 1, _localdims(obj, n)[1]) .+ 1)
@@ -344,7 +344,7 @@ function contract_TCI(
     )
     legdims = [_localdims(matrixproduct, i) for i = 1:length(tci)]
     return TCI.TensorTrain{ValueType,4}(
-        [_reshape_splitsites(t, d) for (t,d) in zip(tci.T, legdims)]
+        [_reshape_splitsites(t, d) for (t,d) in zip(tci, legdims)]
     )
 end
 
