@@ -77,7 +77,7 @@ function project(
                 continue
             end
             if (force && projector[l][n] > 0) || projector[l][n] != obj.projector[l][n]
-                projectat!(data.T[l], n + 1, projector[l][n])
+                projectat!(data[l], n + 1, projector[l][n])
             end
         end
     end
@@ -97,7 +97,7 @@ function truncate(obj::TensorTrain{T,N}; cutoff=1e-30, maxdim=typemax(Int))::Ten
     sitedims_li = [prod(sitedims[l]) for l in 1:L]
     sites_li = [Index(sitedims_li[l], "n=$l") for l in 1:L]
 
-    tensors = [copy(reshape(t, size(t, 1), :, size(t, 4))) for t in obj.T]
+    tensors = [copy(reshape(t, size(t, 1), :, size(t, 4))) for t in obj]
 
     linkdims = vcat(1, TCI.linkdims(obj), 1)
 

@@ -77,7 +77,7 @@ end
 
     # Projection 
     prj = TCIA.Projector([[1, 0], [0, 0], [0, 0], [0, 0]])
-    prj_data = deepcopy(tt.T)
+    prj_data = deepcopy(TCI.sitetensors(tt))
     prj_data[1][:, 2, :, :] .= 0.0
     ptt = TCIA.ProjectedTensorTrain{Float64,4}(tt, prj)
 
