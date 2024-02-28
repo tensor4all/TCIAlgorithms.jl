@@ -296,32 +296,29 @@ function _crossinterpolate2(
     maxbonddim::Int = typemax(Int),
     verbosity::Int = 0,
 ) where {T}
+    ncheckhistory = 3
     tci, others = TCI.crossinterpolate2(
         T,
         f,
         localdims,
         initialpivots;
-        tolerance = 1e-1 * tolerance,
+        tolerance = tolerance,
         maxbonddim = maxbonddim,
         verbosity = verbosity,
         normalizeerror = false,
+        loginterval=1,
+        nsearchglobalpivot = 10,
+        maxiter=10,
+        ncheckhistory=ncheckhistory,
+        tolmarginglobalsearch=10.0
     )
 
-    err(x) = abs(TCI.evaluate(tci, x) - f(x))
-    abserror = 0.0
-    for _ = 1:10
-        p = TCI.optfirstpivot(err, localdims, [rand(1:d) for d in localdims])
-        newerr = abs(err(p))
-        if abserror < newerr
-            abserror = newerr
-        end
-    end
-
-    true_error = max(TCI.maxbonderror(tci), abserror)
+    @show others
+    maxbonddim_hist = maximum(others[end-ncheckhistory:end])
 
     return PatchCreatorResult{T,TensorTrain{T,3}}(
         TensorTrain(tci),
-        true_error < tolerance && maximum(TCI.linkdims(tci)) <= maxbonddim,
+        TCI.maxbonderror(tci) < tolerance && maxbonddim_hist < maxbonddim,
     )
 end
 

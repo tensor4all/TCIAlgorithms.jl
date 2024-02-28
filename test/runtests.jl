@@ -8,7 +8,6 @@ include("util_tests.jl")
 #include("matrixmulsum_tests.jl")
 #include("matrixmulsum_tests.jl")
 include("divideandconquer/partitioned_tensortrain_tests.jl")
-#include("divideandconquer/adaptivepartitioning_tests.jl")
 
 #using ReTestItems: runtests, @testitem
 #using TCIAlgorithms: TCIAlgorithms
