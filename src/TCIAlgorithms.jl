@@ -19,7 +19,7 @@ include("matrixmul.jl")
 include("matrixmulsum.jl")
 include("elementwisemul.jl")
 
-include("divideandconquer/abstracttypes.jl")
+include("divideandconquer/projector.jl")
 include("divideandconquer/projected_tensortrain.jl")
 include("divideandconquer/tensortrain_product.jl")
 include("divideandconquer/partitioned_tensortrain.jl")
