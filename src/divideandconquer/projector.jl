@@ -14,6 +14,10 @@ struct Projector
     end
 end
 
+function integrate(obj::ProjectableEvaluator{T})::T where {T}
+    error("Must be implemented!")
+    return zero(T)
+end
 
 function project(
     obj::ProjectableEvaluator{T},
@@ -34,8 +38,6 @@ end
 function sitedims(obj::ProjectableEvaluator{T}, ilegg::Int)::Vector{Int} where {T}
     return [obj.sitedims[l][ilegg] for l in 1:length(obj)]
 end
-
-
 
 function Base.copy(obj::Projector)
     Projector(deepcopy(obj.data))

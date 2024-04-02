@@ -5,7 +5,9 @@ The underlying data will be copied when projected.
 """
 mutable struct PartitionedTensorTrain{T}
     tensortrains::Vector{ProjectableEvaluator{T}}
-    # This PartitionedTensorTrain is projected on the indices specified by this projector
+    # This PartitionedTensorTrain is projected on
+    # the indices specified by `projector`.
+    # All items in `tensortrains` must be compatible with `projector`.
     projector::Projector
     sitedims::Vector{Vector{Int}}
 
@@ -20,6 +22,13 @@ mutable struct PartitionedTensorTrain{T}
         return new{T}([internalobj], internalobj.projector, internalobj.sitedims)
     end
 
+end
+
+"""
+Integrate over external indices
+"""
+function integrate(obj::PartitionedTensorTrain{T})::T where {T}
+    return sum(integrate.(obj.tensortrains))
 end
 
 
