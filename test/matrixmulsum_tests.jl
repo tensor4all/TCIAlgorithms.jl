@@ -21,12 +21,14 @@ using ITensors
 
     atts = [
         TCI.TensorTrain([
-            rand(bonddims_a[n], localdims1[n], localdims2[n], bonddims_a[n + 1]) for n in 1:N
+            rand(bonddims_a[n], localdims1[n], localdims2[n], bonddims_a[n + 1]) for
+            n in 1:N
         ]) for _ in 1:Nsum
     ]
     btts = [
         TCI.TensorTrain([
-            rand(bonddims_b[n], localdims2[n], localdims3[n], bonddims_b[n + 1]) for n in 1:N
+            rand(bonddims_b[n], localdims2[n], localdims3[n], bonddims_b[n + 1]) for
+            n in 1:N
         ]) for _ in 1:Nsum
     ]
 
