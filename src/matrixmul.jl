@@ -17,7 +17,6 @@ struct MatrixProduct{T} <: TCI.BatchEvaluator{T}
     sitedims::Vector{Vector{Int}}
 end
 
-
 Base.length(obj::MatrixProduct) = length(obj.mpo[1])
 
 function Base.lastindex(obj::MatrixProduct{T}) where {T}
@@ -29,47 +28,47 @@ function Base.getindex(obj::MatrixProduct{T}, i) where {T}
 end
 
 function Base.show(io::IO, obj::MatrixProduct{T}) where {T}
-    print(
+    return print(
         io,
         "$(typeof(obj)) of tensor trains with ranks $(TCI.rank(obj.mpo[1])) and $(TCI.rank(obj.mpo[2]))",
     )
 end
 
 function MatrixProduct(
-    a::TensorTrain{T,4},
-    b::TensorTrain{T,4};
-    f::Union{Nothing,Function} = nothing,
+    a::TensorTrain{T,4}, b::TensorTrain{T,4}; f::Union{Nothing,Function}=nothing
 ) where {T}
     mpo = a, b
     if length(unique(length.(mpo))) > 1
         throw(ArgumentError("Tensor trains must have the same length."))
     end
-    for n = 1:length(mpo[1])
+    for n in 1:length(mpo[1])
         if size(mpo[1][n], 3) != size(mpo[2][n], 2)
             throw(ArgumentError("Tensor trains must share the identical index at n=$n!"))
         end
     end
 
     N = length(mpo[1])
-    localdims1 = [size(mpo[1][n], 2) for n = 1:length(mpo[1])]
-    localdims2 = [size(mpo[1][n], 3) for n = 1:length(mpo[1])]
-    localdims3 = [size(mpo[2][n], 3) for n = 1:length(mpo[2])]
+    localdims1 = [size(mpo[1][n], 2) for n in 1:length(mpo[1])]
+    localdims2 = [size(mpo[1][n], 3) for n in 1:length(mpo[1])]
+    localdims3 = [size(mpo[2][n], 3) for n in 1:length(mpo[2])]
     sitedims = [[x, y] for (x, y) in zip(localdims1, localdims3)]
 
-    bonddims_a = vcat([size(mpo[1][n], 1) for n = 1:length(mpo[1])], 1)
-    bonddims_b = vcat([size(mpo[2][n], 1) for n = 1:length(mpo[2])], 1)
+    bonddims_a = vcat([size(mpo[1][n], 1) for n in 1:length(mpo[1])], 1)
+    bonddims_b = vcat([size(mpo[2][n], 1) for n in 1:length(mpo[2])], 1)
 
-    links_a = [Index(bonddims_a[n], "Link,l=$n") for n = 1:N+1]
-    links_b = [Index(bonddims_b[n], "Link,l=$n") for n = 1:N+1]
+    links_a = [Index(bonddims_a[n], "Link,l=$n") for n in 1:(N + 1)]
+    links_b = [Index(bonddims_b[n], "Link,l=$n") for n in 1:(N + 1)]
 
-    sites1 = [Index(localdims1[n], "Site1=$n") for n = 1:N]
-    sites2 = [Index(localdims2[n], "Site2=$n") for n = 1:N]
-    sites3 = [Index(localdims3[n], "Site3=$n") for n = 1:N]
+    sites1 = [Index(localdims1[n], "Site1=$n") for n in 1:N]
+    sites2 = [Index(localdims2[n], "Site2=$n") for n in 1:N]
+    sites3 = [Index(localdims3[n], "Site3=$n") for n in 1:N]
 
-    a_MPO =
-        MPO([ITensor(a[n], links_a[n], sites1[n], sites2[n], links_a[n+1]) for n = 1:N])
-    b_MPO =
-        MPO([ITensor(b[n], links_b[n], sites2[n], sites3[n], links_b[n+1]) for n = 1:N])
+    a_MPO = MPO([
+        ITensor(a[n], links_a[n], sites1[n], sites2[n], links_a[n + 1]) for n in 1:N
+    ])
+    b_MPO = MPO([
+        ITensor(b[n], links_b[n], sites2[n], sites3[n], links_b[n + 1]) for n in 1:N
+    ])
 
     return MatrixProduct(
         mpo,
@@ -83,7 +82,7 @@ function MatrixProduct(
         links_a,
         links_b,
         f,
-        sitedims
+        sitedims,
     )
 end
 
@@ -102,8 +101,7 @@ end
 
 # Compute left environment
 function evaluateleft(
-    obj::MatrixProduct{T},
-    indexset::AbstractVector{Tuple{Int,Int}},
+    obj::MatrixProduct{T}, indexset::AbstractVector{Tuple{Int,Int}}
 )::Matrix{T} where {T}
     if length(indexset) >= length(obj.mpo[1])
         error("Invalid indexset: $indexset")
@@ -126,13 +124,13 @@ function evaluateleft(
         # (v1, v2)
         idx_v1 = obj.links_a[ell]
         idx_v2 = obj.links_b[ell]
-        left = ITensor(evaluateleft(obj, indexset[1:ell-1]), (idx_v1, idx_v2))
+        left = ITensor(evaluateleft(obj, indexset[1:(ell - 1)]), (idx_v1, idx_v2))
 
         i, j = indexset[end]
 
         # (v1, v2) * (v1, k, v1') = (v2, k, v1')
-        idx_v1p = obj.links_a[ell+1]
-        idx_v2p = obj.links_b[ell+1]
+        idx_v1p = obj.links_a[ell + 1]
+        idx_v2p = obj.links_b[ell + 1]
 
         res_tensor =
             left *
@@ -145,12 +143,9 @@ function evaluateleft(
     return obj.leftcache[key]
 end
 
-
-
 # Compute right environment
 function evaluateright(
-    obj::MatrixProduct{T},
-    indexset::AbstractVector{Tuple{Int,Int}},
+    obj::MatrixProduct{T}, indexset::AbstractVector{Tuple{Int,Int}}
 )::Matrix{T} where {T}
     if length(indexset) >= length(obj.mpo[1])
         error("Invalid indexset: $indexset")
@@ -172,8 +167,8 @@ function evaluateright(
     key = collect(indexset)
     if !(key in keys(obj.rightcache))
         # (v1, v2)
-        idx_v1 = obj.links_a[ell+1]
-        idx_v2 = obj.links_b[ell+1]
+        idx_v1 = obj.links_a[ell + 1]
+        idx_v2 = obj.links_b[ell + 1]
         right = ITensor(evaluateright(obj, indexset[2:end]), (idx_v1, idx_v2))
 
         i, j = indexset[1]
@@ -190,19 +185,17 @@ function evaluateright(
     return obj.rightcache[key]
 end
 
-
 function evaluate(obj::MatrixProduct{T}, indexset::AbstractVector{Int})::T where {T}
     if length(obj) != length(indexset)
         error("Length mismatch: $(length(obj)) != $(length(indexset))")
     end
 
-    indexset_unfused = [_unfuse_idx(obj, n, indexset[n]) for n = 1:length(obj)]
+    indexset_unfused = [_unfuse_idx(obj, n, indexset[n]) for n in 1:length(obj)]
     return evaluate(obj, indexset_unfused)
 end
 
 function evaluate(
-    obj::MatrixProduct{T},
-    indexset::AbstractVector{Tuple{Int,Int}},
+    obj::MatrixProduct{T}, indexset::AbstractVector{Tuple{Int,Int}}
 )::T where {T}
     if length(obj) != length(indexset)
         error("Length mismatch: $(length(obj)) != $(length(indexset))")
@@ -211,7 +204,7 @@ function evaluate(
     midpoint = div(length(obj), 2)
     res = sum(
         evaluateleft(obj, indexset[1:midpoint]) .*
-        evaluateright(obj, indexset[midpoint+1:end]),
+        evaluateright(obj, indexset[(midpoint + 1):end]),
     )
 
     if obj.f isa Function
@@ -221,12 +214,13 @@ function evaluate(
     end
 end
 
-
 function (obj::MatrixProduct{T})(indexset::AbstractVector{Int})::T where {T}
     return evaluate(obj, indexset)
 end
 
-function (obj::MatrixProduct{T})(indexset::AbstractVector{<:AbstractVector{Int}})::T where {T}
+function (obj::MatrixProduct{T})(
+    indexset::AbstractVector{<:AbstractVector{Int}}
+)::T where {T}
     return evaluate(obj, lineari(obj.sitedims, indexset))
 end
 
@@ -235,7 +229,6 @@ function (obj::MatrixProduct{T})(
     rightindexset::AbstractVector{MultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
-
     N = length(obj)
     Nr = length(rightindexset[1])
     s_ = length(leftindexset[1]) + 1
@@ -251,18 +244,16 @@ function (obj::MatrixProduct{T})(
     ]
 
     t1 = time_ns()
-    left_ =
-        Array{T,3}(undef, dim(obj.links_a[s_]), dim(obj.links_b[s_]), length(leftindexset))
+    left_ = Array{T,3}(
+        undef, dim(obj.links_a[s_]), dim(obj.links_b[s_]), length(leftindexset)
+    )
     for (i, idx) in enumerate(leftindexset_unfused)
         left_[:, :, i] .= evaluateleft(obj, idx)
     end
     t2 = time_ns()
 
     right_ = Array{T,3}(
-        undef,
-        dim(obj.links_a[e_+1]),
-        dim(obj.links_b[e_+1]),
-        length(rightindexset),
+        undef, dim(obj.links_a[e_ + 1]), dim(obj.links_b[e_ + 1]), length(rightindexset)
     )
     for (i, idx) in enumerate(rightindexset_unfused)
         right_[:, :, i] .= evaluateright(obj, idx)
@@ -273,12 +264,12 @@ function (obj::MatrixProduct{T})(
     index_right = Index(length(rightindexset), "right")
 
     res = ITensor(left_, obj.links_a[s_], obj.links_b[s_], index_left)
-    for n = s_:e_
+    for n in s_:e_
         res *= obj.a_MPO[n]
         res *= obj.b_MPO[n]
     end
     t4 = time_ns()
-    res *= ITensor(right_, obj.links_a[e_+1], obj.links_b[e_+1], index_right)
+    res *= ITensor(right_, obj.links_a[e_ + 1], obj.links_b[e_ + 1], index_right)
 
     res_inds = vcat(
         index_left,
@@ -304,7 +295,6 @@ function (obj::MatrixProduct{T})(
     return reshape(Array(res, res_inds), res_size...)
 end
 
-
 function _contract(obj::MatrixProduct)::MPO
     if obj.f isa Function
         error("Cannot contract matrix product with a function.")
@@ -317,17 +307,16 @@ function _contract(obj::MatrixProduct)::MPO
     b_MPO[1] *= onehot(obj.links_b[1] => 1)
     b_MPO[end] *= onehot(obj.links_b[end] => 1)
 
-    return ITensors.contract(a_MPO, b_MPO; alg = "naive")
+    return ITensors.contract(a_MPO, b_MPO; alg="naive")
 end
 
 function _reshape_fusesites(t::AbstractArray{T}) where {T}
     shape = size(t)
-    return reshape(t, shape[1], prod(shape[2:end-1]), shape[end]), shape[2:end-1]
+    return reshape(t, shape[1], prod(shape[2:(end - 1)]), shape[end]), shape[2:(end - 1)]
 end
 
 function _reshape_splitsites(
-    t::AbstractArray{T},
-    legdims::Union{AbstractVector{Int},Tuple},
+    t::AbstractArray{T}, legdims::Union{AbstractVector{Int},Tuple}
 ) where {T}
     return reshape(t, size(t, 1), legdims..., size(t, ndims(t)))
 end
@@ -335,44 +324,44 @@ end
 function contract_TCI(
     A::TensorTrain{ValueType,4},
     B::TensorTrain{ValueType,4};
-    tolerance::Float64 = nothing,
-    maxbonddim::Int = typemax(Int),
-    f::Union{Nothing,Function} = nothing,
+    tolerance::Float64=nothing,
+    maxbonddim::Int=typemax(Int),
+    f::Union{Nothing,Function}=nothing,
 ) where {ValueType}
     if length(A) != length(B)
         throw(ArgumentError("Cannot contract tensor trains with different length."))
     end
-    if !all([TCI.sitedim(A, i)[2] == TCI.sitedim(B, i)[1] for i = 1:length(A)])
+    if !all([TCI.sitedim(A, i)[2] == TCI.sitedim(B, i)[1] for i in 1:length(A)])
         throw(
             ArgumentError(
-                "Cannot contract tensor trains with non-matching site dimensions.",
+                "Cannot contract tensor trains with non-matching site dimensions."
             ),
         )
     end
-    matrixproduct = MatrixProduct(A, B; f = f)
+    matrixproduct = MatrixProduct(A, B; f=f)
     tci, ranks, errors = TCI.crossinterpolate2(
         ValueType,
         matrixproduct,
-        [prod(_localdims(matrixproduct, i)) for i = 1:length(A)];
-        tolerance = tolerance,
-        maxbonddim = maxbonddim,
+        [prod(_localdims(matrixproduct, i)) for i in 1:length(A)];
+        tolerance=tolerance,
+        maxbonddim=maxbonddim,
     )
-    legdims = [_localdims(matrixproduct, i) for i = 1:length(tci)]
-    return TCI.TensorTrain{ValueType,4}(
-        [_reshape_splitsites(t, d) for (t,d) in zip(tci, legdims)]
-    )
+    legdims = [_localdims(matrixproduct, i) for i in 1:length(tci)]
+    return TCI.TensorTrain{ValueType,4}([
+        _reshape_splitsites(t, d) for (t, d) in zip(tci, legdims)
+    ])
 end
 
 function contract(
     A::TensorTrain{ValueType,4},
     B::TensorTrain{ValueType,4};
-    algorithm = "TCI",
-    tolerance::Float64 = 1e-12,
-    maxbonddim::Int = typemax(Int),
-    f::Union{Nothing,Function} = nothing,
+    algorithm="TCI",
+    tolerance::Float64=1e-12,
+    maxbonddim::Int=typemax(Int),
+    f::Union{Nothing,Function}=nothing,
 ) where {ValueType}
     if algorithm == "TCI"
-        return contract_TCI(A, B; tolerance = tolerance, maxbonddim = maxbonddim, f = f)
+        return contract_TCI(A, B; tolerance=tolerance, maxbonddim=maxbonddim, f=f)
     elseif algorithm in ["density matrix", "fit"]
         throw(ArgumentError("Algorithm $algorithm is not implemented yet"))
     else

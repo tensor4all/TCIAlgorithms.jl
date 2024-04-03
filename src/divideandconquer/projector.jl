@@ -10,25 +10,23 @@ abstract type ProjectableEvaluator{T} <: TCI.BatchEvaluator{T} end
 struct Projector
     data::Vector{Vector{Int}}
     function Projector(data)
-        new(data)
+        return new(data)
     end
 end
 
 #function sum(obj::ProjectableEvaluator{T})::T where {T}
-    #error("Must be implemented!")
-    #return zero(T)
+#error("Must be implemented!")
+#return zero(T)
 #end
 
 function project(
-    obj::ProjectableEvaluator{T},
-    prj::Projector
+    obj::ProjectableEvaluator{T}, prj::Projector
 )::ProjectableEvaluator{T} where {T}
-    error("Must be implemented!")
+    return error("Must be implemented!")
 end
 
-
 function projector(obj::ProjectableEvaluator{T})::Projector where {T}
-    obj.projector
+    return obj.projector
 end
 
 function projector(obj::ProjectableEvaluator{T}, ilegg::Int)::Vector{Int} where {T}
@@ -40,7 +38,7 @@ function sitedims(obj::ProjectableEvaluator{T}, ilegg::Int)::Vector{Int} where {
 end
 
 function Base.copy(obj::Projector)
-    Projector(deepcopy(obj.data))
+    return Projector(deepcopy(obj.data))
 end
 
 function Base.iterate(p::Projector, state=1)
@@ -110,4 +108,3 @@ function leftindexset_contained(p1::Projector, p2::Projector)::Bool
     end
     return true
 end
-

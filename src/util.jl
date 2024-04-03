@@ -7,11 +7,13 @@ function allequal(collection)
     return all(collection .== c)
 end
 
-
-
 function _multii(sitedims::Vector{Int}, i::Int)::Vector{Int}
     i <= prod(sitedims) || error("Index out of range $i, $sitedims")
-    i == 0 ? fill(0, length(sitedims)) : collect(Tuple(CartesianIndices(Tuple(sitedims))[i]))
+    return if i == 0
+        fill(0, length(sitedims))
+    else
+        collect(Tuple(CartesianIndices(Tuple(sitedims))[i]))
+    end
 end
 
 function multii(sitedims::Vector{Vector{Int}}, indexset::MultiIndex)::Vector{Vector{Int}}
@@ -29,5 +31,5 @@ function lineari(sitedims::Vector{Vector{Int}}, indexset::Vector{MultiIndex})::V
 end
 
 function typesafe_iterators_product(::Val{N}, dims) where {N}
-    Iterators.product(ntuple(i->1:dims[i], N)...)
+    return Iterators.product(ntuple(i -> 1:dims[i], N)...)
 end

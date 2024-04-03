@@ -48,13 +48,7 @@ end
         pordering = TCIA.PatchOrdering(flipper(collect(1:R)))
 
         creator = TCIA.TCI2PatchCreator(
-            ComplexF64,
-            f,
-            localdims;
-            maxbonddim=50,
-            rtol=tol,
-            verbosity=1,
-            ntry=10,
+            ComplexF64, f, localdims; maxbonddim=50, rtol=tol, verbosity=1, ntry=10
         )
 
         tree = TCIA.adaptivepartion(creator, pordering; verbosity=1, maxnleaves=1000)
@@ -72,12 +66,20 @@ end
     end
 end
 
-
 @testset "2D" begin
     Random.seed!(1234)
 
-    @everywhere fxy(x, y) = (exp(-0.4 * (x^2 + y^2)) + 1 + sin(x * y) * exp(-x^2) +
-           cos(3 * x * y) * exp(-y^2) + cos(x + y)) + 0.05 * cos(1 / 0.001 * (0.2 * x - 0.4 * y)) + 0.0005 * cos(1 / 0.0001 * (-0.2 * x + 0.7 * y)) + 1e-5 * cos(1 / 1e-7 * (20 * x))
+    @everywhere fxy(x, y) =
+        (
+            exp(-0.4 * (x^2 + y^2)) +
+            1 +
+            sin(x * y) * exp(-x^2) +
+            cos(3 * x * y) * exp(-y^2) +
+            cos(x + y)
+        ) +
+        0.05 * cos(1 / 0.001 * (0.2 * x - 0.4 * y)) +
+        0.0005 * cos(1 / 0.0001 * (-0.2 * x + 0.7 * y)) +
+        1e-5 * cos(1 / 1e-7 * (20 * x))
 
     R = 40
     grid = DiscretizedGrid{2}(R, (-5, -5), (5, 5))
@@ -90,13 +92,7 @@ end
     pordering = TCIA.PatchOrdering(collect(1:R))
 
     creator = TCIA.TCI2PatchCreator(
-        ComplexF64,
-        qf,
-        localdims;
-        maxbonddim=50,
-        rtol=tol,
-        verbosity=1,
-        ntry=10,
+        ComplexF64, qf, localdims; maxbonddim=50, rtol=tol, verbosity=1, ntry=10
     )
 
     tree = TCIA.adaptivepartion(creator, pordering; verbosity=1, maxnleaves=1000)

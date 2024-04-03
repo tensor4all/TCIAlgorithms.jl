@@ -10,7 +10,7 @@ struct MPO{ValueType} <: TCI.CachedTensorTrain{ValueType}
     cacheright::Vector{Dict{Vector{Vector{Int}},Array{ValueType}}}
 
     function MPO(T::AbstractVector{<:AbstractArray{ValueType}}) where {ValueType}
-        new{ValueType}(
+        return new{ValueType}(
             T,
             [Dict{Vector{Vector{Int}},Array{ValueType}}() for _ in T],
             [Dict{Vector{Vector{Int}},Array{ValueType}}() for _ in T],
@@ -19,7 +19,7 @@ struct MPO{ValueType} <: TCI.CachedTensorTrain{ValueType}
 end
 
 function MPO(TT::TCI.AbstractTensorTrain{ValueType}) where {ValueType}
-    MPO(TT.T)
+    return MPO(TT.T)
 end
 
 function ttcache(tt::MPO{V}, leftright::Symbol, b::Int) where {V}
@@ -49,14 +49,14 @@ function evaluateleft(tt::MPO{V}, indexset::AbstractVector{<:AbstractVector{Int}
     cache = ttcache(tt, :left, ell)
     key = collect(indexset)
     if !(key in keys(cache))
-        cache[key] = evaluateleft(tt, indexset[1:ell-1]) * tt[ell][:, indexset[ell]..., :]
+        cache[key] =
+            evaluateleft(tt, indexset[1:(ell - 1)]) * tt[ell][:, indexset[ell]..., :]
     end
     return cache[key]
 end
 
 function evaluateright(
-    tt::MPO{V},
-    indexset::AbstractVector{<:AbstractVector{Int}},
+    tt::MPO{V}, indexset::AbstractVector{<:AbstractVector{Int}}
 ) where {V}
     if isempty(indexset) || length(indexset) > length(tt)
         throw(
@@ -80,9 +80,7 @@ function evaluateright(
 end
 
 function evaluate(
-    tt::MPO{V},
-    indexset::AbstractVector{<:AbstractVector{Int}};
-    usecache::Bool = true,
+    tt::MPO{V}, indexset::AbstractVector{<:AbstractVector{Int}}; usecache::Bool=true
 )::V where {V}
     if length(tt) != length(indexset)
         throw(
@@ -95,7 +93,7 @@ function evaluate(
         midpoint = div(length(tt), 2)
         return sum(
             evaluateleft(tt, indexset[1:midpoint]) *
-            evaluateright(tt, indexset[midpoint+1:end]),
+            evaluateright(tt, indexset[(midpoint + 1):end]),
         )
     else
         return sum(prod(T[:, i..., :] for (T, i) in zip(tt, indexset)))
@@ -123,10 +121,10 @@ function batchevaluate(
     renv = hcat([evaluateright(tt, rindex) for (ir, rindex) in enumerate(rightindexset)]...) # D x nrightindexset
 
     localdim = zeros(Int, ncent)
-    for n = nleft+1:(N-nright)
+    for n in (nleft + 1):(N - nright)
         # (nleftindexset, d, ..., d, D) x (D, d, D)
         T_ = _fusedtensor(tt, n)
-        localdim[n-nleft] = size(T_, 2)
+        localdim[n - nleft] = size(T_, 2)
         bonddim_ = size(T_, 1)
         lenv = reshape(lenv, :, bonddim_) * reshape(T_, bonddim_, :)
     end
@@ -138,13 +136,10 @@ function batchevaluate(
     return reshape(lenv, nleftindexset, localdim..., nrightindexset)
 end
 
-
 function evaluate(
-    tt::MPO{V},
-    indexset::Union{AbstractVector{Int},NTuple{N,Int}};
-    usecache::Bool = true,
+    tt::MPO{V}, indexset::Union{AbstractVector{Int},NTuple{N,Int}}; usecache::Bool=true
 )::V where {N,V}
-    return evaluate(tt, [[i] for i in indexset], usecache = usecache)
+    return evaluate(tt, [[i] for i in indexset]; usecache=usecache)
 end
 
 function fuselinks(t::AbstractArray{T}, nlinks::Int)::Array{T} where {T}
@@ -152,8 +147,8 @@ function fuselinks(t::AbstractArray{T}, nlinks::Int)::Array{T} where {T}
     return reshape(
         t,
         prod(s[1:nlinks]),
-        s[nlinks+1:end-nlinks]...,
-        prod(s[end-nlinks+1:end]),
+        s[(nlinks + 1):(end - nlinks)]...,
+        prod(s[(end - nlinks + 1):end]),
     )
 end
 
@@ -163,7 +158,7 @@ function contractmpotensor(f::AbstractArray, fleg::Int, g::AbstractArray, gleg::
     return fuselinks(
         permutedims(
             contract(f, fleg + 1, g, gleg + 1),
-            (1, sf + 1, 2:sf-1..., sf+2:stot-1..., sf, stot),
+            (1, sf + 1, 2:(sf - 1)..., (sf + 2):(stot - 1)..., sf, stot),
         ),
         2,
     )
@@ -181,14 +176,14 @@ function contract(f::MPO, flegs::Vector{Int}, g::MPO, glegs::Vector{Int})
     if length(f) != length(flegs)
         throw(
             DimensionMismatch(
-                "Argument flegs must specify legs to contract for each tensor of MPO f.",
+                "Argument flegs must specify legs to contract for each tensor of MPO f."
             ),
         )
     end
     if length(g) != length(glegs)
         throw(
             DimensionMismatch(
-                "Argument flegs must specify legs to contract for each tensor of MPO f.",
+                "Argument flegs must specify legs to contract for each tensor of MPO f."
             ),
         )
     end
@@ -209,26 +204,25 @@ end
 
 function fusephysicallegs(t::AbstractArray{T}) where {T}
     shape = size(t)
-    return reshape(t, shape[1], prod(shape[2:end-1]), shape[end]), shape[2:end-1]
+    return reshape(t, shape[1], prod(shape[2:(end - 1)]), shape[end]), shape[2:(end - 1)]
 end
 
 function splitphysicallegs(
-    t::AbstractArray{T},
-    legdims::Union{AbstractVector{Int},Tuple},
+    t::AbstractArray{T}, legdims::Union{AbstractVector{Int},Tuple}
 ) where {T}
     return reshape(t, size(t, 1), legdims..., size(t, ndims(t)))
 end
 
-function fitmpo(f::MPO{T}; maxbonddim = 200, tolerance = 1e-8) where {T}
+function fitmpo(f::MPO{T}; maxbonddim=200, tolerance=1e-8) where {T}
     ffused = MPO([fusephysicallegs(t)[1] for t in f])
     tt, ranks, errors = TCI.crossinterpolate2(
         T,
         q -> evaluate(ffused, q),
         [size(t, 2) for t in ffused];
-        maxbonddim = maxbonddim,
-        tolerance = tolerance,
+        maxbonddim=maxbonddim,
+        tolerance=tolerance,
     )
-    result = MPO([splitphysicallegs(t, size(ft)[2:end-1]) for (t, ft) in zip(tt, f)])
+    result = MPO([splitphysicallegs(t, size(ft)[2:(end - 1)]) for (t, ft) in zip(tt, f)])
     return result, ranks, errors
 end
 
@@ -246,9 +240,9 @@ function multiplympotensor(
         [
             1,
             nf + ncontract + 1, # Left links
-            2:nf-1...,
+            2:(nf - 1)...,
             (nf .+ (1:ncontract))...,
-            (nf + ncontract .+ (2:ng-1))...,
+            (nf + ncontract .+ (2:(ng - 1)))...,
             nf,
             nf + ncontract + ng,
         ],

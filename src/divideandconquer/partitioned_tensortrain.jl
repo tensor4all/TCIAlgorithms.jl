@@ -11,7 +11,9 @@ mutable struct PartitionedTensorTrain{T}
     projector::Projector
     sitedims::Vector{Vector{Int}}
 
-    function PartitionedTensorTrain(tensortrains::AbstractVector{<:ProjectableEvaluator{T}}, projector, sitedims) where {T}
+    function PartitionedTensorTrain(
+        tensortrains::AbstractVector{<:ProjectableEvaluator{T}}, projector, sitedims
+    ) where {T}
         for t in tensortrains
             t.projector <= projector || error("Projector mismatch")
         end
@@ -21,25 +23,23 @@ mutable struct PartitionedTensorTrain{T}
     function PartitionedTensorTrain(internalobj::ProjectableEvaluator{T}) where {T}
         return new{T}([internalobj], internalobj.projector, internalobj.sitedims)
     end
-
 end
 
 """
 Sum over external indices
 """
 #function sum(obj::PartitionedTensorTrain{T})::T where {T}
-    #return sum(sum.(obj.tensortrains))
+#return sum(sum.(obj.tensortrains))
 #end
 
-
 function (obj::PartitionedTensorTrain{T})(
-    indexsets::AbstractVector{<:AbstractVector{LocalIndex}})::T where {T}
+    indexsets::AbstractVector{<:AbstractVector{LocalIndex}}
+)::T where {T}
     if !(indexsets <= obj.projector)
         return zero(T)
     end
     return sum((t(indexsets) for t in obj.tensortrains))
 end
-
 
 function (obj::PartitionedTensorTrain{T})(
     leftindexset::AbstractVector{MultiIndex},
@@ -79,7 +79,12 @@ function (obj::PartitionedTensorTrain{T})(
     end
 
     nl = length(first(leftindexset))
-    result = zeros(T, length(leftindexset), prod.(obj.sitedims[nl+1:nl+M])..., length(rightindexset))
+    result = zeros(
+        T,
+        length(leftindexset),
+        prod.(obj.sitedims[(nl + 1):(nl + M)])...,
+        length(rightindexset),
+    )
     for ip in 1:length(obj.tensortrains)
         if length(leftindexset_[ip]) * length(rightindexset_[ip]) == 0
             continue
@@ -91,10 +96,8 @@ function (obj::PartitionedTensorTrain{T})(
     return result
 end
 
-
 function project(
-    obj::PartitionedTensorTrain{T},
-    prj::Projector
+    obj::PartitionedTensorTrain{T}, prj::Projector
 )::PartitionedTensorTrain{T} where {T}
     prj <= projector(obj) || error("Projector mismatch")
     for (i, t) in enumerate(obj.tensortrains)
@@ -104,25 +107,37 @@ function project(
     return obj
 end
 
-
-
 function partitionat(
     obj::PartitionedTensorTrain{T},
     siteidx::Int;
     compression::Bool=false,
     cutoff::Float64=1e-30,
-    maxdim::Int=typemax(Int)
+    maxdim::Int=typemax(Int),
 )::PartitionedTensorTrain{T} where {T}
     tts = ProjectableEvaluator{T}[]
 
-    new_indices = collect(typesafe_iterators_product(Val(length(obj.sitedims[siteidx])), obj.sitedims[siteidx]))
+    new_indices = collect(
+        typesafe_iterators_product(
+            Val(length(obj.sitedims[siteidx])), obj.sitedims[siteidx]
+        ),
+    )
     for internal_obj in obj.tensortrains
-        all(internal_obj.projector[siteidx] .== 0) || error("Some of site indices at $siteidx are already projected")
+        all(internal_obj.projector[siteidx] .== 0) ||
+            error("Some of site indices at $siteidx are already projected")
 
         for (i, new_idx) in enumerate(new_indices)
             prj_new = copy(internal_obj.projector)
             prj_new.data[siteidx] .= new_idx
-            push!(tts, project(internal_obj, prj_new; compression=compression, cutoff=cutoff, maxdim=maxdim))
+            push!(
+                tts,
+                project(
+                    internal_obj,
+                    prj_new;
+                    compression=compression,
+                    cutoff=cutoff,
+                    maxdim=maxdim,
+                ),
+            )
         end
     end
 

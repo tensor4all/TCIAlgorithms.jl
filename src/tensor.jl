@@ -30,7 +30,7 @@ function deltaproduct(A::AbstractMatrix{T}, B::AbstractMatrix{T}) where {T}
     if size(A, 2) != size(B, 1)
         throw(
             DimensionMismatch(
-                "Second dimension of A must have same length as first dimension of B.",
+                "Second dimension of A must have same length as first dimension of B."
             ),
         )
     end
