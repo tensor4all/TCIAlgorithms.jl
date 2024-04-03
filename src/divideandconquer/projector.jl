@@ -14,10 +14,10 @@ struct Projector
     end
 end
 
-#function sum(obj::ProjectableEvaluator{T})::T where {T}
-#error("Must be implemented!")
-#return zero(T)
-#end
+function sum(obj::ProjectableEvaluator{T})::T where {T}
+    error("Must be implemented!")
+    return zero(T)
+end
 
 function project(
     obj::ProjectableEvaluator{T}, prj::Projector

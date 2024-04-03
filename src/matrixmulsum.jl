@@ -24,7 +24,7 @@ function evaluate(obj::MatrixProductSum{T}, indexset::AbstractVector{Int})::T wh
     if length(obj) != length(indexset)
         error("Length mismatch: $(length(obj)) != $(length(indexset))")
     end
-    return sum([evaluate(p, indexset) for p in obj.products])
+    return Base.sum([evaluate(p, indexset) for p in obj.products])
 end
 
 function (obj::MatrixProductSum{T})(indexset::AbstractVector{Int})::T where {T}
@@ -36,5 +36,5 @@ function (obj::MatrixProductSum{T})(
     rightindexset::AbstractVector{MultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
-    return sum(p(leftindexset, rightindexset, Val(M)) for p in obj.products)
+    return Base.sum(p(leftindexset, rightindexset, Val(M)) for p in obj.products)
 end

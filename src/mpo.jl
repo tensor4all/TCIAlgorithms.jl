@@ -91,12 +91,12 @@ function evaluate(
     end
     if usecache
         midpoint = div(length(tt), 2)
-        return sum(
+        return Base.sum(
             evaluateleft(tt, indexset[1:midpoint]) *
             evaluateright(tt, indexset[(midpoint + 1):end]),
         )
     else
-        return sum(prod(T[:, i..., :] for (T, i) in zip(tt, indexset)))
+        return Base.sum(prod(T[:, i..., :] for (T, i) in zip(tt, indexset)))
     end
 end
 

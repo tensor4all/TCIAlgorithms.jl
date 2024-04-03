@@ -202,7 +202,7 @@ function evaluate(
     end
 
     midpoint = div(length(obj), 2)
-    res = sum(
+    res = Base.sum(
         evaluateleft(obj, indexset[1:midpoint]) .*
         evaluateright(obj, indexset[(midpoint + 1):end]),
     )

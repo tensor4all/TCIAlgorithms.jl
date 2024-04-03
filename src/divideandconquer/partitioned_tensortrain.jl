@@ -28,9 +28,9 @@ end
 """
 Sum over external indices
 """
-#function sum(obj::PartitionedTensorTrain{T})::T where {T}
-#return sum(sum.(obj.tensortrains))
-#end
+function sum(obj::PartitionedTensorTrain{T})::T where {T}
+    return Base.sum(sum.(obj.tensortrains))
+end
 
 function (obj::PartitionedTensorTrain{T})(
     indexsets::AbstractVector{<:AbstractVector{LocalIndex}}
@@ -38,7 +38,7 @@ function (obj::PartitionedTensorTrain{T})(
     if !(indexsets <= obj.projector)
         return zero(T)
     end
-    return sum((t(indexsets) for t in obj.tensortrains))
+    return Base.sum((t(indexsets) for t in obj.tensortrains))
 end
 
 function (obj::PartitionedTensorTrain{T})(
