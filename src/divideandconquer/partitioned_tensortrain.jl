@@ -25,11 +25,11 @@ mutable struct PartitionedTensorTrain{T}
 end
 
 """
-Integrate over external indices
+Sum over external indices
 """
-function integrate(obj::PartitionedTensorTrain{T})::T where {T}
-    return sum(integrate.(obj.tensortrains))
-end
+#function sum(obj::PartitionedTensorTrain{T})::T where {T}
+    #return sum(sum.(obj.tensortrains))
+#end
 
 
 function (obj::PartitionedTensorTrain{T})(
