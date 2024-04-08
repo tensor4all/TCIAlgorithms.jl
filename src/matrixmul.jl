@@ -335,9 +335,11 @@ end
 function contract_TCI(
     A::TensorTrain{ValueType,4},
     B::TensorTrain{ValueType,4};
-    tolerance::Float64 = nothing,
-    maxbonddim::Int = typemax(Int),
+    initialpivots::Union{Nothing,Vector{MultiIndex}}=nothing,
+    #tolerance::Float64 = nothing,
+    #maxbonddim::Int = typemax(Int),
     f::Union{Nothing,Function} = nothing,
+    kwargs...
 ) where {ValueType}
     if length(A) != length(B)
         throw(ArgumentError("Cannot contract tensor trains with different length."))
@@ -350,12 +352,19 @@ function contract_TCI(
         )
     end
     matrixproduct = MatrixProduct(A, B; f = f)
+    localdims = prod.(matrixproduct.sitedims)
+    if initialpivots === nothing
+        localdims = []
+    end
+    initialpivots::Vector{MultiIndex}=[ones(Int, length(localdims))];
+
     tci, ranks, errors = TCI.crossinterpolate2(
         ValueType,
         matrixproduct,
-        [prod(_localdims(matrixproduct, i)) for i = 1:length(A)];
-        tolerance = tolerance,
-        maxbonddim = maxbonddim,
+        initialpivots,
+        #tolerance = tolerance,
+        #maxbonddim = maxbonddim,
+        kwargs...,
     )
     legdims = [_localdims(matrixproduct, i) for i = 1:length(tci)]
     return TCI.TensorTrain{ValueType,4}(
@@ -370,9 +379,10 @@ function contract(
     tolerance::Float64 = 1e-12,
     maxbonddim::Int = typemax(Int),
     f::Union{Nothing,Function} = nothing,
+    kwargs...
 ) where {ValueType}
     if algorithm == "TCI"
-        return contract_TCI(A, B; tolerance = tolerance, maxbonddim = maxbonddim, f = f)
+        return contract_TCI(A, B; tolerance = tolerance, maxbonddim = maxbonddim, f = f, kwargs...)
     elseif algorithm in ["density matrix", "fit"]
         throw(ArgumentError("Algorithm $algorithm is not implemented yet"))
     else
