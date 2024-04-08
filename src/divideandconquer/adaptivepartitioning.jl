@@ -193,7 +193,12 @@ function adaptivepartion(
                     if verbosity > 0
                         println("Fetching a task for $(prefix) ...")
                     end
-                    leaves[prefix] = fetch(leaf)
+                    fetched = fetch(leaf)
+                    if fetched isa RemoteException
+                        err_msg = sprint(showerror, fetched.captured)
+                        error("Error in creating a patch for $(prefix): $err_msg")
+                    end
+                    leaves[prefix] = fetched
                 end
                 done = false
                 continue
@@ -303,8 +308,10 @@ function _crossinterpolate2(
         ncheckhistory=ncheckhistory,
         tolmarginglobalsearch=10.0,
     )
+    if maximum(TCI.linkdims(tci)) == 0
+        error("TCI has zero rank, maxsamplevalue: $(tci.maxsamplevalue), tolerance: ($tolerance)")
+    end
 
-    @show others
     maxbonddim_hist = maximum(others[(end - ncheckhistory):end])
 
     return PatchCreatorResult{T,TensorTrain{T,3}}(
