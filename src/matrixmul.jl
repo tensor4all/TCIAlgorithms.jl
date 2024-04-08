@@ -335,9 +335,7 @@ end
 function contract_TCI(
     A::TensorTrain{ValueType,4},
     B::TensorTrain{ValueType,4};
-    initialpivots::Union{Nothing,Vector{MultiIndex}}=nothing,
-    #tolerance::Float64 = nothing,
-    #maxbonddim::Int = typemax(Int),
+    initialpivots::Union{Int,Vector{MultiIndex}}=10,
     f::Union{Nothing,Function} = nothing,
     kwargs...
 ) where {ValueType}
@@ -352,18 +350,18 @@ function contract_TCI(
         )
     end
     matrixproduct = MatrixProduct(A, B; f = f)
-    localdims = prod.(matrixproduct.sitedims)
-    if initialpivots === nothing
-        localdims = []
+    if initialpivots isa Int
+        localdims = prod.(matrixproduct.sitedims)
+        initialpivots = TCI.findinitialpivots(matrixproduct, localdims, initialpivots)
+        if isempty(initialpivots)
+            error("No initial pivots found.")
+        end
     end
-    initialpivots::Vector{MultiIndex}=[ones(Int, length(localdims))];
 
     tci, ranks, errors = TCI.crossinterpolate2(
         ValueType,
         matrixproduct,
         initialpivots,
-        #tolerance = tolerance,
-        #maxbonddim = maxbonddim,
         kwargs...,
     )
     legdims = [_localdims(matrixproduct, i) for i = 1:length(tci)]

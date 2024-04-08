@@ -17,3 +17,13 @@ import TCIAlgorithms as TCIA
         @test TCIA.multii(sitedims, li) == mi
     end
 end
+
+@testset "findinitialpivots" begin
+    R = 8
+    localdims = fill(2, R)
+    f = x -> sum(x)
+
+    pivots = TCIA.findinitialpivots(f, localdims, 10)
+    @test length(pivots) == 10
+    @test all(f.(pivots) .== sum(localdims))
+end

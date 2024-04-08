@@ -31,3 +31,17 @@ end
 function typesafe_iterators_product(::Val{N}, dims) where {N}
     Iterators.product(ntuple(i->1:dims[i], N)...)
 end
+
+
+function findinitialpivots(f, localdims, nmaxpivots)::Vector{MultiIndex}
+    pivots = MultiIndex[]
+    for _ in 1:nmaxpivots
+        pivot_ = [rand(1:d) for d in localdims]
+        pivot_ = TCI.optfirstpivot(f, localdims, pivot_)
+        if abs(f(pivot_)) == 0.0
+            continue
+        end
+        push!(pivots, pivot_)
+    end
+    return pivots
+end
