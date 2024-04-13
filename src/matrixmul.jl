@@ -6,13 +6,13 @@ struct MatrixProduct{T} <: TCI.BatchEvaluator{T}
     mpo::NTuple{2,TensorTrain{T,4}}
     leftcache::Dict{Vector{Tuple{Int,Int}},Matrix{T}}
     rightcache::Dict{Vector{Tuple{Int,Int}},Matrix{T}}
-    a_MPO::MPO
-    b_MPO::MPO
-    sites1::Vector{Index{Int}}
-    sites2::Vector{Index{Int}}
-    sites3::Vector{Index{Int}}
-    links_a::Vector{Index{Int}}
-    links_b::Vector{Index{Int}}
+    #a_MPO::MPO
+    #b_MPO::MPO
+    #sites1::Vector{Index{Int}}
+    #sites2::Vector{Index{Int}}
+    #sites3::Vector{Index{Int}}
+    #links_a::Vector{Index{Int}}
+    #links_b::Vector{Index{Int}}
     f::Union{Nothing,Function}
     sitedims::Vector{Vector{Int}}
 end
@@ -50,38 +50,15 @@ function MatrixProduct(
         end
     end
 
-    N = length(mpo[1])
     localdims1 = [size(mpo[1][n], 2) for n = 1:length(mpo[1])]
-    localdims2 = [size(mpo[1][n], 3) for n = 1:length(mpo[1])]
     localdims3 = [size(mpo[2][n], 3) for n = 1:length(mpo[2])]
+
     sitedims = [[x, y] for (x, y) in zip(localdims1, localdims3)]
-
-    bonddims_a = vcat([size(mpo[1][n], 1) for n = 1:length(mpo[1])], 1)
-    bonddims_b = vcat([size(mpo[2][n], 1) for n = 1:length(mpo[2])], 1)
-
-    links_a = [Index(bonddims_a[n], "Link,l=$n") for n = 1:N+1]
-    links_b = [Index(bonddims_b[n], "Link,l=$n") for n = 1:N+1]
-
-    sites1 = [Index(localdims1[n], "Site1=$n") for n = 1:N]
-    sites2 = [Index(localdims2[n], "Site2=$n") for n = 1:N]
-    sites3 = [Index(localdims3[n], "Site3=$n") for n = 1:N]
-
-    a_MPO =
-        MPO([ITensor(a[n], links_a[n], sites1[n], sites2[n], links_a[n+1]) for n = 1:N])
-    b_MPO =
-        MPO([ITensor(b[n], links_b[n], sites2[n], sites3[n], links_b[n+1]) for n = 1:N])
 
     return MatrixProduct(
         mpo,
         Dict{Vector{Tuple{Int,Int}},Matrix{T}}(),
         Dict{Vector{Tuple{Int,Int}},Matrix{T}}(),
-        a_MPO,
-        b_MPO,
-        sites1,
-        sites2,
-        sites3,
-        links_a,
-        links_b,
         f,
         sitedims
     )
@@ -276,7 +253,7 @@ function (obj::MatrixProduct{T})(
 
     return_size = (
         length(leftindexset),
-        ntuple(i->size(a[i+s_-1], 2)*size(b[i+s_-1], 3), M)..., 
+        ntuple(i->prod(obj.sitedims[i+s_-1]), M)..., 
         length(rightindexset),
     )
     t5 = time_ns()
@@ -293,22 +270,28 @@ function (obj::MatrixProduct{T})(
 end
 
 
-#==
-function _contract(obj::MatrixProduct)::MPO
+function naivecontract(a::TensorTrain{T,4}, b::TensorTrain{T,4})::TensorTrain{T,4} where {T}
+    return naivecontract(MatrixProduct(a, b))
+end
+
+function naivecontract(obj::MatrixProduct{T})::TensorTrain{T,4} where {T}
     if obj.f isa Function
         error("Cannot contract matrix product with a function.")
     end
-    a_MPO = copy(obj.a_MPO)
-    a_MPO[1] *= onehot(obj.links_a[1] => 1)
-    a_MPO[end] *= onehot(obj.links_a[end] => 1)
 
-    b_MPO = copy(obj.b_MPO)
-    b_MPO[1] *= onehot(obj.links_b[1] => 1)
-    b_MPO[end] *= onehot(obj.links_b[end] => 1)
+    a, b = obj.mpo
 
-    return ITensors.contract(a_MPO, b_MPO; alg = "naive")
+    linkdims_a = vcat(1, TCI.linkdims(a), 1)
+    linkdims_b = vcat(1, TCI.linkdims(b), 1)
+    linkdims_ab = linkdims_a .* linkdims_b
+
+    # (link_a, s1, s2, link_a') * (link_b, s2, s3, link_b')
+    #  => (link_a, s1, link_a', link_b, s3, link_b')
+    #  => (link_a, link_b, s1, s3, link_a', link_b')
+    sitetensors = [reshape(permutedims(_contract(obj.mpo[1][n], obj.mpo[2][n], (3,), (2,)), (1, 4, 2, 5, 3, 6)), linkdims_ab[n], obj.sitedims[n]..., linkdims_ab[n+1]) for n = 1:length(obj)]
+
+    return TensorTrain{T,4}(sitetensors)
 end
-==#
 
 function _reshape_fusesites(t::AbstractArray{T}) where {T}
     shape = size(t)

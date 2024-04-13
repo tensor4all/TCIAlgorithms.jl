@@ -5,7 +5,6 @@ import TensorCrossInterpolation: TensorTrain, evaluate, TTCache, MultiIndex, Loc
 
 using TCIITensorConversion
 using ITensors
-#import ITensorTDVP
 
 using OrderedCollections: OrderedDict, OrderedSet
 
