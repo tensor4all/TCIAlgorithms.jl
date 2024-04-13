@@ -350,9 +350,9 @@ function contract_TCI(
         )
     end
     matrixproduct = MatrixProduct(A, B; f = f)
+    localdims = prod.(matrixproduct.sitedims)
     if initialpivots isa Int
-        localdims = prod.(matrixproduct.sitedims)
-        initialpivots = TCI.findinitialpivots(matrixproduct, localdims, initialpivots)
+        initialpivots = findinitialpivots(matrixproduct, localdims, initialpivots)
         if isempty(initialpivots)
             error("No initial pivots found.")
         end
@@ -361,7 +361,8 @@ function contract_TCI(
     tci, ranks, errors = TCI.crossinterpolate2(
         ValueType,
         matrixproduct,
-        initialpivots,
+        localdims,
+        initialpivots;
         kwargs...,
     )
     legdims = [_localdims(matrixproduct, i) for i = 1:length(tci)]
