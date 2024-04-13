@@ -100,6 +100,14 @@ function _fuse_idx(obj::MatrixProduct{T}, n::Int, idx::Tuple{Int,Int})::Int wher
     return idx[1] + _localdims(obj, n)[1] * (idx[2] - 1)
 end
 
+function _extend_cache(oldcache::Matrix{T}, a_ell::Array{T,4}, b_ell::Array{T,4}, i::Int, j::Int) where {T}
+    # (link_a, link_b) * (link_a, s, link_a') => (link_b, s, link_a')
+    tmp1 = _contract(oldcache, a_ell[:, i, :, :], (1,), (1,))
+
+    # (link_b, s, link_a') * (link_b, s, link_b') => (link_a', link_b')
+    return _contract(tmp1, b_ell[:, :, j, :], (1, 2), (1, 2))
+end
+
 # Compute left environment
 function evaluateleft(
     obj::MatrixProduct{T},
@@ -109,6 +117,8 @@ function evaluateleft(
         error("Invalid indexset: $indexset")
     end
 
+    a, b = obj.mpo
+
     if length(indexset) == 0
         return ones(T, 1, 1)
     end
@@ -116,30 +126,13 @@ function evaluateleft(
     ell = length(indexset)
     if ell == 1
         i, j = indexset[1]
-        a_ = obj.a_MPO[1] * onehot(obj.sites1[1] => i) * onehot(obj.links_a[1] => 1)
-        b_ = obj.b_MPO[1] * onehot(obj.sites3[1] => j) * onehot(obj.links_b[1] => 1)
-        return Array(a_ * b_, [obj.links_a[2], obj.links_b[2]])
+        return transpose(a[1][1, i, :, :]) * b[1][1, :, j, :] 
     end
 
     key = collect(indexset)
     if !(key in keys(obj.leftcache))
-        # (v1, v2)
-        idx_v1 = obj.links_a[ell]
-        idx_v2 = obj.links_b[ell]
-        left = ITensor(evaluateleft(obj, indexset[1:ell-1]), (idx_v1, idx_v2))
-
         i, j = indexset[end]
-
-        # (v1, v2) * (v1, k, v1') = (v2, k, v1')
-        idx_v1p = obj.links_a[ell+1]
-        idx_v2p = obj.links_b[ell+1]
-
-        res_tensor =
-            left *
-            (obj.a_MPO[ell] * onehot(obj.sites1[ell] => i)) *
-            (obj.b_MPO[ell] * onehot(obj.sites3[ell] => j))
-
-        obj.leftcache[key] = Array(res_tensor, [idx_v1p, idx_v2p])
+        obj.leftcache[key] = _extend_cache(evaluateleft(obj, indexset[1:ell-1]), a[ell], b[ell], i, j)
     end
 
     return obj.leftcache[key]
@@ -156,35 +149,27 @@ function evaluateright(
         error("Invalid indexset: $indexset")
     end
 
+    a, b = obj.mpo
+
     N = length(obj)
 
     if length(indexset) == 0
         return ones(T, 1, 1)
     elseif length(indexset) == 1
         i, j = indexset[1]
-        a_ = obj.a_MPO[end] * onehot(obj.sites1[end] => i) * onehot(obj.links_a[end] => 1)
-        b_ = obj.b_MPO[end] * onehot(obj.sites3[end] => j) * onehot(obj.links_b[end] => 1)
-        return Array(a_ * b_, [obj.links_a[N], obj.links_b[N]])
+        return a[end][:, i, :, 1] * transpose(b[end][:, :, j, 1])
     end
 
     ell = N - length(indexset) + 1
 
     key = collect(indexset)
     if !(key in keys(obj.rightcache))
-        # (v1, v2)
-        idx_v1 = obj.links_a[ell+1]
-        idx_v2 = obj.links_b[ell+1]
-        right = ITensor(evaluateright(obj, indexset[2:end]), (idx_v1, idx_v2))
-
         i, j = indexset[1]
-        res_tensor =
-            right *
-            obj.a_MPO[ell] *
-            onehot(obj.sites1[ell] => i) *
-            obj.b_MPO[ell] *
-            onehot(obj.sites3[ell] => j)
-
-        obj.rightcache[key] = Array(res_tensor, [obj.links_a[ell], obj.links_b[ell]])
+        obj.rightcache[key] = _extend_cache(
+            evaluateright(obj, indexset[2:end]),
+            permutedims(a[ell], (4, 2, 3, 1)),
+            permutedims(b[ell], (4, 2, 3, 1)),
+            i, j)
     end
 
     return obj.rightcache[key]
@@ -235,11 +220,11 @@ function (obj::MatrixProduct{T})(
     rightindexset::AbstractVector{MultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
-
     N = length(obj)
     Nr = length(rightindexset[1])
     s_ = length(leftindexset[1]) + 1
-    e_ = N - length(rightindexset[1])
+    e_ = N -length(rightindexset[1])
+    a, b = obj.mpo
 
     # Unfused index
     leftindexset_unfused = [
@@ -251,17 +236,19 @@ function (obj::MatrixProduct{T})(
     ]
 
     t1 = time_ns()
-    left_ =
-        Array{T,3}(undef, dim(obj.links_a[s_]), dim(obj.links_b[s_]), length(leftindexset))
+    linkdims_a = vcat(1, TCI.linkdims(a), 1)
+    linkdims_b = vcat(1, TCI.linkdims(b), 1)
+
+    left_ = Array{T,3}(undef, length(leftindexset), linkdims_a[s_], linkdims_b[s_])
     for (i, idx) in enumerate(leftindexset_unfused)
-        left_[:, :, i] .= evaluateleft(obj, idx)
+        left_[i, :, :] .= evaluateleft(obj, idx)
     end
     t2 = time_ns()
 
     right_ = Array{T,3}(
         undef,
-        dim(obj.links_a[e_+1]),
-        dim(obj.links_b[e_+1]),
+        linkdims_a[e_+1],
+        linkdims_b[e_+1],
         length(rightindexset),
     )
     for (i, idx) in enumerate(rightindexset_unfused)
@@ -269,42 +256,44 @@ function (obj::MatrixProduct{T})(
     end
     t3 = time_ns()
 
-    index_left = Index(length(leftindexset), "left")
-    index_right = Index(length(rightindexset), "right")
-
-    res = ITensor(left_, obj.links_a[s_], obj.links_b[s_], index_left)
+    # (left_index, link_a, link_b, site[s_] * site'[s_] *  ... * site[e_] * site'[e_])
+    leftobj::Array{T,4} = reshape(left_, size(left_)..., 1)
     for n = s_:e_
-        res *= obj.a_MPO[n]
-        res *= obj.b_MPO[n]
+        #(left_index, link_a, link_b, S) * (link_a, site[n], shared, link_a')
+        #  => (left_index, link_b, S, site[n], shared, link_a')
+        tmp1 = _contract(leftobj, a[n], (2,), (1,))
+
+        # (left_index, link_b, S, site[n], shared, link_a') * (link_b, shared, site'[n], link_b')
+        #  => (left_index, S, site[n], link_a', site'[n], link_b')
+        tmp2 = _contract(tmp1, b[n], (2, 5), (1, 2))
+
+        # (left_index, S, site[n], link_a', site'[n], link_b')
+        #  => (left_index, link_a', link_b', S, site[n], site'[n]) 
+        tmp3 = permutedims(tmp2, (1, 4, 6, 2, 3, 5))
+
+        leftobj = reshape(tmp3, size(tmp3)[1:3]..., :)
     end
-    t4 = time_ns()
-    res *= ITensor(right_, obj.links_a[e_+1], obj.links_b[e_+1], index_right)
 
-    res_inds = vcat(
-        index_left,
-        collect(Iterators.flatten(zip(obj.sites1[s_:e_], obj.sites3[s_:e_]))),
-        index_right,
-    )
-
-    res_size = vcat(
-        dim(index_left),
-        [dim(s1) * dim(s3) for (s1, s3) in zip(obj.sites1[s_:e_], obj.sites3[s_:e_])],
-        dim(index_right),
+    return_size = (
+        length(leftindexset),
+        ntuple(i->size(a[i+s_-1], 2)*size(b[i+s_-1], 3), M)..., 
+        length(rightindexset),
     )
     t5 = time_ns()
+
+    # (left_index, link_a, link_b, S) * (link_a, link_b, right_index)
+    #   => (left_index, S, right_index)
+    res = _contract(leftobj, right_, (2, 3), (1, 2))
 
     if obj.f isa Function
         res .= obj.f.(res)
     end
-    #println("1: ", (t2 - t1)*1e-9, " sec")
-    #println("2: ", (t3 - t2)*1e-9, " sec")
-    #println("3: ", (t4 - t3)*1e-9, " sec")
-    #println("4: ", (t5 - t4)*1e-9, " sec")
 
-    return reshape(Array(res, res_inds), res_size...)
+    return reshape(res, return_size)
 end
 
 
+#==
 function _contract(obj::MatrixProduct)::MPO
     if obj.f isa Function
         error("Cannot contract matrix product with a function.")
@@ -319,6 +308,7 @@ function _contract(obj::MatrixProduct)::MPO
 
     return ITensors.contract(a_MPO, b_MPO; alg = "naive")
 end
+==#
 
 function _reshape_fusesites(t::AbstractArray{T}) where {T}
     shape = size(t)
