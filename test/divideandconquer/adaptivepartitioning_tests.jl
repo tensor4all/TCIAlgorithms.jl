@@ -77,7 +77,7 @@ end
             ComplexF64, f, localdims; maxbonddim=50, rtol=tol, verbosity=1, ntry=10
         )
 
-        tree = TCIA.adaptivepartion(creator, pordering; verbosity=1, maxnleaves=1000)
+        tree = TCIA.adaptiveinterpolate(creator, pordering; verbosity=1, maxnleaves=1000)
         @show collect(keys(tree))
         @show length(tree)
 
@@ -122,7 +122,7 @@ end
         ComplexF64, qf, localdims; maxbonddim=50, rtol=tol, verbosity=1, ntry=10
     )
 
-    tree = TCIA.adaptivepartion(creator, pordering; verbosity=1, maxnleaves=1000)
+    tree = TCIA.adaptiveinterpolate(creator, pordering; verbosity=1, maxnleaves=1000)
     @show collect(keys(tree))
     @show length(tree)
 end
@@ -147,7 +147,7 @@ end
         Float64, qf, localdims; maxbonddim=40, rtol=tol, verbosity=1, ntry=10
     )
 
-    partres = TCIA.adaptivepartion(creator, pordering; verbosity=1, maxnleaves=1000)
+    partres = TCIA.adaptiveinterpolate(creator, pordering; verbosity=1, maxnleaves=1000)
 
     sitedims = [[d] for d in localdims]
     partt = TCIA.PartitionedTensorTrain(partres, sitedims, pordering)
@@ -156,4 +156,28 @@ end
     @test isapprox(
         fxy(quantics_to_origcoord(grid, qidx)...), partt([[q] for q in qidx]); atol=tol
     )
+end
+
+@testset "zerofunction" begin
+    Random.seed!(1234)
+
+    R = 4
+    localdims = fill(4, R)
+
+    qf = x -> 0.0
+
+    tol = 1e-7
+
+    pordering = TCIA.PatchOrdering(collect(1:R))
+
+    creator = TCIA.TCI2PatchCreator(
+        Float64, qf, localdims; maxbonddim=10, rtol=tol, verbosity=1, ntry=10
+    )
+
+    partres = TCIA.adaptiveinterpolate(creator, pordering; verbosity=1, maxnleaves=2)
+
+    sitedims = [[d] for d in localdims]
+    partt = TCIA.PartitionedTensorTrain(partres, sitedims, pordering)
+    qidx = fill(1, R)
+    @test partt([[q] for q in qidx]) == 0.0
 end

@@ -166,11 +166,11 @@ M: TensorCI2, MPS, etc.
 abstract type AbstractPatchCreator{T,M} end
 
 mutable struct PatchCreatorResult{T,M}
-    data::M
+    data::Union{M,Nothing}
     isconverged::Bool
 end
 
-function adaptivepartion(
+function adaptiveinterpolate(
     creator::AbstractPatchCreator{T,M},
     pordering::PatchOrdering;
     sleep_time::Float64=1e-6,
@@ -240,11 +240,17 @@ function adaptivepartion(
 
     leaves_done = Dict{Vector{Vector{Int}},M}()
     for (k, v) in leaves
-        leaves_done[[[x] for x in k]] = v.data
+        leaves_done[[[x] for x in k]] = isnothing(v.data) ? _zerott(T, k, pordering, creator.localdims) : v.data
     end
 
     return leaves_done
     #PartitionedTensorTrain(leaves_done, pordering)
+end
+
+function _zerott(T, prefix, po::PatchOrdering, localdims::Vector{Int})
+    localdims_ = localdims[maskactiveindices(po, length(prefix))]
+
+    return TensorTrain([zeros(T, 1, d, 1) for d in localdims_])
 end
 
 #======================================================================
@@ -268,6 +274,7 @@ mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}
     tcikwargs::Dict
     maxval::Float64
     atol::Float64
+    ninitialpivot::Int
 end
 
 function TCI2PatchCreator(
@@ -279,10 +286,12 @@ function TCI2PatchCreator(
     verbosity::Int=0,
     tcikwargs=Dict(),
     ntry=100,
+    ninitialpivot=5
 )::TCI2PatchCreator{T} where {T}
     maxval, _ = _estimate_maxval(f, localdims; ntry=ntry)
     return TCI2PatchCreator{T}(
-        f, localdims, rtol, maxbonddim, verbosity, tcikwargs, maxval, rtol * maxval
+        f, localdims, rtol, maxbonddim, verbosity, tcikwargs, maxval, rtol * maxval,
+        ninitialpivot
     )
 end
 
@@ -317,7 +326,8 @@ function _crossinterpolate2(
         )
     end
 
-    maxbonddim_hist = maximum(others[(end - ncheckhistory):end])
+    ncheckhistory_ = min(ncheckhistory, length(others))
+    maxbonddim_hist = maximum(others[(end - ncheckhistory_ + 1):end])
 
     return PatchCreatorResult{T,TensorTrain{T,3}}(
         TensorTrain(tci), TCI.maxbonderror(tci) < tolerance && maxbonddim_hist < maxbonddim
@@ -336,13 +346,17 @@ function createpatch(
         return obj.f(map(first, idx))
     end
 
-    firstpivot = TCI.optfirstpivot(f_, localdims_, fill(1, length(localdims_)))
+    firstpivots = findinitialpivots(f_, localdims_, obj.ninitialpivot)
+
+    if all(f_.(firstpivots) .== 0)
+        return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
+    end
 
     return _crossinterpolate2(
         T,
         f_,
         localdims_,
-        [firstpivot],
+        firstpivots,
         obj.atol;
         maxbonddim=obj.maxbonddim,
         verbosity=obj.verbosity,
