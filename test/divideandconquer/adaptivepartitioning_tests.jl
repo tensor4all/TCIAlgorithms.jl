@@ -13,7 +13,8 @@ addprocs(max(0, MAX_WORKERS - nworkers()))
 @everywhere import TCIAlgorithms as TCIA
 @everywhere using ITensors
 @everywhere ITensors.disable_warn_order()
-@everywhere import QuanticsGrids: DiscretizedGrid, quantics_to_origcoord
+@everywhere import QuanticsGrids:
+    DiscretizedGrid, quantics_to_origcoord, origcoord_to_quantics
 
 @testset "PatchOrdering" begin
     po = TCIA.PatchOrdering([4, 3, 2, 1])
@@ -91,6 +92,7 @@ end
     end
 end
 
+#==
 @testset "2D" begin
     Random.seed!(1234)
 
@@ -123,4 +125,35 @@ end
     tree = TCIA.adaptivepartion(creator, pordering; verbosity=1, maxnleaves=1000)
     @show collect(keys(tree))
     @show length(tree)
+end
+==#
+
+@testset "2D Gaussian" begin
+    Random.seed!(1234)
+
+    @everywhere fxy(x, y) = exp(-0.5 * (x^2 + y^2))
+
+    R = 40
+    grid = DiscretizedGrid{2}(R, (-5, -5), (5, 5))
+    localdims = fill(4, R)
+
+    qf = x -> fxy(quantics_to_origcoord(grid, x)...)
+
+    tol = 1e-7
+
+    pordering = TCIA.PatchOrdering(collect(1:R))
+
+    creator = TCIA.TCI2PatchCreator(
+        Float64, qf, localdims; maxbonddim=40, rtol=tol, verbosity=1, ntry=10
+    )
+
+    partres = TCIA.adaptivepartion(creator, pordering; verbosity=1, maxnleaves=1000)
+
+    sitedims = [[d] for d in localdims]
+    partt = TCIA.PartitionedTensorTrain(partres, sitedims, pordering)
+    qidx = origcoord_to_quantics(grid, (0.0, 1.0))
+
+    @test isapprox(
+        fxy(quantics_to_origcoord(grid, qidx)...), partt([[q] for q in qidx]); atol=tol
+    )
 end
