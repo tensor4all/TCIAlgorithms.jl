@@ -9,6 +9,8 @@ struct PatchOrdering
     end
 end
 
+Base.length(po::PatchOrdering) = length(po.ordering)
+
 """
 n is the length of the prefix.
 """
@@ -242,6 +244,7 @@ function adaptivepartion(
     end
 
     return leaves_done
+    #PartitionedTensorTrain(leaves_done, pordering)
 end
 
 #======================================================================
@@ -359,4 +362,91 @@ function _estimate_maxval(f, localdims; ntry=100)
         end
     end
     return maxval, pivot
+end
+
+function Projector(
+    po::PatchOrdering, prefix::Vector{Vector{Int}}, sitedims::Vector{Vector{Int}}
+)
+    data = Vector{Int}[fill(0, length(s)) for s in sitedims]
+    for (i, n) in enumerate(po.ordering[1:length(prefix)])
+        data[n] = deepcopy(prefix[i])
+    end
+    return Projector(data)
+end
+
+function PartitionedTensorTrain(
+    tts::Dict{Vector{Vector{Int}},TensorTrain{T,N}},
+    sitedims::AbstractVector{<:AbstractVector{Int}},
+    po::PatchOrdering,
+)::PartitionedTensorTrain{T} where {T,N}
+    keys_ = keys(tts)
+    L = Base.only(unique([length(tt) + length(p) for (p, tt) in tts]))
+    L == length(sitedims) || error("Inconsistent length")
+
+    globalprojecter = Projector([fill(0, length(s)) for s in sitedims])
+
+    tts_ = ProjectedTensorTrain{T,N}[]
+    for prefix in keys_
+        p = Projector(po, prefix, sitedims)
+        push!(tts_, ProjectedTensorTrain(tts[prefix], sitedims, p))
+    end
+
+    return PartitionedTensorTrain(tts_, globalprojecter, sitedims)
+end
+
+"""
+`tt` is a TensorTrain{T,3} and `prj` is a Projector.
+`tt` is defined on unprojected indices.
+Return a ProjectedTensorTrain{T} defined on full indices.
+"""
+function ProjectedTensorTrain(
+    tt::TensorTrain{T,3}, localdims::AbstractVector{<:AbstractVector{Int}}, prj::Projector
+)::ProjectedTensorTrain{T,3} where {T}
+    length(tt) == Base.sum((Base.only(p) == 0 for p in prj)) || error("Inconsistent length")
+    L = length(prj)
+
+    sitetensors = Array{T,3}[zeros(T, 1, 1, 1) for _ in 1:L]
+    linkdims = ones(Int, L + 1)
+    localdims_ = [Base.only(d) for d in localdims]
+    println("")
+
+    l_ = 1
+    for (l, p) in enumerate(prj)
+        onlyp = Base.only(p)
+        if onlyp == 0
+            linkdims[l] = size(tt[l_], 1)
+            linkdims[l + 1] = size(tt[l_], 4)
+            sitetensors[l] = tt[l_]
+            l_ += 1
+        end
+    end
+
+    # Compute linkdims on full indices
+    while true
+        linkdims_ = deepcopy(linkdims)
+        for (n, p) in enumerate(prj)
+            onlyp = Base.only(p)
+            if onlyp != 0
+                if linkdims[n] != linkdims[n + 1]
+                    linkdims[n] = linkdims[n + 1] = max(linkdims[n], linkdims[n + 1])
+                end
+            end
+        end
+        if linkdims == linkdims_
+            break
+        end
+    end
+
+    # Substitute identity matrices into projected indices
+    for (n, p) in enumerate(prj)
+        if Base.only(p) == 0
+            continue
+        end
+        tensor = zeros(T, linkdims[n], localdims_[n], linkdims[n + 1])
+        tensor[:, Base.only(p), :] .= Matrix{T}(LA.I, linkdims[n], linkdims[n + 1])
+        sitetensors[n] = tensor
+    end
+
+    fulltt = TensorTrain{T,3}(sitetensors)
+    return ProjectedTensorTrain{T,3}(fulltt, prj)
 end

@@ -42,6 +42,21 @@ end
 
 Base.length(obj::ProjectedTensorTrain{T,N}) where {T,N} = length(obj.data)
 
+function Base.show(io::IO, obj::ProjectedTensorTrain{T,N}) where {T,N}
+    return print(
+        io,
+        "ProjectedTensorTrain{$T} with rank $(TCI.rank(obj.data)) on $(obj.projector.data)",
+    )
+end
+
+function TCI.sitetensors(obj::ProjectedTensorTrain{T,N}) where {T,N}
+    return obj.data.sitetensors
+end
+
+function TCI.sitetensor(obj::ProjectedTensorTrain{T,N}, i) where {T,N}
+    return TCI.sitetensor(obj.tt, i)
+end
+
 function (obj::ProjectedTensorTrain{T,N})(
     indexsets::AbstractVector{<:AbstractVector{LocalIndex}}
 )::T where {T,N}

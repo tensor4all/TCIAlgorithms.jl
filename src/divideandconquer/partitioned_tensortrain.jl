@@ -25,6 +25,13 @@ mutable struct PartitionedTensorTrain{T}
     end
 end
 
+function Base.show(io::IO, obj::PartitionedTensorTrain{T}) where {T}
+    print(io, "PartitionedTensorTrain{$T}")
+    for tt in obj.tensortrains
+        print(io, "  ", tt, " ")
+    end
+end
+
 """
 Sum over external indices
 """

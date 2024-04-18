@@ -21,6 +21,31 @@ addprocs(max(0, MAX_WORKERS - nworkers()))
     @test TCIA.maskactiveindices(po, 1) == [1, 1, 1, 0]
     @test TCIA.fullindices(po, [[1]], [[2], [3], [4]]) == [[2], [3], [4], [1]]
     @test TCIA.fullindices(po, [[1], [2]], [[3], [4]]) == [[3], [4], [2], [1]]
+
+    let
+        po = TCIA.PatchOrdering([1, 3, 2, 4, 5])
+        prefix = [[1], [2]]
+        @test TCIA.Projector(po, prefix, localdims).data == [[1], [0], [2], [0], [0]]
+    end
+end
+
+@testset "ProjectedTensorTrain from a tensor train on unprojected indices" begin
+    T = Float64
+    L = 5
+
+    # projector = [1, 2, 0, 0, 0]
+    prj = TCIA.Projector([[1], [2], [0], [0], [0]])
+    localdims = fill([2], L)
+
+    length(tt) == sum((Base.only(p) == 0 for p in prj))
+
+    χ = 3
+    tt = TCI.TensorTrain{T,3}([rand(1, 2, χ), rand(χ, 2, χ), rand(χ, 2, 1)])
+
+    ptt = TCIA.ProjectedTensorTrain(tt, localdims, prj)
+    @show TCI.linkdims(ptt.data)
+    @show ptt([[1], [1], [1], [1], [1]]) == 0
+    @show ptt([[1], [2], [1], [1], [1]]) ≈ tt([[1], [1], [1]])
 end
 
 @testset "2D fermi gk" begin

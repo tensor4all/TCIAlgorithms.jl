@@ -11,6 +11,11 @@ import TCIAlgorithms as TCIA
     @test (TCIA.Projector([[1], [2], [3]]) == TCIA.Projector([[1], [2], [3]])) == true
 
     @test ([[1], [2], [3]] <= TCIA.Projector([[0], [2], [3]])) == true
+
+    @test TCIA.Projector([[1], [2]]) & TCIA.Projector([[0], [0]]) ==
+        TCIA.Projector([[1], [2]])
+    @test TCIA.Projector([[1, 0], [2]]) & TCIA.Projector([[0, 3], [0]]) ==
+        TCIA.Projector([[1, 3], [2]])
 end
 
 @testset "projectat!" begin

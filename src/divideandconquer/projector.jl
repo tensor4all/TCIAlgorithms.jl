@@ -8,7 +8,7 @@ Attributes:
 abstract type ProjectableEvaluator{T} <: TCI.BatchEvaluator{T} end
 
 struct Projector
-    data::Vector{Vector{Int}}
+    data::Vector{Vector{Int}} # 0 means no projection
     function Projector(data)
         return new(data)
     end
@@ -62,6 +62,29 @@ end
 Base.:(==)(a::Projector, b::Projector)::Bool = (a.data == b.data)
 Base.:(<)(a::Projector, b::Projector)::Bool = (a <= b) && (a != b)
 Base.:(>)(a::Projector, b::Projector)::Bool = b < a
+
+function Base.:&(a::Projector, b::Projector)::Projector
+    length(a) == length(b) || error("Length mismatch")
+
+    ab = Vector{Int}[]
+    for (a_, b_) in zip(a, b)
+        ab_ = Int[]
+        for (a__, b__) in zip(a_, b_)
+            if a__ == 0
+                push!(ab_, b__)
+            elseif b__ == 0
+                push!(ab_, a__)
+            elseif a__ == b__
+                push!(ab_, a__)
+            else
+                error("Incompatible projectors $(a) && $(b)")
+            end
+        end
+        push!(ab, ab_)
+    end
+
+    return Projector(ab)
+end
 
 function Base.:<=(a::Projector, b::Projector)::Bool
     length(a) == length(b) || error("Length mismatch")

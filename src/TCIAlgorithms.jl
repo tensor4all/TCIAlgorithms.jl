@@ -15,6 +15,7 @@ import TensorCrossInterpolation as TCI
 import TensorCrossInterpolation:
     TensorTrain, evaluate, TTCache, MultiIndex, LocalIndex, TensorCI2
 using TCIITensorConversion
+import LinearAlgebra as LA
 
 using ITensors # TO BE REMOVED
 
