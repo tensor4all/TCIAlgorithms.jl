@@ -5,7 +5,7 @@ struct PatchOrdering
     ordering::Vector{Int}
     function PatchOrdering(ordering::Vector{Int})
         sort(ordering) == collect(1:length(ordering)) || error("Inconsistent ordering")
-        new(ordering)
+        return new(ordering)
     end
 end
 
@@ -19,13 +19,11 @@ function maskactiveindices(po::PatchOrdering, nprefix::Int)
 end
 
 function fullindices(
-    po::PatchOrdering,
-    prefix::Vector{Vector{Int}},
-    restindices::Vector{Vector{Int}},
+    po::PatchOrdering, prefix::Vector{Vector{Int}}, restindices::Vector{Vector{Int}}
 )
     length(prefix) + length(restindices) == length(po.ordering) ||
         error("Inconsistent length")
-    res = [Int[] for _ = 1:(length(prefix)+length(restindices))]
+    res = [Int[] for _ in 1:(length(prefix) + length(restindices))]
 
     res[po.ordering[1:length(prefix)]] .= prefix
     res[maskactiveindices(po, length(prefix))] .= restindices
@@ -118,7 +116,6 @@ function evaluate(
     return _evaluate(obj.data, _onlyactiveindices(obj, idx))
 end
 
-
 """
 Convert a dictionary of patches to a tree
 """
@@ -166,19 +163,17 @@ M: TensorCI2, MPS, etc.
 """
 abstract type AbstractPatchCreator{T,M} end
 
-
 mutable struct PatchCreatorResult{T,M}
     data::M
     isconverged::Bool
 end
 
-
 function adaptivepartion(
     creator::AbstractPatchCreator{T,M},
     pordering::PatchOrdering;
-    sleep_time::Float64 = 1e-6,
-    maxnleaves = 100,
-    verbosity = 0,
+    sleep_time::Float64=1e-6,
+    maxnleaves=100,
+    verbosity=0,
 )::Dict{Vector{MultiIndex},M} where {T,M}
     leaves = Dict{Vector{Int},Union{Task,PatchCreatorResult{T,M}}}()
 
@@ -198,7 +193,12 @@ function adaptivepartion(
                     if verbosity > 0
                         println("Fetching a task for $(prefix) ...")
                     end
-                    leaves[prefix] = fetch(leaf)
+                    fetched = fetch(leaf)
+                    if fetched isa RemoteException
+                        err_msg = sprint(showerror, fetched.captured)
+                        error("Error in creating a patch for $(prefix): $err_msg")
+                    end
+                    leaves[prefix] = fetched
                 end
                 done = false
                 continue
@@ -210,12 +210,16 @@ function adaptivepartion(
                 done = false
                 delete!(leaves, prefix)
 
-                for ic = 1:creator.localdims[pordering.ordering[length(prefix)+1]]
+                for ic in 1:creator.localdims[pordering.ordering[length(prefix) + 1]]
                     prefix_ = vcat(prefix, ic)
                     if verbosity > 0
                         println("Creating a task for $(prefix_) ...")
                     end
-                    t = @task fetch(@spawnat :any createpatch(creator, pordering, [[x] for x in prefix_]))
+                    t = @task fetch(
+                        @spawnat :any createpatch(
+                            creator, pordering, [[x] for x in prefix_]
+                        )
+                    )
                     newtasks[prefix_] = t
                     schedule(t)
                 end
@@ -240,16 +244,17 @@ function adaptivepartion(
     return leaves_done
 end
 
-
 #======================================================================
    TCI2 Interpolation of a function
 ======================================================================#
 TensorTrainState{T} = TensorTrain{T,3} where {T}
 _evaluate(obj::TensorCI2, idx::Vector{Vector{Int}}) = TCI.evaluate(obj, map(first, idx))
-_evaluate(obj::TensorTrainState{T}, idx::AbstractVector{Int}) where {T} =
-    TCI.evaluate(obj, idx)
-_evaluate(obj::TensorTrainState{T}, idx::Vector{Vector{Int}}) where {T} =
-    TCI.evaluate(obj, map(first, idx))
+function _evaluate(obj::TensorTrainState{T}, idx::AbstractVector{Int}) where {T}
+    return TCI.evaluate(obj, idx)
+end
+function _evaluate(obj::TensorTrainState{T}, idx::Vector{Vector{Int}}) where {T}
+    return TCI.evaluate(obj, map(first, idx))
+end
 
 mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}}
     f::Any
@@ -262,30 +267,21 @@ mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}
     atol::Float64
 end
 
-
 function TCI2PatchCreator(
     ::Type{T},
     f,
     localdims::Vector{Int};
-    rtol::Float64 = 1e-8,
-    maxbonddim::Int = 100,
-    verbosity::Int = 0,
-    tcikwargs = Dict(),
-    ntry = 100,
+    rtol::Float64=1e-8,
+    maxbonddim::Int=100,
+    verbosity::Int=0,
+    tcikwargs=Dict(),
+    ntry=100,
 )::TCI2PatchCreator{T} where {T}
-    maxval, _ = _estimate_maxval(f, localdims; ntry = ntry)
+    maxval, _ = _estimate_maxval(f, localdims; ntry=ntry)
     return TCI2PatchCreator{T}(
-        f,
-        localdims,
-        rtol,
-        maxbonddim,
-        verbosity,
-        tcikwargs,
-        maxval,
-        rtol * maxval,
+        f, localdims, rtol, maxbonddim, verbosity, tcikwargs, maxval, rtol * maxval
     )
 end
-
 
 function _crossinterpolate2(
     ::Type{T},
@@ -293,8 +289,8 @@ function _crossinterpolate2(
     localdims::Vector{Int},
     initialpivots::Vector{MultiIndex},
     tolerance::Float64;
-    maxbonddim::Int = typemax(Int),
-    verbosity::Int = 0,
+    maxbonddim::Int=typemax(Int),
+    verbosity::Int=0,
 ) where {T}
     ncheckhistory = 3
     tci, others = TCI.crossinterpolate2(
@@ -302,30 +298,31 @@ function _crossinterpolate2(
         f,
         localdims,
         initialpivots;
-        tolerance = tolerance,
-        maxbonddim = maxbonddim,
-        verbosity = verbosity,
-        normalizeerror = false,
+        tolerance=tolerance,
+        maxbonddim=maxbonddim,
+        verbosity=verbosity,
+        normalizeerror=false,
         loginterval=1,
-        nsearchglobalpivot = 10,
+        nsearchglobalpivot=10,
         maxiter=10,
         ncheckhistory=ncheckhistory,
-        tolmarginglobalsearch=10.0
+        tolmarginglobalsearch=10.0,
     )
+    if maximum(TCI.linkdims(tci)) == 0
+        error(
+            "TCI has zero rank, maxsamplevalue: $(tci.maxsamplevalue), tolerance: ($tolerance)",
+        )
+    end
 
-    @show others
-    maxbonddim_hist = maximum(others[end-ncheckhistory:end])
+    maxbonddim_hist = maximum(others[(end - ncheckhistory):end])
 
     return PatchCreatorResult{T,TensorTrain{T,3}}(
-        TensorTrain(tci),
-        TCI.maxbonderror(tci) < tolerance && maxbonddim_hist < maxbonddim,
+        TensorTrain(tci), TCI.maxbonderror(tci) < tolerance && maxbonddim_hist < maxbonddim
     )
 end
 
 function createpatch(
-    obj::TCI2PatchCreator{T},
-    pordering::PatchOrdering,
-    prefix::Vector{Vector{Int}},
+    obj::TCI2PatchCreator{T}, pordering::PatchOrdering, prefix::Vector{Vector{Int}}
 ) where {T}
     mask = maskactiveindices(pordering, length(prefix))
     localdims_ = obj.localdims[mask]
@@ -344,16 +341,15 @@ function createpatch(
         localdims_,
         [firstpivot],
         obj.atol;
-        maxbonddim = obj.maxbonddim,
-        verbosity = obj.verbosity,
+        maxbonddim=obj.maxbonddim,
+        verbosity=obj.verbosity,
     )
 end
 
-
-function _estimate_maxval(f, localdims; ntry = 100)
+function _estimate_maxval(f, localdims; ntry=100)
     pivot = fill(1, length(localdims))
     maxval::Float64 = abs(f(pivot))
-    for i = 1:ntry
+    for i in 1:ntry
         pivot_ = [rand(1:localdims[i]) for i in eachindex(localdims)]
         pivot_ = TCI.optfirstpivot(f, localdims, pivot_)
         maxval_ = abs(f(pivot_))

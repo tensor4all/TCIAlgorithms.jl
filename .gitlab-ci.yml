@@ -3,7 +3,7 @@ before_script:
   - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "git@gitlab.com:"
   - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "https://gitlab.com/" --add
   - |
-     julia -e '
+      julia -e '
       using Pkg
       Pkg.Registry.add(
         RegistrySpec(url = "https://github.com/JuliaRegistries/General.git")
@@ -42,7 +42,6 @@ cache:
         c, t = get_summary(process_folder())
         using Printf
         @printf "Test coverage %.2f%%\n" 100c / t'
-
 Julia test:
   image: julia:${JULIA_VERSION}
   extends:
@@ -51,16 +50,10 @@ Julia test:
   parallel:
     matrix:
       - JULIA_VERSION:
-        #- "1.6"
-        #- "1.7"
-        - "1.8"
-        - "1.9"
         - "1.10"
-        - "1" # latest stable version
+        - "1.6"
 
-pages:
-  image: julia:1.9
-  stage: deploy
+.doctest:
   script:
     - |
       julia --project=docs -e '
@@ -71,6 +64,16 @@ pages:
         using TCIAlgorithms
         doctest(TCIAlgorithms)
         include("docs/make.jl")'
+doctest:
+  image: julia:1.6
+  extends:
+    - .doctest
+pages:
+  image: julia:1.6
+  stage: deploy
+  extends:
+    - .doctest
+  after_script:
     - mkdir -p public
     - mv docs/build public/dev
   artifacts:
@@ -95,3 +98,18 @@ CompatHelper:
       julia --color=yes -e "
         import CompatHelper;
         CompatHelper.main(;use_existing_registries=true)"
+
+JuliaFormatter:
+  image: julia:1 # Set to the Julia version you want to use
+  script:
+    - |
+      julia --color=yes -e "
+        import Pkg;
+        name = \"JuliaFormatter\";
+        uuid = \"98e50ef6-434e-11e9-1051-2b60c6c9e899\";
+        version = \"1\";
+        Pkg.add(; name, uuid, version)"
+    - |
+      julia --color=yes -e "
+        import JuliaFormatter;
+        @assert(JuliaFormatter.format(\".\", verbose=true))"

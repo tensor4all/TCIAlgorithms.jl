@@ -36,8 +36,6 @@ end
         @test all(A[:, 1, :] .== A_org)
         @test all(A[:, 2, :] .== 0.0)
     end
-
-
 end
 
 @testset "truncate" begin
@@ -51,17 +49,16 @@ end
     localdims2 = [2, 2, 2, 2]
 
     tt = TCI.TensorTrain([
-        rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n+1]) for n = 1:N
+        rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
     ])
 
     tt2 = TCIA.truncate(tt; cutoff=1e-30)
 
-    indices = [[[rand(1:localdims1[n]), rand(1:localdims2[n])] for n = 1:N] for _ in 1:100]
+    indices = [[[rand(1:localdims1[n]), rand(1:localdims2[n])] for n in 1:N] for _ in 1:100]
     before = [tt(idx) for idx in indices]
     after = [tt2(idx) for idx in indices]
     @test before ≈ after
 end
-
 
 @testset "ProjectedTensorTrain" begin
     N = 4
@@ -72,7 +69,7 @@ end
     localdims2 = [3, 3, 3, 3]
 
     tt = TCI.TensorTrain([
-        rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n+1]) for n = 1:N
+        rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
     ])
 
     # Projection 
@@ -103,7 +100,6 @@ end
     @test tt(indexset1) ≈ ptt_truncated(indexset1) # exact equality
 end
 
-
 @testset "PartitionedTensorTrain" for compression in [false, true]
     N = 4
     bonddims = [1, 10, 10, 10, 1]
@@ -113,7 +109,7 @@ end
     localdims2 = [2, 2, 2, 2]
 
     tt = TCI.TensorTrain([
-        rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n+1]) for n = 1:N
+        rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
     ])
 
     outer_prj = TCIA.Projector([[0, 0], [0, 0], [0, 0], [0, 0]])
@@ -121,7 +117,7 @@ end
     ptt = TCIA.PartitionedTensorTrain(TCIA.ProjectedTensorTrain(tt, outer_prj))
 
     ptt2 = TCIA.partitionat(ptt, 1; compression=compression)
-    ref = [[1,1], [2, 1], [1, 2], [2,2]]
+    ref = [[1, 1], [2, 1], [1, 2], [2, 2]]
     for (i, obj) in enumerate(ptt2.tensortrains)
         @test obj.projector[1] == ref[i]
     end
@@ -143,12 +139,16 @@ end
     localdims2 = [2, 2, 2, 2]
 
     ptt1 = TCIA.ProjectedTensorTrain(
-        TCI.TensorTrain([rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n+1]) for n = 1:N]),
-        TCIA.Projector([[1, 0], [0, 1], [0, 0], [0, 0]])
+        TCI.TensorTrain([
+            rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
+        ]),
+        TCIA.Projector([[1, 0], [0, 1], [0, 0], [0, 0]]),
     )
     ptt2 = TCIA.ProjectedTensorTrain(
-        TCI.TensorTrain([rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n+1]) for n = 1:N]),
-        TCIA.Projector([[0, 1], [0, 0], [0, 0], [0, 0]])
+        TCI.TensorTrain([
+            rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
+        ]),
+        TCIA.Projector([[0, 1], [0, 0], [0, 0], [0, 0]]),
     )
 
     pprod = TCIA.create_projected_tensortrain_product((ptt1, ptt2))
@@ -166,21 +166,24 @@ end
 
     leftindexset = [[1]]
     rightindexset = [[1]]
-    @test pprod(leftindexset, rightindexset, Val(2)) ≈ ref(leftindexset, rightindexset, Val(2))
+    @test pprod(leftindexset, rightindexset, Val(2)) ≈
+        ref(leftindexset, rightindexset, Val(2))
 
     multiplier = TCIA.create_multiplier([ptt1], [ptt2], pprod.projector)
-    @test multiplier([[1, 1], [1, 1], [1, 1], [1, 1]]) ≈ ref([[1, 1], [1, 1], [1, 1], [1, 1]])
+    @test multiplier([[1, 1], [1, 1], [1, 1], [1, 1]]) ≈
+        ref([[1, 1], [1, 1], [1, 1], [1, 1]])
 
     let
         leftindexsets = [[1], [2]]
         rightindexsets = [[1], [2]]
-        @test multiplier(leftindexsets, rightindexsets, Val(2)) ≈ ref(leftindexsets, rightindexsets, Val(2))
+        @test multiplier(leftindexsets, rightindexsets, Val(2)) ≈
+            ref(leftindexsets, rightindexsets, Val(2))
     end
 
     let
-        leftindexsets = [[1,1], [2,1], [1,2], [2,2]]
+        leftindexsets = [[1, 1], [2, 1], [1, 2], [2, 2]]
         rightindexsets = [[1], [2]]
-        @test multiplier(leftindexsets, rightindexsets, Val(1)) ≈ ref(leftindexsets, rightindexsets, Val(1))
+        @test multiplier(leftindexsets, rightindexsets, Val(1)) ≈
+            ref(leftindexsets, rightindexsets, Val(1))
     end
-
 end

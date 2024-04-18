@@ -21,13 +21,15 @@ using ITensors
 
     atts = [
         TCI.TensorTrain([
-            rand(bonddims_a[n], localdims1[n], localdims2[n], bonddims_a[n+1]) for n = 1:N
-        ]) for _ = 1:Nsum
+            rand(bonddims_a[n], localdims1[n], localdims2[n], bonddims_a[n + 1]) for
+            n in 1:N
+        ]) for _ in 1:Nsum
     ]
     btts = [
         TCI.TensorTrain([
-            rand(bonddims_b[n], localdims2[n], localdims3[n], bonddims_b[n+1]) for n = 1:N
-        ]) for _ = 1:Nsum
+            rand(bonddims_b[n], localdims2[n], localdims3[n], bonddims_b[n + 1]) for
+            n in 1:N
+        ]) for _ in 1:Nsum
     ]
 
     products = [TCIA.MatrixProduct(a, b) for (a, b) in zip(atts, btts)]
@@ -35,8 +37,6 @@ using ITensors
 
     @test TCI.isbatchevaluable(ab)
 
-    @test ab([Int[]], [Int[]], Val(N)) ≈
-          sum(p([Int[]], [Int[]], Val(N)) for p in products)
+    @test ab([Int[]], [Int[]], Val(N)) ≈ sum(p([Int[]], [Int[]], Val(N)) for p in products)
     @test ab(fill(1, N)) ≈ sum((p(fill(1, N)) for p in products))
-
 end

@@ -9,16 +9,17 @@ import TCIAlgorithms as TCIA
     @assert length(bonddims) == N + 1
 
     localdims = [2, 3, 3, 2]
-    a = TCI.TensorTrain([rand(bonddims[n], localdims[n], bonddims[n+1]) for n = 1:N])
-    b = TCI.TensorTrain([rand(bonddims[n], localdims[n], bonddims[n+1]) for n = 1:N])
+    a = TCI.TensorTrain([rand(bonddims[n], localdims[n], bonddims[n + 1]) for n in 1:N])
+    b = TCI.TensorTrain([rand(bonddims[n], localdims[n], bonddims[n + 1]) for n in 1:N])
 
-    ab = TCIA.ElementwiseProduct([a, b]; f = f)
+    ab = TCIA.ElementwiseProduct([a, b]; f=f)
 
     @test TCI.isbatchevaluable(ab)
 
     tolerance = 1e-12
-    tci, ranks, errors =
-        TCI.crossinterpolate2(Float64, ab, localdims, [ones(Int, N)]; tolerance = tolerance)
+    tci, ranks, errors = TCI.crossinterpolate2(
+        Float64, ab, localdims, [ones(Int, N)]; tolerance=tolerance
+    )
 
     ab_res = Float64[]
     ab_ref = Float64[]
@@ -29,5 +30,4 @@ import TCIAlgorithms as TCIA
     end
 
     @test ab_res ≈ ab_ref
-
 end

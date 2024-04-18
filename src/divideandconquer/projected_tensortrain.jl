@@ -9,34 +9,51 @@ mutable struct ProjectedTensorTrain{T,N} <: ProjectableEvaluator{T}
     sitedims::Vector{Vector{Int}} # (L, N-2)
 end
 
-function ProjectedTensorTrain(data::TensorTrain{T,N}, projector=Projector([fill(0, N - 2) for _ in 1:length(data)]); kwargs...) where {T,N}
+function ProjectedTensorTrain(
+    data::TensorTrain{T,N},
+    projector=Projector([fill(0, N - 2) for _ in 1:length(data)]);
+    kwargs...,
+) where {T,N}
     return ProjectedTensorTrain{T,N}(data, projector; kwargs...)
 end
 
-function ProjectedTensorTrain{T,N}(data, projector=Projector([fill(0, N - 2) for _ in 1:length(data)]);
+function ProjectedTensorTrain{T,N}(
+    data,
+    projector=Projector([fill(0, N - 2) for _ in 1:length(data)]);
     compression::Bool=false,
     cutoff::Float64=1e-30,
-    maxdim::Int=typemax(Int)) where {T,N}
+    maxdim::Int=typemax(Int),
+) where {T,N}
     L = length(data)
     length(projector) == L || error("Length mismatch: projector")
     obj = ProjectedTensorTrain{T,N}(data, projector, TCI.sitedims(data))
     # Why do we need force option?
     globalprojector = Projector([fill(0, N - 2) for _ in 1:length(data)])
-    obj = project(obj, projector; force=(project!=globalprojector), compression=compression, cutoff=cutoff, maxdim=maxdim)
+    obj = project(
+        obj,
+        projector;
+        force=(project != globalprojector),
+        compression=compression,
+        cutoff=cutoff,
+        maxdim=maxdim,
+    )
     return obj
 end
 
 Base.length(obj::ProjectedTensorTrain{T,N}) where {T,N} = length(obj.data)
 
 function (obj::ProjectedTensorTrain{T,N})(
-    indexsets::AbstractVector{<:AbstractVector{LocalIndex}})::T where {T,N}
+    indexsets::AbstractVector{<:AbstractVector{LocalIndex}}
+)::T where {T,N}
     if !(indexsets <= projector(obj))
         return zero(T)
     end
     return obj.data(indexsets)
 end
 
-function _multii(obj::ProjectedTensorTrain{T,N}, indexset::MultiIndex)::Vector{Vector{Int}} where {T,N}
+function _multii(
+    obj::ProjectedTensorTrain{T,N}, indexset::MultiIndex
+)::Vector{Vector{Int}} where {T,N}
     return multii(obj.sitedims, indexset)
 end
 
@@ -58,7 +75,7 @@ function project(
     force::Bool=false,
     compression::Bool=false,
     cutoff::Float64=1e-30,
-    maxdim::Int=typemax(Int)
+    maxdim::Int=typemax(Int),
 )::Union{ProjectedTensorTrain{T,N},Nothing} where {T,N}
     prj <= obj.projector || error("Projector $prj is not compatible with $obj.projector")
 
@@ -72,7 +89,7 @@ function project(
 
     # Projection
     for l in 1:length(obj.sitedims)
-        for n in 1:N-2
+        for n in 1:(N - 2)
             if projector[l][n] == 0
                 continue
             end
@@ -89,9 +106,10 @@ function project(
     return ProjectedTensorTrain{T,N}(data, projector, obj.sitedims)
 end
 
-
 # TODO: Remove ITensor dependency
-function truncate(obj::TensorTrain{T,N}; cutoff=1e-30, maxdim=typemax(Int))::TensorTrain{T,N} where {T,N}
+function truncate(
+    obj::TensorTrain{T,N}; cutoff=1e-30, maxdim=typemax(Int)
+)::TensorTrain{T,N} where {T,N}
     sitedims = TCI.sitedims(obj)
     L = length(sitedims)
     sitedims_li = [prod(sitedims[l]) for l in 1:L]
@@ -103,7 +121,7 @@ function truncate(obj::TensorTrain{T,N}; cutoff=1e-30, maxdim=typemax(Int))::Ten
 
     links = [Index(s, "link=$(l-1)") for (l, s) in enumerate(linkdims)]
     itensors = [
-        ITensor(t, links[l], sites_li[l], links[l+1]) for (l, t) in enumerate(tensors)
+        ITensor(t, links[l], sites_li[l], links[l + 1]) for (l, t) in enumerate(tensors)
     ]
     itensors[1] *= onehot(links[1] => 1)
     itensors[end] *= onehot(links[end] => 1)
@@ -116,20 +134,17 @@ function truncate(obj::TensorTrain{T,N}; cutoff=1e-30, maxdim=typemax(Int))::Ten
 
     tensors_truncated = Array{T,4}[]
     for l in 1:L
-        t =
-            if l == 1
-                Array(Ψ[1], (sites_li[1], links_new[1]))
-            elseif l == L
-                Array(Ψ[end], (links_new[end], sites_li[end]))
-            else
-                Array(Ψ[l], (links_new[l-1], sites_li[l], links_new[l]))
-            end
+        t = if l == 1
+            Array(Ψ[1], (sites_li[1], links_new[1]))
+        elseif l == L
+            Array(Ψ[end], (links_new[end], sites_li[end]))
+        else
+            Array(Ψ[l], (links_new[l - 1], sites_li[l], links_new[l]))
+        end
 
         push!(
             tensors_truncated,
-            reshape(t,
-                linkdims_new[l], sitedims[l]..., linkdims_new[l+1]
-            )
+            reshape(t, linkdims_new[l], sitedims[l]..., linkdims_new[l + 1]),
         )
     end
 
