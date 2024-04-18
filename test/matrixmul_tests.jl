@@ -213,12 +213,12 @@ end
     localdims3 = [2, 2, 2, 2]
 
     a = TCI.TensorTrain{ComplexF64,4}([
-        rand(ComplexF64, bonddims_a[n], localdims1[n], localdims2[n], bonddims_a[n+1])
-        for n = 1:N
+        rand(ComplexF64, bonddims_a[n], localdims1[n], localdims2[n], bonddims_a[n + 1]) for
+        n in 1:N
     ])
     b = TCI.TensorTrain{ComplexF64,4}([
-        rand(ComplexF64, bonddims_b[n], localdims2[n], localdims3[n], bonddims_b[n+1])
-        for n = 1:N
+        rand(ComplexF64, bonddims_b[n], localdims2[n], localdims3[n], bonddims_b[n + 1]) for
+        n in 1:N
     ])
 
     ab = TCIA.naivecontract(a, b)
@@ -234,15 +234,15 @@ end
     @test _tomat(ab) ≈ _tomat(a) * _tomat(b)
 
     #for inds1 in CartesianIndices(Tuple(localdims1))
-        #for inds3 in CartesianIndices(Tuple(localdims3))
-            #refvalue = evaluate_mps(
-                    #abmps,
-                    #collect(zip(sites1, Tuple(inds1))),
-                    #collect(zip(sites3, Tuple(inds3))),
-                #)
-            #inds = collect(zip(Tuple(inds1), Tuple(inds3)))
-            #@test ab(inds) ≈ refvalue
-        #end
+    #for inds3 in CartesianIndices(Tuple(localdims3))
+    #refvalue = evaluate_mps(
+    #abmps,
+    #collect(zip(sites1, Tuple(inds1))),
+    #collect(zip(sites3, Tuple(inds3))),
+    #)
+    #inds = collect(zip(Tuple(inds1), Tuple(inds3)))
+    #@test ab(inds) ≈ refvalue
+    #end
     #end
 end
 
@@ -263,7 +263,7 @@ end
         n in 1:N
     ])
 
-    ab = TCIA.contract(a, b; f = f)
-    @test TCI.sitedims(ab) == [[localdims1[i], localdims3[i]] for i = 1:N]
+    ab = TCIA.contract(a, b; f=f)
+    @test TCI.sitedims(ab) == [[localdims1[i], localdims3[i]] for i in 1:N]
     @test _tomat(ab) ≈ f.(_tomat(a) * _tomat(b))
 end

@@ -309,7 +309,9 @@ function _crossinterpolate2(
         tolmarginglobalsearch=10.0,
     )
     if maximum(TCI.linkdims(tci)) == 0
-        error("TCI has zero rank, maxsamplevalue: $(tci.maxsamplevalue), tolerance: ($tolerance)")
+        error(
+            "TCI has zero rank, maxsamplevalue: $(tci.maxsamplevalue), tolerance: ($tolerance)",
+        )
     end
 
     maxbonddim_hist = maximum(others[(end - ncheckhistory):end])
