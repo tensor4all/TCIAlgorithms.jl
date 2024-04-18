@@ -1,5 +1,11 @@
 module TCIAlgorithms
 
+import TensorCrossInterpolation as TCI
+import TensorCrossInterpolation: TensorTrain, evaluate, TTCache, MultiIndex, LocalIndex, TensorCI2
+
+using TCIITensorConversion
+using ITensors
+
 using OrderedCollections: OrderedDict, OrderedSet
 using Distributed
 using EllipsisNotation
