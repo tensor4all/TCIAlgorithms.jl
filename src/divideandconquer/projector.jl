@@ -144,7 +144,11 @@ function leftindexset_contained(p1::Projector, p2::Projector)::Bool
 end
 
 function Base.reshape(projector::Projector, dims::AbstractVector{<:AbstractVector{Int}})::Projector
+    length(projector.sitedims) == length(dims) || error("Length mismatch")
+    prod.(projector.sitedims) == prod.(dims) || error("Total dimension mismatch")
+
     Projector(
-        [mulltii(newdim, lineari(olddim, p)) for (p, olddim, newdim) in zip(projector.data, obj.sitedims, dims)]
+        multii(dims, lineari(projector.sitedims, projector.data)),
+        dims
         )
 end
