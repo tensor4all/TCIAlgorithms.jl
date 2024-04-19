@@ -150,3 +150,25 @@ function partitionat(
 
     return PartitionedTensorTrain(tts, obj.projector, obj.sitedims)
 end
+
+
+function Base.reshape(
+    obj::PartitionedTensorTrain{T},
+    dims::AbstractVector{<:AbstractVector{Int}},
+)::PartitionedTensorTrain{T} where {T}
+    #tensortrains = [reshape(t, size(t,1), d..., size(t)[end]) for (d, t) in zip(dims, obj.tensortrains)]
+    #proj = Projector([mulltii(newdim, lineari(olddim, p)) for (p, olddim, newdim) in zip(obj.projector.data, obj.sitedims, dims)])
+    tensortrains = ProjectableEvaluator{T}[reshape(x, d) for (x, d) in zip(obj.tensortrains, dims)]
+    #proj = Projector([mulltii(newdim, lineari(olddim, p)) for (p, olddim, newdim) in zip(obj.projector.data, obj.sitedims, dims)])
+    return PartitionedTensorTrain(tensortrains, reshape(obj.projector, dims), dims)
+end
+
+
+function create_multiplier(
+    ptt1::PartitionedTensorTrain{T}, ptt2::PartitionedTensorTrain{T}
+)::PartitionedTensorTrain{T} where {T}
+    globalprojector = [[x[1], y[1]] for (x,y) in zip(ptt1.projector, ptt2.projector)]
+    return create_multiplier(
+        Vector{ProjectedTensorTrain{T,4}}(ptt1.tensortrains),
+        Vector{ProjectedTensorTrain{T,4}}(ptt2.tensortrains), globalprojector)
+end

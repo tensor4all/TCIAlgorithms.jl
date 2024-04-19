@@ -2,21 +2,8 @@ using Test
 import TensorCrossInterpolation as TCI
 import TCIAlgorithms as TCIA
 
-@testset "Projector" begin
-    @test all(TCIA.Projector([[1], [2], [3]]).data .== [[1], [2], [3]])
-    @test (TCIA.Projector([[1], [2], [3]]) <= TCIA.Projector([[0], [2], [3]])) == true
-    @test (TCIA.Projector([[1], [2], [3]]) < TCIA.Projector([[0], [2], [3]])) == true
-    @test (TCIA.Projector([[1], [2], [3]]) <= TCIA.Projector([[1], [2], [3]])) == true
-    @test (TCIA.Projector([[1], [0], [0]]) <= TCIA.Projector([[2], [0], [0]])) == false
-    @test (TCIA.Projector([[1], [2], [3]]) == TCIA.Projector([[1], [2], [3]])) == true
+import TCIAlgorithms: Projector
 
-    @test ([[1], [2], [3]] <= TCIA.Projector([[0], [2], [3]])) == true
-
-    @test TCIA.Projector([[1], [2]]) & TCIA.Projector([[0], [0]]) ==
-        TCIA.Projector([[1], [2]])
-    @test TCIA.Projector([[1, 0], [2]]) & TCIA.Projector([[0, 3], [0]]) ==
-        TCIA.Projector([[1, 3], [2]])
-end
 
 @testset "projectat!" begin
     A_org = ones(2, 2, 2)

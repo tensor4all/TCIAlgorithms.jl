@@ -51,6 +51,7 @@ An object of this type can be projected to a subset of indices.
 #sitedims::Vector{Vector{Int}}
 #end
 
+
 function create_multiplier(
     lefttt::AbstractVector{ProjectedTensorTrain{T,4}},
     righttt::AbstractVector{ProjectedTensorTrain{T,4}},
@@ -71,40 +72,3 @@ function create_multiplier(
     end
     return PartitionedTensorTrain(products, projector, sitedims)
 end
-
-#==
-function project(
-    obj::TensorTrainMutiplier{T},
-    prj::Projector;
-    compression::Bool=false,
-    cutoff::Float64=1e-30,
-    maxdim::Int=typemax(Int)
-)::ProjectedTensorTrainMultiplier{T} where {T,N}
-    prj < obj.projector || error("Projector $prj is not compatible with the current projector $(obj.projector)")
-    for v in obj.products
-        # This creates a copy of tensor train data
-        v_ = project(v, prj; compression=compression, cutoff=cutoff, maxdim=maxdim)
-        if v_ !== nothing
-            push!(obj.products, v_)
-        end
-    end
-    obj.projector = prj
-    return obj
-end
-
-function (obj::TensorTrainMutiplier{T})(indexset::MultiIndex)::T where {T}
-    return sum((v(indexset) for v in obj.products))
-end
-
-function (obj::TensorTrainMutiplier{T})(
-    leftindexset::AbstractVector{MultiIndex},
-    rightindexset::AbstractVector{MultiIndex},
-    ::Val{M},
-)::Array{T,M + 2} where {T,M}
-    if length(leftindexset) * length(rightindexset) == 0
-        return zeros(T, 0, 0)
-    end
-    # TODO: Optimize
-    return sum((v(indexset) for v in obj.products))
-end
-==#
