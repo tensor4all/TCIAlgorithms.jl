@@ -8,6 +8,10 @@ mutable struct ProjectedTensorTrainProduct{T} <: ProjectableEvaluator{T}
     mp::MatrixProduct{T}
 end
 
+function Base.show(io::IO, obj::ProjectedTensorTrainProduct{T}) where {T}
+    print(io, "ProjectedTensorTrainProduct{$T} consisting of $(length(obj.tensortrains)) TTs")
+end
+
 function create_projected_tensortrain_product(
     tt::NTuple{2,ProjectedTensorTrain{T,4}}
 ) where {T}
@@ -55,7 +59,7 @@ An object of this type can be projected to a subset of indices.
 function create_multiplier(
     lefttt::AbstractVector{ProjectedTensorTrain{T,4}},
     righttt::AbstractVector{ProjectedTensorTrain{T,4}},
-    projector,
+    projector::Projector,
 ) where {T}
     sitedims = [[x[1], y[2]] for (x, y) in zip(lefttt[1].sitedims, righttt[1].sitedims)]
 

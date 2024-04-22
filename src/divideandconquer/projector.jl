@@ -15,7 +15,7 @@ struct Projector
             length(d) == length(s) || error("Length mismatch")
             for (d_, s_) in zip(d, s)
                 if d_ > s_ || d_ < 0
-                    error("Invalid projector")
+                    error("Invalid projector, out of bounds, data: $(data), sitedims: $(sitedims)")
                 end
             end
         end
@@ -66,7 +66,9 @@ end
 
 # Extract ilegg-th index from the projector
 function only(p::Projector, ilegg::Int)::Projector
-    return Projector([[p.data[l][ilegg]] for l in 1:length(p)], fill([1], length(p)))
+    data = [[p.data[l][ilegg]] for l in 1:length(p)]
+    sitedims = [[p.sitedims[l][ilegg]] for l in 1:length(p)]
+    return Projector(data, sitedims)
 end
 
 Base.:(==)(a::Projector, b::Projector)::Bool = (a.data == b.data)

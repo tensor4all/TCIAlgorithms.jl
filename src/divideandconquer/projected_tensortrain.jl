@@ -9,6 +9,10 @@ mutable struct ProjectedTensorTrain{T,N} <: ProjectableEvaluator{T}
     sitedims::Vector{Vector{Int}} # (L, N-2)
 end
 
+#function Base.show(io::IO, obj::ProjectedTensorTrain{T,N}) where {T,N}
+    #print(io, "ProjectedTensorTrain{$T} with rank $(TCI.rank(obj.data)) on $(obj.projector.data)")
+#end
+
 function ProjectedTensorTrain(
     data::TensorTrain{T,N},
     projector=Projector([fill(0, N - 2) for _ in 1:length(data)]);
@@ -51,7 +55,7 @@ function Base.reshape(
 
     ttdata = [reshape(obj.data[n], size(obj.data[n])[1], dims[n]..., size(obj.data[n])[end]) for n in eachindex(dims)]
 
-    return ProjectedTensorTrain{T,N2}(TensorTrain{T,N2}(ttdata), obj.projector, dims)
+    return ProjectedTensorTrain{T,N2}(TensorTrain{T,N2}(ttdata), reshape(obj.projector, dims), dims)
 end
 
 Base.length(obj::ProjectedTensorTrain{T,N}) where {T,N} = length(obj.data)

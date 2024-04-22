@@ -26,6 +26,11 @@ mutable struct PartitionedTensorTrain{T}
 end
 
 function Base.show(io::IO, obj::PartitionedTensorTrain{T}) where {T}
+    print(io, "PartitionedTensorTrain{$T} consisting of $(length(obj.tensortrains)) TTs")
+end
+
+
+function Base.show(io::IO, obj::PartitionedTensorTrain{T}) where {T}
     print(io, "PartitionedTensorTrain{$T}")
     for tt in obj.tensortrains
         print(io, "  ", tt, " ")
@@ -167,7 +172,10 @@ end
 function create_multiplier(
     ptt1::PartitionedTensorTrain{T}, ptt2::PartitionedTensorTrain{T}
 )::PartitionedTensorTrain{T} where {T}
-    globalprojector = [[x[1], y[1]] for (x, y) in zip(ptt1.projector, ptt2.projector)]
+    globalprojector = Projector(
+        [[x[1], y[2]] for (x, y) in zip(ptt1.projector, ptt2.projector)],
+        [[x[1], y[2]] for (x, y) in zip(ptt1.sitedims, ptt2.sitedims)],
+    )
     return create_multiplier(
         Vector{ProjectedTensorTrain{T,4}}(ptt1.tensortrains),
         Vector{ProjectedTensorTrain{T,4}}(ptt2.tensortrains),
