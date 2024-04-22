@@ -6,5 +6,7 @@ include("tensor_tests.jl")
 include("elementwisemul_tests.jl")
 include("matrixmul_tests.jl")
 include("matrixmulsum_tests.jl")
+
 include("divideandconquer/projector_tests.jl")
 include("divideandconquer/partitioned_tensortrain_tests.jl")
+include("divideandconquer/adaptivepartitioning_tests.jl")

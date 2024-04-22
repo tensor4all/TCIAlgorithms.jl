@@ -265,7 +265,7 @@ function Projector(
     for (i, n) in enumerate(po.ordering[1:length(prefix)])
         data[n] = deepcopy(prefix[i])
     end
-    return Projector(data)
+    return Projector(data, sitedims)
 end
 
 function PartitionedTensorTrain(
@@ -277,7 +277,7 @@ function PartitionedTensorTrain(
     L = Base.only(unique([length(tt) + length(p) for (p, tt) in tts]))
     L == length(sitedims) || error("Inconsistent length")
 
-    globalprojecter = Projector([fill(0, length(s)) for s in sitedims])
+    globalprojecter = Projector([fill(0, length(s)) for s in sitedims], sitedims)
 
     tts_ = ProjectedTensorTrain{T,N}[]
     for prefix in keys_

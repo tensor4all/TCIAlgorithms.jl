@@ -160,12 +160,7 @@ end
 function Base.reshape(
     obj::PartitionedTensorTrain{T}, dims::AbstractVector{<:AbstractVector{Int}}
 )::PartitionedTensorTrain{T} where {T}
-    #tensortrains = [reshape(t, size(t,1), d..., size(t)[end]) for (d, t) in zip(dims, obj.tensortrains)]
-    #proj = Projector([mulltii(newdim, lineari(olddim, p)) for (p, olddim, newdim) in zip(obj.projector.data, obj.sitedims, dims)])
-    tensortrains = ProjectableEvaluator{T}[
-        reshape(x, d) for (x, d) in zip(obj.tensortrains, dims)
-    ]
-    #proj = Projector([mulltii(newdim, lineari(olddim, p)) for (p, olddim, newdim) in zip(obj.projector.data, obj.sitedims, dims)])
+    tensortrains = ProjectableEvaluator{T}[reshape(x, dims) for x in obj.tensortrains]
     return PartitionedTensorTrain(tensortrains, reshape(obj.projector, dims), dims)
 end
 

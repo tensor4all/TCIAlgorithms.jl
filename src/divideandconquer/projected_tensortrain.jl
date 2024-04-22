@@ -42,6 +42,18 @@ function ProjectedTensorTrain{T,N}(
     return obj
 end
 
+# This function is type unstable
+function Base.reshape(
+    obj::ProjectedTensorTrain{T,N}, dims::AbstractVector{<:AbstractVector{Int}}
+) where {T,N}
+    length(unique(length.(dims))) == 1 || error("The number of siteindices must be the same at all tensors!")
+    N2 = Base.only(unique(length.(dims))) + 2
+
+    ttdata = [reshape(obj.data[n], size(obj.data[n])[1], dims[n]..., size(obj.data[n])[end]) for n in eachindex(dims)]
+
+    return ProjectedTensorTrain{T,N2}(TensorTrain{T,N2}(ttdata), obj.projector, dims)
+end
+
 Base.length(obj::ProjectedTensorTrain{T,N}) where {T,N} = length(obj.data)
 
 function Base.show(io::IO, obj::ProjectedTensorTrain{T,N}) where {T,N}

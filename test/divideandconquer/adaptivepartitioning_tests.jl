@@ -26,6 +26,7 @@ addprocs(max(0, MAX_WORKERS - nworkers()))
     let
         po = TCIA.PatchOrdering([1, 3, 2, 4, 5])
         prefix = [[1], [2]]
+        localdims = fill([10000], length(po))
         @test TCIA.Projector(po, prefix, localdims).data == [[1], [0], [2], [0], [0]]
     end
 end
@@ -33,20 +34,18 @@ end
 @testset "ProjectedTensorTrain from a tensor train on unprojected indices" begin
     T = Float64
     L = 5
+    sitedims = [[2] for _ in 1:L]
 
     # projector = [1, 2, 0, 0, 0]
-    prj = TCIA.Projector([[1], [2], [0], [0], [0]])
+    prj = TCIA.Projector([[1], [2], [0], [0], [0]], sitedims)
     localdims = fill([2], L)
-
-    length(tt) == sum((Base.only(p) == 0 for p in prj))
 
     χ = 3
     tt = TCI.TensorTrain{T,3}([rand(1, 2, χ), rand(χ, 2, χ), rand(χ, 2, 1)])
 
     ptt = TCIA.ProjectedTensorTrain(tt, localdims, prj)
-    @show TCI.linkdims(ptt.data)
-    @show ptt([[1], [1], [1], [1], [1]]) == 0
-    @show ptt([[1], [2], [1], [1], [1]]) ≈ tt([[1], [1], [1]])
+    @test ptt([[1], [1], [1], [1], [1]]) == 0
+    @test ptt([[1], [2], [1], [1], [1]]) ≈ tt([[1], [1], [1]])
 end
 
 @testset "2D fermi gk" begin
@@ -74,12 +73,12 @@ end
         pordering = TCIA.PatchOrdering(flipper(collect(1:R)))
 
         creator = TCIA.TCI2PatchCreator(
-            ComplexF64, f, localdims; maxbonddim=50, rtol=tol, verbosity=1, ntry=10
+            ComplexF64, f, localdims; maxbonddim=50, rtol=tol, verbosity=0, ntry=10
         )
 
-        tree = TCIA.adaptiveinterpolate(creator, pordering; verbosity=1, maxnleaves=1000)
-        @show collect(keys(tree))
-        @show length(tree)
+        tree = TCIA.adaptiveinterpolate(creator, pordering; verbosity=0, maxnleaves=1000)
+        #@show collect(keys(tree))
+        #@show length(tree)
 
         #_evaluate(x, idx) = FMPOC.evaluate(x, [[i] for i in idx])
         #for _ = 1:100
@@ -144,10 +143,10 @@ end
     pordering = TCIA.PatchOrdering(collect(1:R))
 
     creator = TCIA.TCI2PatchCreator(
-        Float64, qf, localdims; maxbonddim=40, rtol=tol, verbosity=1, ntry=10
+        Float64, qf, localdims; maxbonddim=40, rtol=tol, verbosity=0, ntry=10
     )
 
-    partres = TCIA.adaptiveinterpolate(creator, pordering; verbosity=1, maxnleaves=1000)
+    partres = TCIA.adaptiveinterpolate(creator, pordering; verbosity=0, maxnleaves=1000)
 
     sitedims = [[d] for d in localdims]
     partt = TCIA.PartitionedTensorTrain(partres, sitedims, pordering)
@@ -171,10 +170,10 @@ end
     pordering = TCIA.PatchOrdering(collect(1:R))
 
     creator = TCIA.TCI2PatchCreator(
-        Float64, qf, localdims; maxbonddim=10, rtol=tol, verbosity=1, ntry=10
+        Float64, qf, localdims; maxbonddim=10, rtol=tol, verbosity=0, ntry=10
     )
 
-    partres = TCIA.adaptiveinterpolate(creator, pordering; verbosity=1, maxnleaves=2)
+    partres = TCIA.adaptiveinterpolate(creator, pordering; verbosity=0, maxnleaves=2)
 
     sitedims = [[d] for d in localdims]
     partt = TCIA.PartitionedTensorTrain(partres, sitedims, pordering)
