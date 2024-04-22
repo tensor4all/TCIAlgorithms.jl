@@ -15,7 +15,7 @@ end
 
 function ProjectedTensorTrain(
     data::TensorTrain{T,N},
-    projector=Projector([fill(0, N - 2) for _ in 1:length(data)]);
+    projector;
     kwargs...,
 ) where {T,N}
     return ProjectedTensorTrain{T,N}(data, projector; kwargs...)

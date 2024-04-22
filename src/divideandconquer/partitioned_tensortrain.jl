@@ -30,12 +30,12 @@ function Base.show(io::IO, obj::PartitionedTensorTrain{T}) where {T}
 end
 
 
-function Base.show(io::IO, obj::PartitionedTensorTrain{T}) where {T}
-    print(io, "PartitionedTensorTrain{$T}")
-    for tt in obj.tensortrains
-        print(io, "  ", tt, " ")
-    end
-end
+#function Base.show(io::IO, obj::PartitionedTensorTrain{T}) where {T}
+    #print(io, "PartitionedTensorTrain{$T}")
+    #for tt in obj.tensortrains
+        #print(io, "  ", tt, " ")
+    #end
+#end
 
 """
 Sum over external indices
@@ -59,7 +59,7 @@ function (obj::PartitionedTensorTrain{T})(
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
     if length(leftindexset) * length(rightindexset) == 0
-        return zeros(T, 0, 0)
+        return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
     L = length(obj.tensortrains[1].sitedims)
 

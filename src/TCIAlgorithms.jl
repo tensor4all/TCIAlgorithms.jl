@@ -26,6 +26,7 @@ include("matrixmulsum.jl")
 include("elementwisemul.jl")
 
 include("divideandconquer/projector.jl")
+include("divideandconquer/adapter.jl")
 include("divideandconquer/tensortrain.jl")
 include("divideandconquer/projected_tensortrain.jl")
 include("divideandconquer/tensortrain_product.jl")
