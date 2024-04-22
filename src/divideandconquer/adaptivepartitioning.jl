@@ -32,7 +32,6 @@ function fullindices(
     return res
 end
 
-
 """
 T: Float64, ComplexF64, etc.
 M: TensorCI2, MPS, etc.
@@ -160,12 +159,19 @@ function TCI2PatchCreator(
     verbosity::Int=0,
     tcikwargs=Dict(),
     ntry=100,
-    ninitialpivot=5
+    ninitialpivot=5,
 )::TCI2PatchCreator{T} where {T}
     maxval, _ = _estimate_maxval(f, localdims; ntry=ntry)
     return TCI2PatchCreator{T}(
-        f, localdims, rtol, maxbonddim, verbosity, tcikwargs, maxval, rtol * maxval,
-        ninitialpivot
+        f,
+        localdims,
+        rtol,
+        maxbonddim,
+        verbosity,
+        tcikwargs,
+        maxval,
+        rtol * maxval,
+        ninitialpivot,
     )
 end
 

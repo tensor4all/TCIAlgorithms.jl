@@ -4,7 +4,6 @@ import TCIAlgorithms as TCIA
 
 import TCIAlgorithms: Projector
 
-
 @testset "projectat!" begin
     A_org = ones(2, 2, 2)
 
@@ -65,7 +64,9 @@ end
     ])
 
     # Projection 
-    prj = TCIA.Projector([[1, 0], [0, 0], [0, 0], [0, 0]])
+    sitedims = [[x, y] for (x, y) in zip(localdims1, localdims2)]
+    globalprj = TCIA.Projector([[0, 0], [0, 0], [0, 0], [0, 0]], sitedims)
+    prj = TCIA.Projector([[1, 0], [0, 0], [0, 0], [0, 0]], sitedims)
     prj_data = deepcopy(TCI.sitetensors(tt))
     prj_data[1][:, 2, :, :] .= 0.0
     ptt = TCIA.ProjectedTensorTrain{Float64,4}(tt, prj)
@@ -86,7 +87,7 @@ end
     @test ptt(indexset3) == ptt(indexset3_li)
 
     # Projection with truncation
-    ptt_truncated = TCIA.ProjectedTensorTrain{Float64,4}(tt)
+    ptt_truncated = TCIA.ProjectedTensorTrain{Float64,4}(tt, globalprj)
     ptt_truncated = TCIA.project(ptt_truncated, prj; compression=true)
     indexset1 = [[1, 1], [1, 1], [1, 1], [1, 1]]
     @test tt(indexset1) ≈ ptt_truncated(indexset1) # exact equality
@@ -104,7 +105,8 @@ end
         rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
     ])
 
-    outer_prj = TCIA.Projector([[0, 0], [0, 0], [0, 0], [0, 0]])
+    sitedims = [[x, y] for (x, y) in zip(localdims1, localdims2)]
+    outer_prj = TCIA.Projector([[0, 0], [0, 0], [0, 0], [0, 0]], sitedims)
 
     ptt = TCIA.PartitionedTensorTrain(TCIA.ProjectedTensorTrain(tt, outer_prj))
 
@@ -129,24 +131,25 @@ end
 
     localdims1 = [2, 2, 2, 2]
     localdims2 = [2, 2, 2, 2]
+    sitedims = [[x, y] for (x, y) in zip(localdims1, localdims2)]
 
     ptt1 = TCIA.ProjectedTensorTrain(
         TCI.TensorTrain([
             rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
         ]),
-        TCIA.Projector([[1, 0], [0, 1], [0, 0], [0, 0]]),
+        TCIA.Projector([[1, 0], [0, 1], [0, 0], [0, 0]], sitedims),
     )
     ptt2 = TCIA.ProjectedTensorTrain(
         TCI.TensorTrain([
             rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
         ]),
-        TCIA.Projector([[0, 1], [0, 0], [0, 0], [0, 0]]),
+        TCIA.Projector([[0, 1], [0, 0], [0, 0], [0, 0]], sitedims),
     )
 
     pprod = TCIA.create_projected_tensortrain_product((ptt1, ptt2))
     @test pprod !== nothing
 
-    @test pprod.projector == TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0]])
+    @test pprod.projector == TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0]], sitedims)
 
     ref = TCIA.MatrixProduct(ptt1.data, ptt2.data)
 

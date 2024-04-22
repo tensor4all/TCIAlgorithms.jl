@@ -19,7 +19,7 @@ end
 
 function ProjectedTensorTrain{T,N}(
     data,
-    projector=Projector([fill(0, N - 2) for _ in 1:length(data)]);
+    projector;
     compression::Bool=false,
     cutoff::Float64=1e-30,
     maxdim::Int=typemax(Int),
@@ -28,7 +28,9 @@ function ProjectedTensorTrain{T,N}(
     length(projector) == L || error("Length mismatch: projector")
     obj = ProjectedTensorTrain{T,N}(data, projector, TCI.sitedims(data))
     # Why do we need force option?
-    globalprojector = Projector([fill(0, N - 2) for _ in 1:length(data)])
+    globalprojector = Projector(
+        [fill(0, N - 2) for _ in 1:length(data)], projector.sitedims
+    )
     obj = project(
         obj,
         projector;

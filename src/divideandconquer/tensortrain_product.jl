@@ -14,11 +14,12 @@ function create_projected_tensortrain_product(
     if !hasoverlap(only(tt[1].projector, 2), only(tt[2].projector, 1))
         return nothing
     end
-    projector = Projector([
-        [x[1], y[2]] for (x, y) in zip(tt[1].projector, tt[2].projector)
-    ])
+    projector = Projector(
+        [[x[1], y[2]] for (x, y) in zip(tt[1].projector, tt[2].projector)],
+        [[x[1], y[2]] for (x, y) in zip(tt[1].sitedims, tt[2].sitedims)],
+    )
     return ProjectedTensorTrainProduct{T}(
-        tt, projector, tt[1].sitedims, MatrixProduct(tt[1].data, tt[2].data)
+        tt, projector, projector.sitedims, MatrixProduct(tt[1].data, tt[2].data)
     )
 end
 
@@ -50,7 +51,6 @@ An object of this type can be projected to a subset of indices.
 #projector::Projector
 #sitedims::Vector{Vector{Int}}
 #end
-
 
 function create_multiplier(
     lefttt::AbstractVector{ProjectedTensorTrain{T,4}},

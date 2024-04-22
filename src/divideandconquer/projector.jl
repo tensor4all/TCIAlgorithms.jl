@@ -64,8 +64,9 @@ function (p::Projector)(isite::Int, ilegg::Int)
     return p.data[isite][ilegg]
 end
 
+# Extract ilegg-th index from the projector
 function only(p::Projector, ilegg::Int)::Projector
-    return Projector([[p.data[l][ilegg]] for l in 1:length(p)])
+    return Projector([[p.data[l][ilegg]] for l in 1:length(p)], fill([1], length(p)))
 end
 
 Base.:(==)(a::Projector, b::Projector)::Bool = (a.data == b.data)
@@ -143,12 +144,18 @@ function leftindexset_contained(p1::Projector, p2::Projector)::Bool
     return true
 end
 
-function Base.reshape(projector::Projector, dims::AbstractVector{<:AbstractVector{Int}})::Projector
+function Base.reshape(
+    projector::Projector, dims::AbstractVector{<:AbstractVector{Int}}
+)::Projector
     length(projector.sitedims) == length(dims) || error("Length mismatch")
     prod.(projector.sitedims) == prod.(dims) || error("Total dimension mismatch")
 
-    Projector(
-        multii(dims, lineari(projector.sitedims, projector.data)),
-        dims
-        )
+    newprojectordata = [
+        if prod(projector.data[i]) == 0
+            zeros(Int, length(dims[i]))
+        else
+            _multii(dims[i], _lineari(projector.sitedims[i], projector.data[i]))
+        end for i in eachindex(projector.data)
+    ]
+    return Projector(newprojectordata, dims)
 end

@@ -67,7 +67,10 @@ function (obj::PartitionedTensorTrain{T})(
     for (il, l) in enumerate(leftindexset)
         l_full = multii(obj.sitedims, vcat(l, fill(0, L - length(l))))
         for (ip, p) in enumerate(obj.tensortrains)
-            if hasoverlap(Projector(l_full), obj.tensortrains[ip].projector)
+            if hasoverlap(
+                Projector(l_full, obj.tensortrains[ip].projector.sitedims),
+                obj.tensortrains[ip].projector,
+            )
                 push!(left_mask[ip], il)
                 push!(leftindexset_[ip], l)
             end
@@ -78,7 +81,10 @@ function (obj::PartitionedTensorTrain{T})(
     for (ir, r) in enumerate(rightindexset)
         r_full = multii(obj.sitedims, vcat(fill(0, L - length(r)), r))
         for (ip, p) in enumerate(obj.tensortrains)
-            if hasoverlap(Projector(r_full), obj.tensortrains[ip].projector)
+            if hasoverlap(
+                Projector(r_full, obj.tensortrains[ip].projector.sitedims),
+                obj.tensortrains[ip].projector,
+            )
                 push!(right_mask[ip], ir)
                 push!(rightindexset_[ip], r)
             end
@@ -133,7 +139,7 @@ function partitionat(
             error("Some of site indices at $siteidx are already projected")
 
         for (i, new_idx) in enumerate(new_indices)
-            prj_new = copy(internal_obj.projector)
+            prj_new = deepcopy(internal_obj.projector)
             prj_new.data[siteidx] .= new_idx
             push!(
                 tts,
@@ -151,24 +157,25 @@ function partitionat(
     return PartitionedTensorTrain(tts, obj.projector, obj.sitedims)
 end
 
-
 function Base.reshape(
-    obj::PartitionedTensorTrain{T},
-    dims::AbstractVector{<:AbstractVector{Int}},
+    obj::PartitionedTensorTrain{T}, dims::AbstractVector{<:AbstractVector{Int}}
 )::PartitionedTensorTrain{T} where {T}
     #tensortrains = [reshape(t, size(t,1), d..., size(t)[end]) for (d, t) in zip(dims, obj.tensortrains)]
     #proj = Projector([mulltii(newdim, lineari(olddim, p)) for (p, olddim, newdim) in zip(obj.projector.data, obj.sitedims, dims)])
-    tensortrains = ProjectableEvaluator{T}[reshape(x, d) for (x, d) in zip(obj.tensortrains, dims)]
+    tensortrains = ProjectableEvaluator{T}[
+        reshape(x, d) for (x, d) in zip(obj.tensortrains, dims)
+    ]
     #proj = Projector([mulltii(newdim, lineari(olddim, p)) for (p, olddim, newdim) in zip(obj.projector.data, obj.sitedims, dims)])
     return PartitionedTensorTrain(tensortrains, reshape(obj.projector, dims), dims)
 end
 
-
 function create_multiplier(
     ptt1::PartitionedTensorTrain{T}, ptt2::PartitionedTensorTrain{T}
 )::PartitionedTensorTrain{T} where {T}
-    globalprojector = [[x[1], y[1]] for (x,y) in zip(ptt1.projector, ptt2.projector)]
+    globalprojector = [[x[1], y[1]] for (x, y) in zip(ptt1.projector, ptt2.projector)]
     return create_multiplier(
         Vector{ProjectedTensorTrain{T,4}}(ptt1.tensortrains),
-        Vector{ProjectedTensorTrain{T,4}}(ptt2.tensortrains), globalprojector)
+        Vector{ProjectedTensorTrain{T,4}}(ptt2.tensortrains),
+        globalprojector,
+    )
 end
