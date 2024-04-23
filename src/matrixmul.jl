@@ -180,21 +180,26 @@ function evaluate(
     end
 end
 
+# single-site-index evaluation
 function (obj::MatrixProduct{T})(indexset::AbstractVector{Int})::T where {T}
     return evaluate(obj, indexset)
 end
 
-function (obj::MatrixProduct{T})(
-    indexset::AbstractVector{<:AbstractVector{Int}}
-)::T where {T}
+# multi-site-index evaluation
+function (obj::MatrixProduct{T})(indexset::MMultiIndex)::T where {T}
     return evaluate(obj, lineari(obj.sitedims, indexset))
 end
 
+# single-site-index evaluation
 function (obj::MatrixProduct{T})(
     leftindexset::AbstractVector{MultiIndex},
     rightindexset::AbstractVector{MultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
+    if length(leftindexset) * length(rightindexset) == 0
+        return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
+    end
+
     N = length(obj)
     Nr = length(rightindexset[1])
     s_ = length(leftindexset[1]) + 1
@@ -262,6 +267,24 @@ function (obj::MatrixProduct{T})(
     end
 
     return reshape(res, return_size)
+end
+
+# multi-site-index evaluation
+function (obj::MatrixProduct{T})(
+    leftindexset::AbstractVector{MMultiIndex},
+    rightindexset::AbstractVector{MMultiIndex},
+    ::Val{M},
+)::Array{T,M + 2} where {T,M}
+    if length(leftindexset) * length(rightindexset) == 0
+        return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
+    end
+
+    NL = length(leftindexset[1])
+    NR = length(rightindexset[1])
+    leftindexset_ = [lineari(obj.sitedims[1:NL], x) for x in leftindexset]
+    rightindexset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightindexset]
+
+    return obj(leftindexset_, rightindexset_, Val(M))
 end
 
 function naivecontract(a::TensorTrain{T,4}, b::TensorTrain{T,4})::TensorTrain{T,4} where {T}

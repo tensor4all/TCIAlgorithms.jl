@@ -9,7 +9,9 @@ mutable struct ProjectedTensorTrainProduct{T} <: ProjectableEvaluator{T}
 end
 
 function Base.show(io::IO, obj::ProjectedTensorTrainProduct{T}) where {T}
-    print(io, "ProjectedTensorTrainProduct{$T} consisting of $(length(obj.tensortrains)) TTs")
+    return print(
+        io, "ProjectedTensorTrainProduct{$T} consisting of $(length(obj.tensortrains)) TTs"
+    )
 end
 
 function create_projected_tensortrain_product(
@@ -27,21 +29,19 @@ function create_projected_tensortrain_product(
     )
 end
 
-function (obj::ProjectedTensorTrainProduct{T})(indexset::Vector{Int})::T where {T}
+# multi-site-index evaluation
+function (obj::ProjectedTensorTrainProduct{T})(indexset::MMultiIndex)::T where {T}
     return obj.mp(indexset)
 end
 
-function (obj::ProjectedTensorTrainProduct{T})(indexset::Vector{Vector{Int}})::T where {T}
-    return obj.mp(indexset)
-end
-
+# multi-site-index evaluation
 function (obj::ProjectedTensorTrainProduct{T})(
-    leftindexset::AbstractVector{MultiIndex},
-    rightindexset::AbstractVector{MultiIndex},
+    leftindexset::AbstractVector{MMultiIndex},
+    rightindexset::AbstractVector{MMultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
     if length(leftindexset) * length(rightindexset) == 0
-        return zeros(T, 0, 0)
+        return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
     return obj.mp(leftindexset, rightindexset, Val(M))
 end

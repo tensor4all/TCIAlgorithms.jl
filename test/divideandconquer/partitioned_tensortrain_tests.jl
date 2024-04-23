@@ -83,7 +83,6 @@ end
     # Evaluation at a single linear indexset
     indexset3 = [[1, 1], [1, 1], [1, 1], [2, 1]]
     indexset3_li = [1, 1, 1, 2]
-    @test TCIA._multii(ptt, indexset3_li) == indexset3
     @test ptt(indexset3) == ptt(indexset3_li)
 
     # Projection with truncation

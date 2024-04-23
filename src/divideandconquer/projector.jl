@@ -15,7 +15,9 @@ struct Projector
             length(d) == length(s) || error("Length mismatch")
             for (d_, s_) in zip(d, s)
                 if d_ > s_ || d_ < 0
-                    error("Invalid projector, out of bounds, data: $(data), sitedims: $(sitedims)")
+                    error(
+                        "Invalid projector, out of bounds, data: $(data), sitedims: $(sitedims)",
+                    )
                 end
             end
         end

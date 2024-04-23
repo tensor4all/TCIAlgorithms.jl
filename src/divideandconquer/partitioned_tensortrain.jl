@@ -3,7 +3,7 @@ Collection of ProjectableEvaluator objects
 
 The underlying data will be copied when projected.
 """
-mutable struct PartitionedTensorTrain{T}
+mutable struct PartitionedTensorTrain{T} <: ProjectableEvaluator{T}
     tensortrains::Vector{ProjectableEvaluator{T}}
     # This PartitionedTensorTrain is projected on
     # the indices specified by `projector`.
@@ -26,15 +26,16 @@ mutable struct PartitionedTensorTrain{T}
 end
 
 function Base.show(io::IO, obj::PartitionedTensorTrain{T}) where {T}
-    print(io, "PartitionedTensorTrain{$T} consisting of $(length(obj.tensortrains)) TTs")
+    return print(
+        io, "PartitionedTensorTrain{$T} consisting of $(length(obj.tensortrains)) TTs"
+    )
 end
 
-
 #function Base.show(io::IO, obj::PartitionedTensorTrain{T}) where {T}
-    #print(io, "PartitionedTensorTrain{$T}")
-    #for tt in obj.tensortrains
-        #print(io, "  ", tt, " ")
-    #end
+#print(io, "PartitionedTensorTrain{$T}")
+#for tt in obj.tensortrains
+#print(io, "  ", tt, " ")
+#end
 #end
 
 """
@@ -44,15 +45,33 @@ function sum(obj::PartitionedTensorTrain{T})::T where {T}
     return Base.sum(sum.(obj.tensortrains))
 end
 
-function (obj::PartitionedTensorTrain{T})(
-    indexsets::AbstractVector{<:AbstractVector{LocalIndex}}
-)::T where {T}
-    if !(indexsets <= obj.projector)
+# multi-site-index evaluation
+function (obj::PartitionedTensorTrain{T})(indexset::MMultiIndex)::T where {T}
+    if !(indexset <= obj.projector)
         return zero(T)
     end
-    return Base.sum((t(indexsets) for t in obj.tensortrains))
+    return Base.sum((t(indexset) for t in obj.tensortrains))
 end
 
+# multi-site-index evaluation
+function (obj::PartitionedTensorTrain{T})(
+    leftindexset::AbstractVector{MMultiIndex},
+    rightindexset::AbstractVector{MMultiIndex},
+    ::Val{M},
+)::Array{T,M + 2} where {T,M}
+    if length(leftindexset) * length(rightindexset) == 0
+        return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
+    end
+
+    NL = length(leftindexset[1])
+    NR = length(rightindexset[1])
+    leftindexset_ = [lineari(obj.sitedims[1:NL], x) for x in leftindexset]
+    rightindexset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightindexset]
+
+    return obj(leftindexset_, rightindexset_, Val(M))
+end
+
+# single-site-index evaluation
 function (obj::PartitionedTensorTrain{T})(
     leftindexset::AbstractVector{MultiIndex},
     rightindexset::AbstractVector{MultiIndex},

@@ -19,8 +19,11 @@ import LinearAlgebra as LA
 
 using ITensors # TO BE REMOVED
 
+const MMultiIndex = Vector{Vector{Int}}
+
 include("util.jl")
 include("tensor.jl")
+include("adapter.jl")
 include("matrixmul.jl")
 include("matrixmulsum.jl")
 include("elementwisemul.jl")

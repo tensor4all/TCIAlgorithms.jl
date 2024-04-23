@@ -9,9 +9,9 @@ import TCIAlgorithms as TCIA
     sitedims = [[2, 2], [2, 2], [2, 2]]
     #localdims = collect(prod.(sitedims))
 
-    tt = TCI.TensorTrain{T,4}(
-        [randn(T, linkdims[l], sitedims[l]..., linkdims[l+1]) for l in 1:L]
-    )
+    tt = TCI.TensorTrain{T,4}([
+        randn(T, linkdims[l], sitedims[l]..., linkdims[l + 1]) for l in 1:L
+    ])
 
     gproj = TCIA.Projector(fill([0, 0], L), sitedims)
     tteval = TCIA.TTAdapter(TCIA.ProjectedTensorTrain(tt, gproj))
