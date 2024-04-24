@@ -77,6 +77,8 @@ function (obj::PartitionedTensorTrain{T})(
     rightindexset::AbstractVector{MultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
+    println("PartitionedTensorTrain batch")
+    t1 = time_ns()
     if length(leftindexset) * length(rightindexset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
@@ -105,6 +107,8 @@ function (obj::PartitionedTensorTrain{T})(
     for (ir, r) in enumerate(rightindexset)
         r_full = multii(obj.sitedims, vcat(fill(0, L - length(r)), r))
         for (ip, p) in enumerate(obj.tensortrains)
+            #@show r_full
+            #@show obj.tensortrains[ip].projector.data
             if hasoverlap(
                 Projector(r_full, obj.tensortrains[ip].projector.sitedims),
                 obj.tensortrains[ip].projector,
@@ -114,6 +118,7 @@ function (obj::PartitionedTensorTrain{T})(
             end
         end
     end
+    t2 = time_ns()
 
     nl = length(first(leftindexset))
     result = zeros(
@@ -126,9 +131,12 @@ function (obj::PartitionedTensorTrain{T})(
         if length(leftindexset_[ip]) * length(rightindexset_[ip]) == 0
             continue
         end
+        @show ip, length(leftindexset_[ip]), length(rightindexset_[ip])
         result_ = obj.tensortrains[ip](leftindexset_[ip], rightindexset_[ip], Val(M))
         result[left_mask[ip], .., right_mask[ip]] .+= result_
     end
+    t3 = time_ns()
+    println("Time: ", (t2 - t1) / 1e6, " ", (t3 - t2) / 1e6)
 
     return result
 end

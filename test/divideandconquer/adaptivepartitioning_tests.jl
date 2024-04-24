@@ -15,6 +15,7 @@ addprocs(max(0, MAX_WORKERS - nworkers()))
 @everywhere ITensors.disable_warn_order()
 @everywhere import QuanticsGrids:
     DiscretizedGrid, quantics_to_origcoord, origcoord_to_quantics
+@everywhere import QuanticsGrids as QG
 
 @testset "PatchOrdering" begin
     po = TCIA.PatchOrdering([4, 3, 2, 1])
@@ -91,41 +92,6 @@ end
     end
 end
 
-#==
-@testset "2D" begin
-    Random.seed!(1234)
-
-    @everywhere fxy(x, y) =
-        (
-            exp(-0.4 * (x^2 + y^2)) +
-            1 +
-            sin(x * y) * exp(-x^2) +
-            cos(3 * x * y) * exp(-y^2) +
-            cos(x + y)
-        ) +
-        0.05 * cos(1 / 0.001 * (0.2 * x - 0.4 * y)) +
-        0.0005 * cos(1 / 0.0001 * (-0.2 * x + 0.7 * y)) +
-        1e-5 * cos(1 / 1e-7 * (20 * x))
-
-    R = 40
-    grid = DiscretizedGrid{2}(R, (-5, -5), (5, 5))
-    localdims = fill(4, R)
-
-    qf = x -> fxy(quantics_to_origcoord(grid, x)...)
-
-    tol = 1e-7
-
-    pordering = TCIA.PatchOrdering(collect(1:R))
-
-    creator = TCIA.TCI2PatchCreator(
-        ComplexF64, qf, localdims; maxbonddim=50, rtol=tol, verbosity=1, ntry=10
-    )
-
-    tree = TCIA.adaptiveinterpolate(creator, pordering; verbosity=1, maxnleaves=1000)
-    @show collect(keys(tree))
-    @show length(tree)
-end
-==#
 
 @testset "2D Gaussian" begin
     Random.seed!(1234)
@@ -180,3 +146,55 @@ end
     qidx = fill(1, R)
     @test partt([[q] for q in qidx]) == 0.0
 end
+
+
+
+#==
+@testset "2D Gaussian * 2D Gaussian" begin
+    Random.seed!(1234)
+
+    @everywhere fxy(x, y) = exp(-0.5 * (x^2 + y^2))
+    
+    R = 20
+    xmax = 10.0
+    tol = 1e-10
+
+    grid = DiscretizedGrid{2}(R, (-xmax, -xmax), (xmax, xmax))
+    localdims = fill(4, R)
+
+    # Construct TCI for 2D Gaussian
+    qf = x -> fxy(quantics_to_origcoord(grid, x)...)
+
+    pordering = TCIA.PatchOrdering(collect(1:R))
+    creator = TCIA.TCI2PatchCreator(
+        Float64, qf, localdims; maxbonddim=40, rtol=tol, verbosity=1, ntry=10
+    )
+    
+    partres = TCIA.adaptiveinterpolate(creator, pordering; verbosity=1, maxnleaves=1000)
+    
+    sitedims = [[d] for d in localdims]
+    partt = TCIA.PartitionedTensorTrain(partres, sitedims, pordering)
+    qidx = origcoord_to_quantics(grid, (0.0, 1.0))
+    
+    @test isapprox(
+        fxy(quantics_to_origcoord(grid, qidx)...), partt([[q] for q in qidx]); atol=tol
+    )
+
+    # 2D Gaussian * 2D Gaussian
+    sitedimstto = [[2, 2] for _ in eachindex(localdims)]
+    partto = reshape(partt, sitedimstto)
+    partto.tensortrains[1].projector.data
+    ttoprod = TCIA.create_multiplier(partto, partto)
+
+    grid1 = DiscretizedGrid{1}(R, -xmax, xmax)
+    ff(x, y) = sqrt(π) * exp(-0.5 * (x^2 + y^2))
+    @test ff(0.0, 0.0) ≈ (2xmax/2^R) * ttoprod([[x, x] for x in origcoord_to_quantics(grid1, 0.0)])
+
+    # TCI of 2D Gaussian * 2D Gaussian
+    creator2 = TCIA.TCI2PatchCreator(
+        Float64, ttoprod, localdims; maxbonddim=40, rtol=tol, verbosity=1, ntry=10
+    )
+    partres2 = TCIA.adaptiveinterpolate(creator2, pordering; verbosity=1, maxnleaves=1000)
+    partt2 = reshape(TCIA.PartitionedTensorTrain(partres2, fill([4], R), pordering), fill([2, 2], R))
+end
+==#

@@ -199,6 +199,7 @@ function (obj::MatrixProduct{T})(
     if length(leftindexset) * length(rightindexset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
+    t1 = time_ns()
 
     N = length(obj)
     Nr = length(rightindexset[1])
@@ -215,7 +216,6 @@ function (obj::MatrixProduct{T})(
         idxs in rightindexset
     ]
 
-    t1 = time_ns()
     linkdims_a = vcat(1, TCI.linkdims(a), 1)
     linkdims_b = vcat(1, TCI.linkdims(b), 1)
 
@@ -256,7 +256,7 @@ function (obj::MatrixProduct{T})(
         ntuple(i -> prod(obj.sitedims[i + s_ - 1]), M)...,
         length(rightindexset),
     )
-    t5 = time_ns()
+    t4 = time_ns()
 
     # (left_index, link_a, link_b, S) * (link_a, link_b, right_index)
     #   => (left_index, S, right_index)
@@ -265,6 +265,13 @@ function (obj::MatrixProduct{T})(
     if obj.f isa Function
         res .= obj.f.(res)
     end
+    t5 = time_ns()
+
+    #print("t21: ", (t2 - t1) / 1e6, " ms\n")
+    #print("t32: ", (t3 - t2) / 1e6, " ms\n")
+    #print("t43: ", (t4 - t3) / 1e6, " ms\n")
+    #print("t54: ", (t5 - t4) / 1e6, " ms\n")
+    print("t51: ", (t5 - t1) / 1e6, " ms\n")
 
     return reshape(res, return_size)
 end
@@ -279,12 +286,17 @@ function (obj::MatrixProduct{T})(
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
 
+    #println("A")
+    t1 = time_ns()
     NL = length(leftindexset[1])
     NR = length(rightindexset[1])
     leftindexset_ = [lineari(obj.sitedims[1:NL], x) for x in leftindexset]
     rightindexset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightindexset]
 
-    return obj(leftindexset_, rightindexset_, Val(M))
+    result = obj(leftindexset_, rightindexset_, Val(M))
+    t2 = time_ns()
+    println("B", (t2 - t1) / 1e6, " ms\n")
+    return result
 end
 
 function naivecontract(a::TensorTrain{T,4}, b::TensorTrain{T,4})::TensorTrain{T,4} where {T}

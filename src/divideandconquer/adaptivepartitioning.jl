@@ -214,6 +214,26 @@ function _crossinterpolate2(
     )
 end
 
+struct _FuncWrapper{T,F}
+    f::F
+    pordering::PatchOrdering
+    prefix::Vector{Vector{Int}}
+end
+
+function _FuncWrapper(::Type{T}, f::F, pordering, prefix) where {T,F}
+    return _FuncWrapper{T,F}(f, pordering, prefix)
+end
+
+function (obj::_FuncWrapper{T})(indexset::MultiIndex)::T where {T}
+    idx = fullindices(obj.pordering, obj.prefix, [[x_] for x_ in indexset])
+    return obj.f(map(first, idx))
+end
+
+#function (obj::_FuncWrapper{T})(leftindexset::Vector{MultiIndex}, rightindexset::Vector{MultiIndex}, ::Val{M})::Array{T,M + 2} where {T,M}
+    #idx = fullindices(obj.pordering, obj.prefix, [[x_] for x_ in indexset])
+    #return obj.f(map(first, idx))
+#end
+
 function createpatch(
     obj::TCI2PatchCreator{T}, pordering::PatchOrdering, prefix::Vector{Vector{Int}}
 ) where {T}
@@ -221,10 +241,11 @@ function createpatch(
     localdims_ = obj.localdims[mask]
     #f_ = x -> obj.f(fullindices(pordering, prefix, x))
 
-    function f_(x::Vector{Int})::T
-        idx = fullindices(pordering, prefix, [[x_] for x_ in x])
-        return obj.f(map(first, idx))
-    end
+    f_ = _FuncWrapper(T, obj.f, pordering, prefix)
+    #function f_(x::Vector{Int})::T
+        #idx = fullindices(pordering, prefix, [[x_] for x_ in x])
+        #return obj.f(map(first, idx))
+    #end
 
     firstpivots = findinitialpivots(f_, localdims_, obj.ninitialpivot)
 

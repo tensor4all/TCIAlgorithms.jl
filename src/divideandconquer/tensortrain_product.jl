@@ -74,5 +74,6 @@ function create_multiplier(
         v.projector <= projector ||
             error("Projector $(v.projector) is not compatible with $projector")
     end
+    #@show length(products)
     return PartitionedTensorTrain(products, projector, sitedims)
 end
