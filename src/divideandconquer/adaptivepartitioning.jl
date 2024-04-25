@@ -148,6 +148,7 @@ mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}
     maxval::Float64
     atol::Float64
     ninitialpivot::Int
+    checkbatchevaluatable::Bool
 end
 
 function TCI2PatchCreator(
@@ -160,6 +161,7 @@ function TCI2PatchCreator(
     tcikwargs=Dict(),
     ntry=100,
     ninitialpivot=5,
+    checkbatchevaluatable=false
 )::TCI2PatchCreator{T} where {T}
     maxval, _ = _estimate_maxval(f, localdims; ntry=ntry)
     return TCI2PatchCreator{T}(
@@ -172,6 +174,7 @@ function TCI2PatchCreator(
         maxval,
         rtol * maxval,
         ninitialpivot,
+        checkbatchevaluatable
     )
 end
 
@@ -183,6 +186,7 @@ function _crossinterpolate2(
     tolerance::Float64;
     maxbonddim::Int=typemax(Int),
     verbosity::Int=0,
+    checkbatchevaluatable=false
 ) where {T}
     ncheckhistory = 3
     tci, others = TCI.crossinterpolate2(
@@ -199,6 +203,7 @@ function _crossinterpolate2(
         maxiter=10,
         ncheckhistory=ncheckhistory,
         tolmarginglobalsearch=10.0,
+        checkbatchevaluatable=checkbatchevaluatable
     )
     if maximum(TCI.linkdims(tci)) == 0
         error(
@@ -214,14 +219,18 @@ function _crossinterpolate2(
     )
 end
 
-struct _FuncWrapper{T,F}
+struct _FuncWrapper{T,F} <: TCI.BatchEvaluator{T}
     f::F
     pordering::PatchOrdering
     prefix::Vector{Vector{Int}}
+    fromleft::Bool
 end
 
 function _FuncWrapper(::Type{T}, f::F, pordering, prefix) where {T,F}
-    return _FuncWrapper{T,F}(f, pordering, prefix)
+    all(pordering.ordering[1:end-1] .< pordering.ordering[2:end]) || all(pordering.ordering[1:end-1] .> pordering.ordering[2:end]) ||
+        error("Ordering must be increasing or decreasing (just currently implemented)")
+    fromleft = all(pordering.ordering[1:end-1] .< pordering.ordering[2:end]) 
+    return _FuncWrapper{T,F}(f, pordering, prefix, fromleft)
 end
 
 function (obj::_FuncWrapper{T})(indexset::MultiIndex)::T where {T}
@@ -229,38 +238,46 @@ function (obj::_FuncWrapper{T})(indexset::MultiIndex)::T where {T}
     return obj.f(map(first, idx))
 end
 
-#function (obj::_FuncWrapper{T})(leftindexset::Vector{MultiIndex}, rightindexset::Vector{MultiIndex}, ::Val{M})::Array{T,M + 2} where {T,M}
-    #idx = fullindices(obj.pordering, obj.prefix, [[x_] for x_ in indexset])
-    #return obj.f(map(first, idx))
-#end
+function (obj::_FuncWrapper{T})(leftindexset::Vector{MultiIndex}, rightindexset::Vector{MultiIndex}, ::Val{M})::Array{T,M + 2} where {T,M}
+    if obj.fromleft
+        p = first.(obj.prefix)
+        l::Vector{Vector{Int}} = [vcat(p, indexset) for indexset in leftindexset]
+        return obj.f(l, rightindexset, Val(M))
+    else
+        p = reverse(first.(obj.prefix))
+        r::Vector{Vector{Int}} = [vcat(indexset, p) for indexset in rightindexset]
+        return obj.f(leftindexset, r, Val(M))
+    end
+end
 
 function createpatch(
     obj::TCI2PatchCreator{T}, pordering::PatchOrdering, prefix::Vector{Vector{Int}}
 ) where {T}
     mask = maskactiveindices(pordering, length(prefix))
     localdims_ = obj.localdims[mask]
-    #f_ = x -> obj.f(fullindices(pordering, prefix, x))
 
-    f_ = _FuncWrapper(T, obj.f, pordering, prefix)
-    #function f_(x::Vector{Int})::T
-        #idx = fullindices(pordering, prefix, [[x_] for x_ in x])
-        #return obj.f(map(first, idx))
-    #end
+    function _f(x::Vector{Int})::T
+        idx = fullindices(pordering, prefix, [[x_] for x_ in x])
+        return obj.f(map(first, idx))
+    end
+    
+    wrapf = obj.f isa TCI.BatchEvaluator ? _FuncWrapper(T, obj.f, pordering, prefix) : _f
 
-    firstpivots = findinitialpivots(f_, localdims_, obj.ninitialpivot)
+    firstpivots = findinitialpivots(wrapf, localdims_, obj.ninitialpivot)
 
-    if all(f_.(firstpivots) .== 0)
+    if all(wrapf.(firstpivots) .== 0)
         return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
     end
 
     return _crossinterpolate2(
         T,
-        f_,
+        wrapf,
         localdims_,
         firstpivots,
         obj.atol;
         maxbonddim=obj.maxbonddim,
         verbosity=obj.verbosity,
+        checkbatchevaluatable=obj.checkbatchevaluatable
     )
 end
 
@@ -323,7 +340,6 @@ function ProjectedTensorTrain(
     sitetensors = Array{T,3}[zeros(T, 1, 1, 1) for _ in 1:L]
     linkdims = ones(Int, L + 1)
     localdims_ = [Base.only(d) for d in localdims]
-    println("")
 
     l_ = 1
     for (l, p) in enumerate(prj)
