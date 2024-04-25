@@ -161,7 +161,7 @@ function TCI2PatchCreator(
     tcikwargs=Dict(),
     ntry=100,
     ninitialpivot=5,
-    checkbatchevaluatable=false
+    checkbatchevaluatable=false,
 )::TCI2PatchCreator{T} where {T}
     maxval, _ = _estimate_maxval(f, localdims; ntry=ntry)
     return TCI2PatchCreator{T}(
@@ -174,7 +174,7 @@ function TCI2PatchCreator(
         maxval,
         rtol * maxval,
         ninitialpivot,
-        checkbatchevaluatable
+        checkbatchevaluatable,
     )
 end
 
@@ -186,7 +186,7 @@ function _crossinterpolate2(
     tolerance::Float64;
     maxbonddim::Int=typemax(Int),
     verbosity::Int=0,
-    checkbatchevaluatable=false
+    checkbatchevaluatable=false,
 ) where {T}
     ncheckhistory = 3
     tci, others = TCI.crossinterpolate2(
@@ -203,7 +203,7 @@ function _crossinterpolate2(
         maxiter=10,
         ncheckhistory=ncheckhistory,
         tolmarginglobalsearch=10.0,
-        checkbatchevaluatable=checkbatchevaluatable
+        checkbatchevaluatable=checkbatchevaluatable,
     )
     if maximum(TCI.linkdims(tci)) == 0
         error(
@@ -227,9 +227,10 @@ struct _FuncWrapper{T,F} <: TCI.BatchEvaluator{T}
 end
 
 function _FuncWrapper(::Type{T}, f::F, pordering, prefix) where {T,F}
-    all(pordering.ordering[1:end-1] .< pordering.ordering[2:end]) || all(pordering.ordering[1:end-1] .> pordering.ordering[2:end]) ||
+    all(pordering.ordering[1:(end - 1)] .< pordering.ordering[2:end]) ||
+        all(pordering.ordering[1:(end - 1)] .> pordering.ordering[2:end]) ||
         error("Ordering must be increasing or decreasing (just currently implemented)")
-    fromleft = all(pordering.ordering[1:end-1] .< pordering.ordering[2:end]) 
+    fromleft = all(pordering.ordering[1:(end - 1)] .< pordering.ordering[2:end])
     return _FuncWrapper{T,F}(f, pordering, prefix, fromleft)
 end
 
@@ -238,7 +239,9 @@ function (obj::_FuncWrapper{T})(indexset::MultiIndex)::T where {T}
     return obj.f(map(first, idx))
 end
 
-function (obj::_FuncWrapper{T})(leftindexset::Vector{MultiIndex}, rightindexset::Vector{MultiIndex}, ::Val{M})::Array{T,M + 2} where {T,M}
+function (obj::_FuncWrapper{T})(
+    leftindexset::Vector{MultiIndex}, rightindexset::Vector{MultiIndex}, ::Val{M}
+)::Array{T,M + 2} where {T,M}
     if obj.fromleft
         p = first.(obj.prefix)
         l::Vector{Vector{Int}} = [vcat(p, indexset) for indexset in leftindexset]
@@ -260,7 +263,7 @@ function createpatch(
         idx = fullindices(pordering, prefix, [[x_] for x_ in x])
         return obj.f(map(first, idx))
     end
-    
+
     wrapf = obj.f isa TCI.BatchEvaluator ? _FuncWrapper(T, obj.f, pordering, prefix) : _f
 
     firstpivots = findinitialpivots(wrapf, localdims_, obj.ninitialpivot)
@@ -277,7 +280,7 @@ function createpatch(
         obj.atol;
         maxbonddim=obj.maxbonddim,
         verbosity=obj.verbosity,
-        checkbatchevaluatable=obj.checkbatchevaluatable
+        checkbatchevaluatable=obj.checkbatchevaluatable,
     )
 end
 

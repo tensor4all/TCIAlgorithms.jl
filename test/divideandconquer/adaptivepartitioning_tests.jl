@@ -92,7 +92,6 @@ end
     end
 end
 
-
 @everywhere fxy(x, y) = exp(-0.5 * (x^2 + y^2))
 
 @testset "2D Gaussian" begin
@@ -147,7 +146,6 @@ end
     @test partt([[q] for q in qidx]) == 0.0
 end
 
-
 @testset "2D Gaussian * 2D Gaussian" begin
     Random.seed!(1234)
 
@@ -165,13 +163,13 @@ end
     creator = TCIA.TCI2PatchCreator(
         Float64, qf, localdims; maxbonddim=40, rtol=tol, verbosity=0, ntry=10
     )
-    
+
     partres = TCIA.adaptiveinterpolate(creator, pordering; verbosity=0, maxnleaves=1000)
-    
+
     sitedims = [[d] for d in localdims]
     partt = TCIA.PartitionedTensorTrain(partres, sitedims, pordering)
     qidx = origcoord_to_quantics(grid, (0.0, 1.0))
-    
+
     @test isapprox(
         fxy(quantics_to_origcoord(grid, qidx)...), partt([[q] for q in qidx]); atol=tol
     )
@@ -184,14 +182,18 @@ end
 
     grid1 = DiscretizedGrid{1}(R, -xmax, xmax)
     ff(x, y) = sqrt(π) * exp(-0.5 * (x^2 + y^2))
-    @test ff(0.0, 0.0) ≈ (2xmax/2^R) * ttoprod([[x, x] for x in origcoord_to_quantics(grid1, 0.0)])
+    @test ff(0.0, 0.0) ≈
+        (2xmax / 2^R) * ttoprod([[x, x] for x in origcoord_to_quantics(grid1, 0.0)])
 
     # TCI of 2D Gaussian * 2D Gaussian
     creator2 = TCIA.TCI2PatchCreator(
         Float64, ttoprod, localdims; maxbonddim=40, rtol=tol, verbosity=0, ntry=10
     )
     partres2 = TCIA.adaptiveinterpolate(creator2, pordering; verbosity=0, maxnleaves=1000)
-    partt2 = reshape(TCIA.PartitionedTensorTrain(partres2, fill([4], R), pordering), fill([2, 2], R))
+    partt2 = reshape(
+        TCIA.PartitionedTensorTrain(partres2, fill([4], R), pordering), fill([2, 2], R)
+    )
 
-    @test ff(0.0, 0.0) ≈ (2xmax/2^R) * partt2([[x, x] for x in origcoord_to_quantics(grid1, 0.0)])
+    @test ff(0.0, 0.0) ≈
+        (2xmax / 2^R) * partt2([[x, x] for x in origcoord_to_quantics(grid1, 0.0)])
 end

@@ -31,7 +31,6 @@ function Base.show(io::IO, obj::PartitionedTensorTrain{T}) where {T}
     )
 end
 
-
 """
 Sum over external indices
 """
