@@ -9,17 +9,13 @@ mutable struct ProjectedTensorTrain{T,N} <: ProjectableEvaluator{T}
     sitedims::Vector{Vector{Int}} # (L, N-2)
 end
 
-function ProjectedTensorTrain(
-    data::TensorTrain{T,N},
-    projector=Projector([fill(0, N - 2) for _ in 1:length(data)]);
-    kwargs...,
-) where {T,N}
+function ProjectedTensorTrain(data::TensorTrain{T,N}, projector; kwargs...) where {T,N}
     return ProjectedTensorTrain{T,N}(data, projector; kwargs...)
 end
 
 function ProjectedTensorTrain{T,N}(
     data,
-    projector=Projector([fill(0, N - 2) for _ in 1:length(data)]);
+    projector;
     compression::Bool=false,
     cutoff::Float64=1e-30,
     maxdim::Int=typemax(Int),
@@ -28,7 +24,9 @@ function ProjectedTensorTrain{T,N}(
     length(projector) == L || error("Length mismatch: projector")
     obj = ProjectedTensorTrain{T,N}(data, projector, TCI.sitedims(data))
     # Why do we need force option?
-    globalprojector = Projector([fill(0, N - 2) for _ in 1:length(data)])
+    globalprojector = Projector(
+        [fill(0, N - 2) for _ in 1:length(data)], projector.sitedims
+    )
     obj = project(
         obj,
         projector;
@@ -40,27 +38,71 @@ function ProjectedTensorTrain{T,N}(
     return obj
 end
 
+# This function is type unstable
+function Base.reshape(
+    obj::ProjectedTensorTrain{T,N}, dims::AbstractVector{<:AbstractVector{Int}}
+) where {T,N}
+    length(unique(length.(dims))) == 1 ||
+        error("The number of siteindices must be the same at all tensors!")
+    N2 = Base.only(unique(length.(dims))) + 2
+
+    ttdata = [
+        reshape(obj.data[n], size(obj.data[n])[1], dims[n]..., size(obj.data[n])[end]) for
+        n in eachindex(dims)
+    ]
+
+    return ProjectedTensorTrain{T,N2}(
+        TensorTrain{T,N2}(ttdata), reshape(obj.projector, dims), dims
+    )
+end
+
 Base.length(obj::ProjectedTensorTrain{T,N}) where {T,N} = length(obj.data)
 
-function (obj::ProjectedTensorTrain{T,N})(
-    indexsets::AbstractVector{<:AbstractVector{LocalIndex}}
-)::T where {T,N}
-    if !(indexsets <= projector(obj))
+function Base.show(io::IO, obj::ProjectedTensorTrain{T,N}) where {T,N}
+    return print(
+        io,
+        "ProjectedTensorTrain{$T} with rank $(TCI.rank(obj.data)) on $(obj.projector.data)",
+    )
+end
+
+function TCI.sitetensors(obj::ProjectedTensorTrain{T,N}) where {T,N}
+    return obj.data.sitetensors
+end
+
+function TCI.sitetensor(obj::ProjectedTensorTrain{T,N}, i) where {T,N}
+    return TCI.sitetensor(obj.tt, i)
+end
+
+# multi-site-index evaluation
+function (obj::ProjectedTensorTrain{T,N})(indexset::MMultiIndex)::T where {T,N}
+    if !(indexset <= projector(obj))
         return zero(T)
     end
-    return obj.data(indexsets)
+    return obj.data(indexset)
 end
 
-function _multii(
-    obj::ProjectedTensorTrain{T,N}, indexset::MultiIndex
-)::Vector{Vector{Int}} where {T,N}
-    return multii(obj.sitedims, indexset)
+# multi-site-index evaluation
+function (obj::ProjectedTensorTrain{T,N})(
+    leftindexset::AbstractVector{MMultiIndex},
+    rightindexset::AbstractVector{MMultiIndex},
+    ::Val{M},
+)::Array{T,M + 2} where {T,N,M}
+    return obj.data(leftindexset, rightindexset, Val(M))
 end
 
-# Evaluate the object at a single linear indexset
-function (obj::ProjectedTensorTrain{T,N})(indexset::MultiIndex)::T where {T,N}
-    return obj(_multii(obj, indexset))
-end
+# single-site-index evaluation
+#function (obj::ProjectedTensorTrain{T,N})(indexset::MultiIndex)::T where {T,N}
+#return _evaluate_as_multisitedims(obj, indexset)
+#end
+#
+# single-site-index evaluation
+#function (obj::ProjectedTensorTrain{T,N})(
+#leftindexset::AbstractVector{MultiIndex},
+#rightindexset::AbstractVector{MultiIndex},
+#::Val{M},
+#)::Array{T,M + 2} where {T,N,M}
+#return obj.data(leftindexset, rightindexset, Val(M))
+#end
 
 function projectat!(A::Array{T,N}, idxpos, targetidx)::Array{T,N} where {T,N}
     mask = [v != targetidx for v in 1:size(A, idxpos)]

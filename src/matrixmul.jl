@@ -180,21 +180,25 @@ function evaluate(
     end
 end
 
+# single-site-index evaluation
 function (obj::MatrixProduct{T})(indexset::AbstractVector{Int})::T where {T}
     return evaluate(obj, indexset)
 end
 
-function (obj::MatrixProduct{T})(
-    indexset::AbstractVector{<:AbstractVector{Int}}
-)::T where {T}
+# multi-site-index evaluation
+function (obj::MatrixProduct{T})(indexset::MMultiIndex)::T where {T}
     return evaluate(obj, lineari(obj.sitedims, indexset))
 end
 
+# single-site-index evaluation
 function (obj::MatrixProduct{T})(
     leftindexset::AbstractVector{MultiIndex},
     rightindexset::AbstractVector{MultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
+    if length(leftindexset) * length(rightindexset) == 0
+        return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
+    end
     N = length(obj)
     Nr = length(rightindexset[1])
     s_ = length(leftindexset[1]) + 1
@@ -210,7 +214,6 @@ function (obj::MatrixProduct{T})(
         idxs in rightindexset
     ]
 
-    t1 = time_ns()
     linkdims_a = vcat(1, TCI.linkdims(a), 1)
     linkdims_b = vcat(1, TCI.linkdims(b), 1)
 
@@ -218,7 +221,6 @@ function (obj::MatrixProduct{T})(
     for (i, idx) in enumerate(leftindexset_unfused)
         left_[i, :, :] .= evaluateleft(obj, idx)
     end
-    t2 = time_ns()
 
     right_ = Array{T,3}(
         undef, linkdims_a[e_ + 1], linkdims_b[e_ + 1], length(rightindexset)
@@ -226,7 +228,6 @@ function (obj::MatrixProduct{T})(
     for (i, idx) in enumerate(rightindexset_unfused)
         right_[:, :, i] .= evaluateright(obj, idx)
     end
-    t3 = time_ns()
 
     # (left_index, link_a, link_b, site[s_] * site'[s_] *  ... * site[e_] * site'[e_])
     leftobj::Array{T,4} = reshape(left_, size(left_)..., 1)
@@ -251,7 +252,6 @@ function (obj::MatrixProduct{T})(
         ntuple(i -> prod(obj.sitedims[i + s_ - 1]), M)...,
         length(rightindexset),
     )
-    t5 = time_ns()
 
     # (left_index, link_a, link_b, S) * (link_a, link_b, right_index)
     #   => (left_index, S, right_index)
@@ -261,7 +261,28 @@ function (obj::MatrixProduct{T})(
         res .= obj.f.(res)
     end
 
+    #print("t51: ", (t5 - t1) / 1e6, " ms\n")
+
     return reshape(res, return_size)
+end
+
+# multi-site-index evaluation
+function (obj::MatrixProduct{T})(
+    leftindexset::AbstractVector{MMultiIndex},
+    rightindexset::AbstractVector{MMultiIndex},
+    ::Val{M},
+)::Array{T,M + 2} where {T,M}
+    if length(leftindexset) * length(rightindexset) == 0
+        return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
+    end
+
+    NL = length(leftindexset[1])
+    NR = length(rightindexset[1])
+    leftindexset_ = [lineari(obj.sitedims[1:NL], x) for x in leftindexset]
+    rightindexset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightindexset]
+
+    result = obj(leftindexset_, rightindexset_, Val(M))
+    return result
 end
 
 function naivecontract(a::TensorTrain{T,4}, b::TensorTrain{T,4})::TensorTrain{T,4} where {T}
