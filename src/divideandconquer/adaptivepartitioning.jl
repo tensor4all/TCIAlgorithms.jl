@@ -149,6 +149,7 @@ mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}
     atol::Float64
     ninitialpivot::Int
     checkbatchevaluatable::Bool
+    loginterval::Int
 end
 
 function TCI2PatchCreator(
@@ -162,6 +163,7 @@ function TCI2PatchCreator(
     ntry=100,
     ninitialpivot=5,
     checkbatchevaluatable=false,
+    loginterval=10
 )::TCI2PatchCreator{T} where {T}
     maxval, _ = _estimate_maxval(f, localdims; ntry=ntry)
     return TCI2PatchCreator{T}(
@@ -175,6 +177,7 @@ function TCI2PatchCreator(
         rtol * maxval,
         ninitialpivot,
         checkbatchevaluatable,
+        loginterval
     )
 end
 
@@ -187,6 +190,7 @@ function _crossinterpolate2(
     maxbonddim::Int=typemax(Int),
     verbosity::Int=0,
     checkbatchevaluatable=false,
+    loginterval=10
 ) where {T}
     ncheckhistory = 3
     tci, others = TCI.crossinterpolate2(
@@ -198,7 +202,7 @@ function _crossinterpolate2(
         maxbonddim=maxbonddim,
         verbosity=verbosity,
         normalizeerror=false,
-        loginterval=1,
+        loginterval=loginterval,
         nsearchglobalpivot=10,
         maxiter=10,
         ncheckhistory=ncheckhistory,
@@ -281,6 +285,7 @@ function createpatch(
         maxbonddim=obj.maxbonddim,
         verbosity=obj.verbosity,
         checkbatchevaluatable=obj.checkbatchevaluatable,
+        loginterval=obj.loginterval
     )
 end
 
