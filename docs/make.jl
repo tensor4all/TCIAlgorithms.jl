@@ -5,14 +5,17 @@ DocMeta.setdocmeta!(TCIAlgorithms, :DocTestSetup, :(using TCIAlgorithms); recurs
 
 makedocs(;
     modules=[TCIAlgorithms],
-    authors="Ritter.Marc <Ritter.Marc@physik.uni-muenchen.de> and contributors",
-    repo="https://gitlab.com/tensors4fields/TCIAlgorithms.jl/blob/{commit}{path}#{line}",
+    authors="Hiroshi Shinaoka <h.shinaoka@gmail.com> and contributors",
     sitename="TCIAlgorithms.jl",
     format=Documenter.HTML(;
-        prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://tensors4fields.gitlab.io/TCIAlgorithms.jl",
+        canonical="https://github.com/tensor4all/TCIAlgorithms.jl",
         edit_link="main",
-        assets=String[],
-    ),
-    pages=["Home" => "index.md"],
+        assets=String[]),
+    pages=[
+        "Home" => "index.md",
+    ])
+
+deploydocs(;
+    repo="github.com/tensor4all/TCIAlgorithms.jl.git",
+    devbranch="main",
 )
