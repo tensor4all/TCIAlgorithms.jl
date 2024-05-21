@@ -92,6 +92,46 @@ end
     end
 end
 
+# Peaks at x = +/- 0.1
+@everywhere fx(x) = abs(abs(x) - 0.1) < 1e-9 ? 2.0 : exp(-0.5 * x^2)
+
+@testset "initialpivots" begin
+    Random.seed!(1234)
+
+    R = 40
+    grid = DiscretizedGrid{1}(R, -10, 10)
+    localdims = fill(2, R)
+
+    qf = x -> fx(quantics_to_origcoord(grid, x)...)
+
+    tol = 1e-7
+
+    pordering = TCIA.PatchOrdering(collect(1:R))
+
+    creator = TCIA.TCI2PatchCreator(
+        Float64,
+        qf,
+        localdims;
+        maxbonddim=5, # small bond dimension to create multiple patches
+        rtol=tol,
+        verbosity=0,
+        ntry=10,
+        initialpivots=[origcoord_to_quantics(grid, x) for x in [0.1, -0.1]],
+    )
+
+    partres = TCIA.adaptiveinterpolate(creator, pordering; verbosity=0, maxnleaves=1000)
+
+    sitedims = [[d] for d in localdims]
+    partt = TCIA.PartitionedTensorTrain(partres, sitedims, pordering)
+
+    testx = 0.1
+    qidx = origcoord_to_quantics(grid, testx)
+
+    @test isapprox(
+        fx(quantics_to_origcoord(grid, qidx)...), partt([[q] for q in qidx]); atol=tol
+    )
+end
+
 @everywhere fxy(x, y) = exp(-0.5 * (x^2 + y^2))
 
 @testset "2D Gaussian" begin
