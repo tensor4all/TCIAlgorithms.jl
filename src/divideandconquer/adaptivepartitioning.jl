@@ -24,7 +24,7 @@ function fullindices(
     po::PatchOrdering, prefix::Vector{Vector{Int}}, restindices::Vector{Vector{Int}}
 )
     length(prefix) + length(restindices) == length(po.ordering) ||
-        error("Inconsistent length")
+        error("Error in fullindices: Inconsistent length")
     res = [Int[] for _ in 1:(length(prefix) + length(restindices))]
 
     res[po.ordering[1:length(prefix)]] .= prefix
@@ -150,6 +150,7 @@ mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}
     ninitialpivot::Int
     checkbatchevaluatable::Bool
     loginterval::Int
+    initialpivots::Vector{MultiIndex}
 end
 
 function TCI2PatchCreator(
@@ -164,6 +165,7 @@ function TCI2PatchCreator(
     ninitialpivot=5,
     checkbatchevaluatable=false,
     loginterval=10,
+    initialpivots=Vector{MultiIndex}[],
 )::TCI2PatchCreator{T} where {T}
     maxval, _ = _estimate_maxval(f, localdims; ntry=ntry)
     return TCI2PatchCreator{T}(
@@ -178,6 +180,7 @@ function TCI2PatchCreator(
         ninitialpivot,
         checkbatchevaluatable,
         loginterval,
+        initialpivots,
     )
 end
 
@@ -270,9 +273,22 @@ function createpatch(
 
     wrapf = obj.f isa TCI.BatchEvaluator ? _FuncWrapper(T, obj.f, pordering, prefix) : _f
 
-    firstpivots = findinitialpivots(wrapf, localdims_, obj.ninitialpivot)
+    sitedims = [[Base.only(d)] for d in obj.localdims]
 
-    if all(wrapf.(firstpivots) .== 0)
+    initialpivots = MultiIndex[]
+    let
+        p = Projector(pordering, prefix, sitedims)
+        for idx in obj.initialpivots
+            idx_ = [[i] for i in idx]
+            if idx_ <= p
+                push!(initialpivots, idx[mask])
+            end
+        end
+    end
+
+    append!(initialpivots, findinitialpivots(wrapf, localdims_, obj.ninitialpivot))
+
+    if all(wrapf.(initialpivots) .== 0)
         return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
     end
 
@@ -280,7 +296,7 @@ function createpatch(
         T,
         wrapf,
         localdims_,
-        firstpivots,
+        initialpivots,
         obj.atol;
         maxbonddim=obj.maxbonddim,
         verbosity=obj.verbosity,
