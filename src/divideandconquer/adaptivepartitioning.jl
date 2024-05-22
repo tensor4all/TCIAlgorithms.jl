@@ -23,12 +23,6 @@ end
 function fullindices(
     po::PatchOrdering, prefix::Vector{Vector{Int}}, restindices::Vector{Vector{Int}}
 )
-    if !(length(prefix) + length(restindices) == length(po.ordering))
-        @show po
-        @show prefix
-        @show length(restindices)
-        @show restindices
-    end
     length(prefix) + length(restindices) == length(po.ordering) ||
         error("Error in fullindices: Inconsistent length")
     res = [Int[] for _ in 1:(length(prefix) + length(restindices))]
