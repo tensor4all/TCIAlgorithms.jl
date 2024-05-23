@@ -24,6 +24,7 @@ const MMultiIndex = Vector{Vector{Int}}
 include("util.jl")
 include("projector.jl")
 include("projectable_evaluator.jl")
+include("projected_tensortrain.jl")
 
 #include("util.jl")
 #include("tensor.jl")

@@ -8,6 +8,8 @@ Attributes:
 """
 abstract type ProjectableEvaluator{T} <: TCI.BatchEvaluator{T} end
 
+# To be implemented reshape
+
 function sum(obj::ProjectableEvaluator{T})::T where {T}
     error("Must be implemented!")
     return zero(T)
