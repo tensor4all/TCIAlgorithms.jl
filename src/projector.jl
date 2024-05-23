@@ -1,13 +1,3 @@
-"""
-Represents an object that can be projected on a subset of indices
-
-
-Attributes:
-- projector: Projector object
-- sitedims: Vector{Vector{Int}} of the dimensions of the local indices
-"""
-abstract type ProjectableEvaluator{T} <: TCI.BatchEvaluator{T} end
-
 struct Projector
     data::Vector{Vector{Int}} # 0 means no projection
     sitedims::Vector{Vector{Int}}
@@ -26,30 +16,6 @@ struct Projector
     end
 end
 
-#==
-function sum(obj::ProjectableEvaluator{T})::T where {T}
-    error("Must be implemented!")
-    return zero(T)
-end
-==#
-
-function project(
-    obj::ProjectableEvaluator{T}, prj::Projector
-)::ProjectableEvaluator{T} where {T}
-    return error("Must be implemented!")
-end
-
-function projector(obj::ProjectableEvaluator{T})::Projector where {T}
-    return obj.projector
-end
-
-function projector(obj::ProjectableEvaluator{T}, ilegg::Int)::Vector{Int} where {T}
-    return [obj.projector[l][ilegg] for l in 1:length(obj)]
-end
-
-function sitedims(obj::ProjectableEvaluator{T}, ilegg::Int)::Vector{Int} where {T}
-    return [obj.sitedims[l][ilegg] for l in 1:length(obj)]
-end
 
 function Base.copy(obj::Projector)
     return Projector(deepcopy(obj.data))
