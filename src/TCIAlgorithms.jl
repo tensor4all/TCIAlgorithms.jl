@@ -22,19 +22,22 @@ using ITensors # TO BE REMOVED
 const MMultiIndex = Vector{Vector{Int}}
 
 include("util.jl")
-include("tensor.jl")
-include("adapter.jl")
-include("matrixmul.jl")
-include("matrixmulsum.jl")
-include("elementwisemul.jl")
+include("projector.jl")
 
-include("divideandconquer/projector.jl")
-include("divideandconquer/adapter.jl")
-include("divideandconquer/tensortrain.jl")
-include("divideandconquer/projected_tensortrain.jl")
-include("divideandconquer/tensortrain_product.jl")
-include("divideandconquer/partitioned_tensortrain.jl")
-include("divideandconquer/adaptivepartitioning.jl")
-include("divideandconquer/mul.jl")
+#include("util.jl")
+#include("tensor.jl")
+#include("adapter.jl")
+#include("matrixmul.jl")
+#include("matrixmulsum.jl")
+#include("elementwisemul.jl")
+#
+#include("divideandconquer/projector.jl")
+#include("divideandconquer/adapter.jl")
+#include("divideandconquer/tensortrain.jl")
+#include("divideandconquer/projected_tensortrain.jl")
+#include("divideandconquer/tensortrain_product.jl")
+#include("divideandconquer/partitioned_tensortrain.jl")
+#include("divideandconquer/adaptivepartitioning.jl")
+#include("divideandconquer/mul.jl")
 
 end
