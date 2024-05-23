@@ -180,17 +180,3 @@ function Base.reshape(
     tensortrains = ProjectableEvaluator{T}[reshape(x, dims) for x in obj.tensortrains]
     return PartitionedTensorTrain(tensortrains, reshape(obj.projector, dims), dims)
 end
-
-function create_multiplier(
-    ptt1::PartitionedTensorTrain{T}, ptt2::PartitionedTensorTrain{T}
-)::PartitionedTensorTrain{T} where {T}
-    globalprojector = Projector(
-        [[x[1], y[2]] for (x, y) in zip(ptt1.projector, ptt2.projector)],
-        [[x[1], y[2]] for (x, y) in zip(ptt1.sitedims, ptt2.sitedims)],
-    )
-    return create_multiplier(
-        Vector{ProjectedTensorTrain{T,4}}(ptt1.tensortrains),
-        Vector{ProjectedTensorTrain{T,4}}(ptt2.tensortrains),
-        globalprojector,
-    )
-end

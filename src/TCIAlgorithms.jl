@@ -35,6 +35,6 @@ include("divideandconquer/projected_tensortrain.jl")
 include("divideandconquer/tensortrain_product.jl")
 include("divideandconquer/partitioned_tensortrain.jl")
 include("divideandconquer/adaptivepartitioning.jl")
-#include("divideandconquer/tensortrain_product.jl")
+include("divideandconquer/mul.jl")
 
 end
