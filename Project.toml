@@ -15,7 +15,7 @@ TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 
 [compat]
 EllipsisNotation = "1"
-ITensors = "0.3"
+ITensors = "0.3, 0.6"
 OrderedCollections = "1"
 QuanticsGrids = "0.3.1"
 SpecialFunctions = "2"
