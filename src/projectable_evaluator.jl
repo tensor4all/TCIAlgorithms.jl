@@ -10,6 +10,12 @@ abstract type ProjectableEvaluator{T} <: TCI.BatchEvaluator{T} end
 
 # To be implemented reshape
 
+function Base.show(io::IO, obj::ProjectableEvaluator{T}) where {T}
+    return print(
+        io, "$(typeof(obj)), sitedims: $(obj.sitedims), projector: $(obj.projector.data)"
+    )
+end
+
 function sum(obj::ProjectableEvaluator{T})::T where {T}
     error("Must be implemented!")
     return zero(T)
@@ -55,3 +61,16 @@ function (obj::ProjectableEvaluator{T})(
 
     return obj(leftindexset_, rightindexset_, Val(M))
 end
+
+"""
+Adapter for a ProjectableEvaluator object:
+`f` is a function that can be evaluated at indices (including projected and non-projected indices).
+
+The wrapped function can be evaluated at unprojected indices, and accepts fused indices.
+"""
+struct ProjectableEvaluatorSubset{T}
+    f::ProjectableEvaluator{T}
+end
+
+(obj::ProjectableEvaluatorSubset)(indexset::MultiIndex) = obj.f(fullindices(obj.f.projector, indexset))
+(obj::ProjectableEvaluatorSubset)(indexset::MMultiIndex) = obj.f(fullindices(obj.f.projector, indexset))

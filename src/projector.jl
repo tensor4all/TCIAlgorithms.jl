@@ -132,3 +132,39 @@ function Base.reshape(
     ]
     return Projector(newprojectordata, dims)
 end
+
+
+
+function isprojectat(p::Projector, n::Int)::Bool
+    if all(p.data[n] .== 0)
+        return false
+    elseif all(p.data[n] .!= 0)
+        return true
+    else
+        error(
+            "Invalid projector $(p.data[n]) at $n, all siteindices at $n must be projected or unprojected",
+        )
+    end
+end
+
+"""
+indexset: MultiIndex, a vector of indices on unprojected indices
+Returns: MultiIndex, a vector of indices on all indices
+"""
+function fullindices(projector, indexset::MMultiIndex)::MMultiIndex
+    fullidx = Vector{Vector{Int}}(undef, length(projector))
+    nsubi = 1
+    for n in 1:length(projector)
+        if isprojectat(projector, n)
+            fullidx[n] = projector[n]
+        else
+            fullidx[n] = indexset[nsubi]
+            nsubi += 1
+        end
+    end
+    return fullidx
+end
+
+fullindices(projector, indexset::MultiIndex)::MultiIndex = lineari(
+    projector.sitedims, fullindices(projector, multii(projector.sitedims, indexset))
+)

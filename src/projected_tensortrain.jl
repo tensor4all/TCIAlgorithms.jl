@@ -13,6 +13,15 @@ function ProjectedTensorTrain(data::TensorTrain{T,N}, projector; kwargs...) wher
     return ProjectedTensorTrain{T,N}(data, projector; kwargs...)
 end
 
+function ProjectedTensorTrain(tt::TensorTrain{T,N}) where {T,N}
+    return ProjectedTensorTrain(
+        tt,
+        Projector([fill(0, N - 2) for _ in 1:length(tt)], TCI.sitedims(tt)),
+        TCI.sitedims(tt)
+    )
+end
+
+
 function ProjectedTensorTrain{T,N}(
     data,
     projector;
@@ -89,20 +98,6 @@ function (obj::ProjectedTensorTrain{T,N})(
 )::Array{T,M + 2} where {T,N,M}
     return obj.data(leftindexset, rightindexset, Val(M))
 end
-
-# single-site-index evaluation
-#function (obj::ProjectedTensorTrain{T,N})(indexset::MultiIndex)::T where {T,N}
-#return _evaluate_as_multisitedims(obj, indexset)
-#end
-#
-# single-site-index evaluation
-#function (obj::ProjectedTensorTrain{T,N})(
-#leftindexset::AbstractVector{MultiIndex},
-#rightindexset::AbstractVector{MultiIndex},
-#::Val{M},
-#)::Array{T,M + 2} where {T,N,M}
-#return obj.data(leftindexset, rightindexset, Val(M))
-#end
 
 function projectat!(A::Array{T,N}, idxpos, targetidx)::Array{T,N} where {T,N}
     mask = [v != targetidx for v in 1:size(A, idxpos)]

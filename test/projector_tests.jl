@@ -50,4 +50,21 @@ import TCIAlgorithms: Projector
         @test reshape(Projector([[0], [2]], sitedims), sitedimsnew) ==
             Projector([[0, 0], [2, 1, 1]], sitedimsnew)
     end
+
+    @testset "isprojectat" begin
+        sitedims = [[2, 2], [2, 2], [2, 2]]
+        p = TCIA.Projector([[0, 0], [1, 1], [0, 0]], sitedims)
+        @test [TCIA.isprojectat(p, n) for n in 1:length(p)] == [false, true, false]
+
+        p = TCIA.Projector([[0, 1]], sitedims)
+        @test_throws ErrorException TCIA.isprojectat(p, 1)
+    end
+
+    @testset "fullindices" begin
+        sitedims = [[2, 2], [2, 2], [2, 2]]
+        p = TCIA.Projector([[0, 0], [2, 2], [0, 0]], sitedims)
+        @test [TCIA.isprojectat(p, n) for n in 1:length(p)] == [false, true, false]
+        @test TCIA.fullindices(p, [[1, 1], [1, 1]]) == [[1, 1], [2, 2], [1, 1]]
+        @test TCIA.fullindices(p, [1, 1]) == [1, 4, 1]
+    end
 end

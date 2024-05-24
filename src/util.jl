@@ -7,6 +7,7 @@ function allequal(collection)
     return all(collection .== c)
 end
 
+
 function _multii(sitedims::Vector{Int}, i::Int)::Vector{Int}
     i <= prod(sitedims) || error("Index out of range $i, $sitedims")
     return if i == 0

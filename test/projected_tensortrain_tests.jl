@@ -91,3 +91,20 @@ end
     indexset1 = [[1, 1], [1, 1], [1, 1], [1, 1]]
     @test tt(indexset1) ≈ ptt_truncated(indexset1) # exact equality
 end
+
+@testset "ProjectedTensorTrain <= TensorTrain" begin
+    N = 4
+    bonddims = [1, 10, 10, 10, 1]
+    @assert length(bonddims) == N + 1
+
+    localdims1 = [1, 1, 1, 1]
+    localdims2 = [1, 1, 1, 1]
+
+    tt = TCI.TensorTrain([
+        rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
+    ])
+
+    ptt = TCIA.ProjectedTensorTrain(tt)
+
+    @test tt([[1, 1], [1, 1], [1, 1], [1, 1]]) ≈ ptt([[1, 1], [1, 1], [1, 1], [1, 1]])
+end

@@ -25,6 +25,9 @@ include("util.jl")
 include("projector.jl")
 include("projectable_evaluator.jl")
 include("projected_tensortrain.jl")
+include("mul.jl")
+include("crossinterpolate.jl")
+
 
 #include("util.jl")
 #include("tensor.jl")
