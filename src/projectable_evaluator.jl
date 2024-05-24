@@ -27,12 +27,15 @@ function project(
     return error("Must be implemented!")
 end
 
-
 """
+Please override this funciton
+
 This is similar to batch evaluation.
 The difference is as follows.
 If some of `M` central indices are projected, the evaluation is done on the projected indices.
 The sizes of the correponding indices in the returned array are set to 1.
+
+`leftindexset` and `rightindexset` are defined for unprojected and projected indices.
 """
 function batchevaluateprj(
     obj::ProjectableEvaluator{T},
@@ -43,7 +46,6 @@ function batchevaluateprj(
     # Please override this funciton
     return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
 end
-
 
 """
 This is similar to `batchevaluateprj`, but the evaluation is done on all `M` indices.
@@ -60,11 +62,14 @@ function (obj::ProjectableEvaluator{T})(
 
     NL = length(leftindexset[1])
     NR = length(rightindexset[1])
-    L = legnth(obj)
+    L = length(obj)
 
-    results = zeros(T, (prod(s) for s in sitedims[NL+1:L-NR])...)
+    results = zeros(T, prod.(obj.sitedims[(NL + 1):(L - NR)])...)
 
-    slice = (isproject(obj.projector, n) ? _lineari(sitedims, projector[n]) : Colon() for n in NL+1:L-NR)
+    slice = (
+        isproject(obj.projector, n) ? _lineari(sitedims, projector[n]) : Colon() for
+        n in (NL + 1):(L - NR)
+    )
     results .= obj(leftindexset, rightindexset, Val(M))[slice...]
     return results
 end
@@ -79,6 +84,29 @@ end
 
 function sitedims(obj::ProjectableEvaluator{T}, ilegg::Int)::Vector{Int} where {T}
     return [obj.sitedims[l][ilegg] for l in 1:length(obj)]
+end
+
+
+function _multii(obj::ProjectableEvaluator, leftindexset, rightindexset)
+    NL = length(leftindexset[1])
+    NR = length(rightindexset[1])
+    leftindexset_ = [multii(obj.sitedims[1:NL], x) for x in leftindexset]
+    rightindexset_ = [multii(obj.sitedims[(end - NR + 1):end], x) for x in rightindexset]
+    return leftindexset_, rightindexset_
+end
+
+# Signe-site-index version
+function batchevaluateprj(
+    obj::ProjectableEvaluator{T},
+    leftindexset::AbstractVector{MultiIndex},
+    rightindexset::AbstractVector{MultiIndex},
+    ::Val{M},
+)::Array{T,M + 2} where {T,M}
+    if length(leftindexset) * length(rightindexset) == 0
+        return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
+    end
+    leftindexset_ , rightindexset_ = _multii(obj, leftindexset, rightindexset)
+    return batchevaluateprj(obj, leftindexset_, rightindexset_, Val(M))
 end
 
 # single-site-index evaluation
@@ -96,27 +124,10 @@ function (obj::ProjectableEvaluator{T})(
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
 
-    NL = length(leftindexset[1])
-    NR = length(rightindexset[1])
-    leftindexset_ = [multii(obj.sitedims[1:NL], x) for x in leftindexset]
-    rightindexset_ = [multii(obj.sitedims[(end - NR + 1):end], x) for x in rightindexset]
-
+    #NL = length(leftindexset[1])
+    #NR = length(rightindexset[1])
+    #leftindexset_ = [multii(obj.sitedims[1:NL], x) for x in leftindexset]
+    #rightindexset_ = [multii(obj.sitedims[(end - NR + 1):end], x) for x in rightindexset]
+    leftindexset_ , rightindexset_ = _multii(obj, leftindexset, rightindexset)
     return obj(leftindexset_, rightindexset_, Val(M))
-end
-
-"""
-Adapter for a ProjectableEvaluator object:
-`f` is a function that can be evaluated at indices (including projected and non-projected indices).
-
-The wrapped function can be evaluated at unprojected indices, and accepts fused indices.
-"""
-struct ProjectableEvaluatorSubset{T}
-    f::ProjectableEvaluator{T}
-end
-
-function (obj::ProjectableEvaluatorSubset)(indexset::MultiIndex)
-    return obj.f(fullindices(obj.f.projector, indexset))
-end
-function (obj::ProjectableEvaluatorSubset)(indexset::MMultiIndex)
-    return obj.f(fullindices(obj.f.projector, indexset))
 end

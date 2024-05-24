@@ -20,6 +20,7 @@ import LinearAlgebra as LA
 using ITensors # TO BE REMOVED
 
 const MMultiIndex = Vector{Vector{Int}}
+const TensorTrainState{T} = TensorTrain{T,3} where {T}
 
 include("util.jl")
 include("projector.jl")

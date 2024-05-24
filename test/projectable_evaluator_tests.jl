@@ -22,8 +22,9 @@ import TCIAlgorithms: Projector
 
         ptt = TCIA.ProjectedTensorTrain(tt, p)
 
-        ptt_wrapper = TCIA.ProjectableEvaluatorSubset(ptt)
+        ptt_wrapper = TCIA._FuncAdapterTCI2Subset(ptt)
         @test ptt_wrapper([[1, 1], [1, 1]]) ≈ ptt([[1, 1], [2, 2], [1, 1]])
         @test ptt_wrapper([1, 1]) ≈ ptt([1, 4, 1])
+        @test ptt_wrapper.localdims == [4, 4]
     end
 end

@@ -22,6 +22,9 @@ function multii(sitedims::Vector{Vector{Int}}, indexset::MultiIndex)::Vector{Vec
 end
 
 function _lineari(dims, mi)::Integer
+    if prod(mi) == 0
+        return 0
+    end
     ci = CartesianIndex(Tuple(mi))
     li = LinearIndices(Tuple(dims))
     return li[ci]

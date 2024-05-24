@@ -16,6 +16,10 @@ struct Projector
     end
 end
 
+# Reverse the left and right indices
+function Base.reverse(obj::Projector)
+    return Projector(reverse(obj.data), reverse(obj.sitedims))
+end
 
 function Base.copy(obj::Projector)
     return Projector(deepcopy(obj.data))
@@ -168,3 +172,4 @@ end
 fullindices(projector, indexset::MultiIndex)::MultiIndex = lineari(
     projector.sitedims, fullindices(projector, multii(projector.sitedims, indexset))
 )
+
