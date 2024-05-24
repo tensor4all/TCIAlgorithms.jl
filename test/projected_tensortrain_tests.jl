@@ -108,3 +108,24 @@ end
 
     @test tt([[1, 1], [1, 1], [1, 1], [1, 1]]) ≈ ptt([[1, 1], [1, 1], [1, 1], [1, 1]])
 end
+
+@testset "batchevaluateprj" begin
+    sitedims = [[2, 2], [2, 2], [2, 2], [2, 2]]
+
+    N = length(sitedims)
+    bonddims = [1, 4, 4, 4, 1]
+    @assert length(bonddims) == N + 1
+
+    tt = TCI.TensorTrain([rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N])
+
+    p = TCIA.Projector([[0, 0], [2, 2], [0, 0], [0, 0]], sitedims)
+
+    ptt = TCIA.ProjectedTensorTrain(tt, p; compression=true)
+
+    leftindexset = [[[1, 1]]]
+    rightindexset = [[[1, 1]]]
+    batchprj = TCIA.batchevaluateprj(ptt, leftindexset, rightindexset, Val(2))
+
+    @assert size(batchprj) == (1, 1, 4, 1)
+    @test batchprj[1, 1, 1, 1] ≈ ptt([1, 4, 1, 1])
+end

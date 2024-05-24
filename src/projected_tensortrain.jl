@@ -5,37 +5,47 @@ The underlying data will be copied when projected.
 """
 mutable struct ProjectedTensorTrain{T,N} <: ProjectableEvaluator{T}
     data::TensorTrain{T,N}
+    cache::TCI.TTCache{T}
     projector::Projector # (L, N-2)
     sitedims::Vector{Vector{Int}} # (L, N-2)
+
+    function ProjectedTensorTrain{T,N}(
+        tt::TensorTrain{T,N}, projector::Projector, sitedims::Vector{Vector{Int}}
+    ) where {T,N}
+        return new{T,N}(
+            tt,
+            TCI.TTCache(TensorTrain{T,3}(tt, collect(prod.(sitedims)))),
+            projector,
+            sitedims)
+    end
 end
 
-function ProjectedTensorTrain(data::TensorTrain{T,N}, projector; kwargs...) where {T,N}
-    return ProjectedTensorTrain{T,N}(data, projector; kwargs...)
+function ProjectedTensorTrain(
+    tt::TensorTrain{T,N}, projector::Projector, sitedims::Vector{Vector{Int}}
+) where {T,N}
+    return ProjectedTensorTrain{T,N}(tt, projector, sitedims)
+end
+
+function ProjectedTensorTrain(tt::TensorTrain{T,N}, projector; kwargs...) where {T,N}
+    return ProjectedTensorTrain{T,N}(tt, projector; kwargs...)
 end
 
 function ProjectedTensorTrain(tt::TensorTrain{T,N}) where {T,N}
     return ProjectedTensorTrain(
         tt,
         Projector([fill(0, N - 2) for _ in 1:length(tt)], TCI.sitedims(tt)),
-        TCI.sitedims(tt)
+        TCI.sitedims(tt),
     )
 end
 
-
 function ProjectedTensorTrain{T,N}(
-    data,
-    projector;
-    compression::Bool=false,
-    cutoff::Float64=1e-30,
-    maxdim::Int=typemax(Int),
+    tt, projector; compression::Bool=false, cutoff::Float64=1e-30, maxdim::Int=typemax(Int)
 ) where {T,N}
-    L = length(data)
+    L = length(tt)
     length(projector) == L || error("Length mismatch: projector")
-    obj = ProjectedTensorTrain{T,N}(data, projector, TCI.sitedims(data))
+    obj = ProjectedTensorTrain{T,N}(tt, projector, TCI.sitedims(tt))
     # Why do we need force option?
-    globalprojector = Projector(
-        [fill(0, N - 2) for _ in 1:length(data)], projector.sitedims
-    )
+    globalprojector = Projector([fill(0, N - 2) for _ in 1:length(tt)], projector.sitedims)
     obj = project(
         obj,
         projector;
@@ -82,21 +92,31 @@ function TCI.sitetensor(obj::ProjectedTensorTrain{T,N}, i) where {T,N}
     return TCI.sitetensor(obj.tt, i)
 end
 
-# multi-site-index evaluation
-function (obj::ProjectedTensorTrain{T,N})(indexset::MMultiIndex)::T where {T,N}
-    if !(indexset <= projector(obj))
-        return zero(T)
-    end
-    return obj.data(indexset)
-end
-
-# multi-site-index evaluation
-function (obj::ProjectedTensorTrain{T,N})(
+function batchevaluateprj(
+    obj::ProjectedTensorTrain{T,N},
     leftindexset::AbstractVector{MMultiIndex},
     rightindexset::AbstractVector{MMultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,N,M}
-    return obj.data(leftindexset, rightindexset, Val(M))
+    if length(leftindexset) * length(rightindexset) == 0
+        return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
+    end
+
+    NL = length(leftindexset[1])
+    NR = length(rightindexset[1])
+    L = length(obj)
+    leftindexset_ = [lineari(obj.sitedims[1:NL], x) for x in leftindexset]
+    rightindexset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightindexset]
+    projector = Int[
+        isprojectedat(obj.projector, n) ? _lineari(obj.sitedims[n], obj.projector[n]) : 0
+        for n in (NL + 1):(L - NR)
+    ]
+    returnshape = [
+        isprojectedat(obj.projector, n) ? 1 : prod(obj.sitedims[n])
+        for n in (NL + 1):(L - NR)
+    ]
+    res = TCI.batchevaluate(obj.cache, leftindexset_, rightindexset_, Val(M), projector)
+    return reshape(res, length(leftindexset), returnshape..., length(rightindexset))
 end
 
 function projectat!(A::Array{T,N}, idxpos, targetidx)::Array{T,N} where {T,N}

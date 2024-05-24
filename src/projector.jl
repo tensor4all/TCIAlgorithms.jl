@@ -135,7 +135,7 @@ end
 
 
 
-function isprojectat(p::Projector, n::Int)::Bool
+function isprojectedat(p::Projector, n::Int)::Bool
     if all(p.data[n] .== 0)
         return false
     elseif all(p.data[n] .!= 0)
@@ -155,7 +155,7 @@ function fullindices(projector, indexset::MMultiIndex)::MMultiIndex
     fullidx = Vector{Vector{Int}}(undef, length(projector))
     nsubi = 1
     for n in 1:length(projector)
-        if isprojectat(projector, n)
+        if isprojectedat(projector, n)
             fullidx[n] = projector[n]
         else
             fullidx[n] = indexset[nsubi]
