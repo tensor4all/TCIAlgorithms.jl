@@ -176,7 +176,7 @@ function batchevaluateprj(
     lmask = [isleftindexset_contained(obj.projector, x) for x in leftindexset]
     rmask = [isrightindexset_contained(obj.projector, x) for x in rightindexset]
     leftindexset_ = [collect(Base.only.(x)) for x in leftindexset[lmask]]
-    rightindexset_ = [collect(Base.only.(x)) for x in rightindexset[lmask]]
+    rightindexset_ = [collect(Base.only.(x)) for x in rightindexset[rmask]]
 
     result_within_proj = obj.f(leftindexset_, rightindexset_, Val(M))
 
@@ -187,10 +187,6 @@ function batchevaluateprj(
         isprojectedat(obj.projector, n) ? obj.projector[n] : Colon()
         for n in 1+NL:length(obj)-NR
     ]
-
-    @show projmask
-    @show lmask
-    @show rmask
 
     tmp = result_within_proj[:, projmask..., :]
     L = length(obj)

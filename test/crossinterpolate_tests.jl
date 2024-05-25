@@ -14,7 +14,7 @@ import TCIAlgorithms as TCIA
 
         p = TCIA.Projector([[0, 0], [0, 0], [2, 2], [0, 0], [0, 0], [1, 1]], sitedims)
 
-        ptt = TCIA.ProjectedTensorTrain(tt, p)
+        ptt = TCIA.ProjTensorTrain(tt, p)
 
         ptt_wrapper = TCIA._FuncAdapterTCI2Subset(ptt)
         @test ptt_wrapper.localdims == [4, 4, 4, 4]
@@ -47,5 +47,8 @@ import TCIAlgorithms as TCIA
 
         p = TCIA.Projector([[0, 0], [0, 0], [1, 1], [0, 0], [1, 1]], sitedims)
         @test TCIA.fulllength_rightindexset(p, [[2]]) == [[2, 1]]
+
+        p = TCIA.Projector([[1, 1], [0, 0], [1, 1], [0, 0], [1, 1]], sitedims)
+        @test TCIA.fulllength_rightindexset(p, [Int[]]) == [[1]]
     end
 end

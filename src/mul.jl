@@ -10,11 +10,11 @@ end
 
 # TO BE IMPLEMENTED, projection
 
-function mul(a::ProjectedTensorTrain, b::ProjectedTensorTrain)
+function mul(a::ProjTensorTrain, b::ProjTensorTrain)
     return MatrixProduct(TCI.Contraction(a, b))
 end
 
-function MatrixProduct(a::ProjectedTensorTrain, b::ProjectedTensorTrain)
+function MatrixProduct(a::ProjTensorTrain, b::ProjTensorTrain)
     return MatrixProduct(TCI.Contraction(a, b))
 end
 

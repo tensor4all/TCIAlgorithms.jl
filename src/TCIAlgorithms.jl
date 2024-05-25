@@ -25,7 +25,7 @@ const TensorTrainState{T} = TensorTrain{T,3} where {T}
 include("util.jl")
 include("projector.jl")
 include("projectable_evaluator.jl")
-include("projected_tensortrain.jl")
+include("projtensortrain.jl")
 include("mul.jl")
 include("crossinterpolate.jl")
 

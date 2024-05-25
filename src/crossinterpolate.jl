@@ -11,6 +11,16 @@ end
 
 Base.length(po::PatchOrdering) = length(po.ordering)
 
+
+"""
+n is the length of the prefix.
+"""
+function maskactiveindices(po::PatchOrdering, nprefix::Int)
+    mask = ones(Bool, length(po.ordering))
+    mask[po.ordering[1:nprefix]] .= false
+    return mask
+end
+
 """
 T: Float64, ComplexF64, etc.
 M: TensorCI2, MPS, etc.
@@ -70,9 +80,10 @@ function (obj::_FuncAdapterTCI2Subset{T})(
     return res[:, projected..., :]
 end
 
+
 """
-leftindexset: MultiIndex, a vector of indices on unprojected indices
-Returns: MultiIndex, a vector of indices on projected and unprojected indices
+leftindexset: Vector of indices on unprojected indices
+Returns: Vector of indices on projected and unprojected indices
 """
 function fulllength_leftindexset(
     projector::Projector, leftindexset::AbstractVector{MultiIndex}
@@ -82,7 +93,9 @@ function fulllength_leftindexset(
     mapping = Vector{Int}(undef, length(leftindexset[1]))
     for n in 1:length(projector)
         if !isprojectedat(projector, n)
-            mapping[c + 1] = n
+            if c + 1 <= length(mapping)
+                mapping[c + 1] = n
+            end
             c += 1
         end
         if c == length(leftindexset[1])
@@ -182,7 +195,7 @@ function adaptiveinterpolate(
     end
 
     return leaves_done
-    #PartitionedTensorTrain(leaves_done, pordering)
+    #ProjTensorTrainSet(leaves_done, pordering)
 end
 
 function _zerott(T, prefix, po::PatchOrdering, localdims::Vector{Int})
@@ -284,32 +297,30 @@ end
 function createpatch(
     obj::TCI2PatchCreator{T}, pordering::PatchOrdering, prefix::Vector{Vector{Int}}
 ) where {T}
+    proj = makeproj(pordering, prefix, sitedims)
+    fsubset = _FuncAdapterTCI2Subset(obj.f)
+
     initialpivots = MultiIndex[]
     let
         mask = maskactiveindices(pordering, length(prefix))
         sitedims = [[Base.only(d)] for d in obj.localdims]
-        p = Projector(pordering, prefix, sitedims)
+        proj = makeproj(pordering, prefix, sitedims)
         for idx in obj.initialpivots
             idx_ = [[i] for i in idx]
-            if idx_ <= p
+            if idx_ <= proj
                 push!(initialpivots, idx[mask])
             end
         end
     end
-    append!(initialpivots, findinitialpivots(fprj, frpj.localdims, obj.ninitialpivot))
+    append!(initialpivots, findinitialpivots(fsubset, fsubset.localdims, obj.ninitialpivot))
 
-    fprj = if obj.f isa ProjectableEvaluator
-        _FuncAdapterTCI2Subset(obj.f)
-    else
-        _FuncAdapterTCI2Subset(obj.f)
-    end
-    if all(fprj.(initialpivots) .== 0)
+    if all(fsubset.(initialpivots) .== 0)
         return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
     end
 
     return _crossinterpolate2(
         T,
-        frpj,
+        fsubset,
         fprj.localdims,
         initialpivots,
         obj.atol;
@@ -335,7 +346,7 @@ function _estimate_maxval(f, localdims; ntry=100)
     return maxval, pivot
 end
 
-function Projector(
+function makeproj(
     po::PatchOrdering, prefix::Vector{Vector{Int}}, sitedims::Vector{Vector{Int}}
 )
     data = Vector{Int}[fill(0, length(s)) for s in sitedims]
@@ -345,34 +356,34 @@ function Projector(
     return Projector(data, sitedims)
 end
 
-function PartitionedTensorTrain(
+function ProjTensorTrainSet(
     tts::Dict{Vector{Vector{Int}},TensorTrain{T,N}},
     sitedims::AbstractVector{<:AbstractVector{Int}},
     po::PatchOrdering,
-)::PartitionedTensorTrain{T} where {T,N}
+)::ProjTensorTrainSet{T} where {T,N}
     keys_ = keys(tts)
     L = Base.only(unique([length(tt) + length(p) for (p, tt) in tts]))
     L == length(sitedims) || error("Inconsistent length")
 
-    globalprojecter = Projector([fill(0, length(s)) for s in sitedims], sitedims)
+    globalprojecter = makeproj([fill(0, length(s)) for s in sitedims], sitedims)
 
-    tts_ = ProjectedTensorTrain{T,N}[]
+    tts_ = ProjTensorTrain{T,N}[]
     for prefix in keys_
-        p = Projector(po, prefix, sitedims)
-        push!(tts_, ProjectedTensorTrain(tts[prefix], sitedims, p))
+        p = makeproj(po, prefix, sitedims)
+        push!(tts_, ProjTensorTrain(tts[prefix], sitedims, p))
     end
 
-    return PartitionedTensorTrain(tts_, globalprojecter, sitedims)
+    return ProjTensorTrainSet(tts_, globalprojecter, sitedims)
 end
 
 """
 `tt` is a TensorTrain{T,3} and `prj` is a Projector.
 `tt` is defined on unprojected indices.
-Return a ProjectedTensorTrain{T} defined on full indices.
+Return a ProjTensorTrain{T} defined on full indices.
 """
-function ProjectedTensorTrain(
+function ProjTensorTrain(
     tt::TensorTrain{T,3}, localdims::AbstractVector{<:AbstractVector{Int}}, prj::Projector
-)::ProjectedTensorTrain{T,3} where {T}
+)::ProjTensorTrain{T,3} where {T}
     length(tt) == Base.sum((Base.only(p) == 0 for p in prj)) || error("Inconsistent length")
     L = length(prj)
 
@@ -418,5 +429,5 @@ function ProjectedTensorTrain(
     end
 
     fulltt = TensorTrain{T,3}(sitetensors)
-    return ProjectedTensorTrain{T,3}(fulltt, prj)
+    return ProjTensorTrain{T,3}(fulltt, prj)
 end
