@@ -86,3 +86,9 @@ function _contract(
         amat * bmat, _getindex(size(a), rest_idx_a)..., _getindex(size(b), rest_idx_b)...
     )
 end
+
+function shallowcopy(original)
+    fieldnames = Base.fieldnames(typeof(original))
+    new_fields = [Base.copy(getfield(original, name)) for name in fieldnames]
+    return (typeof(original))(new_fields...)
+end

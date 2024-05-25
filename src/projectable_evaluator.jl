@@ -141,6 +141,11 @@ struct ProjectableEvaluatorAdapter{T} <: ProjectableEvaluator{T}
     sitedims::Vector{Vector{Int}}
     projector::Projector
     function ProjectableEvaluatorAdapter{T}(
+        f::TCI.BatchEvaluator{T}, sitedims::Vector{Vector{Int}}, projector::Projector
+    ) where {T}
+        new{T}(f, sitedims, projector)
+    end
+    function ProjectableEvaluatorAdapter{T}(
         f::TCI.BatchEvaluator{T}, sitedims::Vector{Vector{Int}}
     ) where {T}
         return new{T}(f, sitedims, Projector([[0] for _ in sitedims], sitedims))
@@ -198,5 +203,5 @@ end
 function project(
     obj::ProjectableEvaluatorAdapter{T}, prj::Projector
 )::ProjectableEvaluator{T} where {T}
-    return ProjectableEvaluatorAdapter(obj.f, obj.sitedims, prj)
+    return ProjectableEvaluatorAdapter{T}(obj.f, obj.sitedims, prj)
 end
