@@ -22,12 +22,9 @@ mutable struct PatchCreatorResult{T,M}
     isconverged::Bool
 end
 
-
 """
-Adapter for a ProjectableEvaluator object:
-`f` is a function that can be evaluated at indices (including projected and non-projected indices).
-
-The wrapped function can be evaluated at unprojected indices, and accepts fused indices.
+# For TCI2
+`f` is a function that can be evaluated at full-length indices (including projected and non-projected indices). The wrapped function can be evaluated only on unprojected indices.
 """
 struct _FuncAdapterTCI2Subset{T} <: TCI.BatchEvaluator{T}
     f::ProjectableEvaluator{T}
@@ -37,9 +34,7 @@ end
 
 function _FuncAdapterTCI2Subset(f::ProjectableEvaluator{T}) where {T}
     prjmsk = [!isprojectedat(f.projector, n) for n in 1:length(f)]
-    return _FuncAdapterTCI2Subset(
-        f, f.sitedims[prjmsk], collect(prod.(f.sitedims[prjmsk]))
-    )
+    return _FuncAdapterTCI2Subset(f, f.sitedims[prjmsk], collect(prod.(f.sitedims[prjmsk])))
 end
 
 Base.length(obj::_FuncAdapterTCI2Subset) = length(obj.localdims)
@@ -47,13 +42,10 @@ Base.length(obj::_FuncAdapterTCI2Subset) = length(obj.localdims)
 function (obj::_FuncAdapterTCI2Subset)(indexset::MultiIndex)
     return obj.f(fullindices(obj.f.projector, indexset))
 end
-
 function (obj::_FuncAdapterTCI2Subset)(indexset::MMultiIndex)
     return obj.f(fullindices(obj.f.projector, indexset))
 end
 
-# For TCI2
-# Act as if the function is evaluated on only on unprojected indices
 function (obj::_FuncAdapterTCI2Subset{T})(
     leftindexset::AbstractVector{MultiIndex},
     rightindexset::AbstractVector{MultiIndex},
@@ -67,13 +59,14 @@ function (obj::_FuncAdapterTCI2Subset{T})(
     leftindexset_fulllen = fulllength_leftindexset(obj.f.projector, leftindexset)
     rightindexset_fulllen = fulllength_rightindexset(obj.f.projector, rightindexset)
 
-    NL_org = length(leftindexset_fulllen[1])
-    NR_org = length(rightindexset_fulllen[1])
-    M_ = length(obj.f) - NL_org - NR_org
-    projected = [isprojectedat(obj.f.projector, n) ? 1 : Colon() for n in NL_org+1:orgL-NR_org]
-    res = batchevaluateprj(
-        obj.f, leftindexset_fulllen, rightindexset_fulllen, Val(M_)
-    )
+    NL = length(leftindexset_fulllen[1])
+    NR = length(rightindexset_fulllen[1])
+    M_ = length(obj.f) - NL - NR
+    projected = [
+        isprojectedat(obj.f.projector, n) ? 1 : Colon() for
+        n in (NL + 1):(orgL - NR)
+    ]
+    res = batchevaluateprj(obj.f, leftindexset_fulllen, rightindexset_fulllen, Val(M_))
     return res[:, projected..., :]
 end
 
@@ -81,7 +74,9 @@ end
 leftindexset: MultiIndex, a vector of indices on unprojected indices
 Returns: MultiIndex, a vector of indices on projected and unprojected indices
 """
-function fulllength_leftindexset(projector::Projector, leftindexset::AbstractVector{MultiIndex})
+function fulllength_leftindexset(
+    projector::Projector, leftindexset::AbstractVector{MultiIndex}
+)
     c = 0
     fulllength = 0
     mapping = Vector{Int}(undef, length(leftindexset[1]))
@@ -106,11 +101,12 @@ function fulllength_leftindexset(projector::Projector, leftindexset::AbstractVec
     return leftindexset_
 end
 
-function fulllength_rightindexset(projector::Projector, rightindexset::AbstractVector{MultiIndex})
+function fulllength_rightindexset(
+    projector::Projector, rightindexset::AbstractVector{MultiIndex}
+)
     r = fulllength_leftindexset(reverse(projector), reverse.(rightindexset))
     return collect(reverse.(r))
 end
-
 
 function adaptiveinterpolate(
     creator::AbstractPatchCreator{T,M},
@@ -191,24 +187,14 @@ end
 
 function _zerott(T, prefix, po::PatchOrdering, localdims::Vector{Int})
     localdims_ = localdims[maskactiveindices(po, length(prefix))]
-
     return TensorTrain([zeros(T, 1, d, 1) for d in localdims_])
 end
 
 #======================================================================
    TCI2 Interpolation of a function
 ======================================================================#
-#TensorTrainState{T} = TensorTrain{T,3} where {T}
-#_evaluate(obj::TensorCI2, idx::Vector{Vector{Int}}) = TCI.evaluate(obj, map(first, idx))
-#function _evaluate(obj::TensorTrainState{T}, idx::AbstractVector{Int}) where {T}
-#return TCI.evaluate(obj, idx)
-#end
-#function _evaluate(obj::TensorTrainState{T}, idx::Vector{Vector{Int}}) where {T}
-#return TCI.evaluate(obj, map(first, idx))
-#end
-
 mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}}
-    f::Any
+    f::ProjectableEvaluator{T}
     localdims::Vector{Int}
     rtol::Float64
     maxbonddim::Int
@@ -312,7 +298,11 @@ function createpatch(
     end
     append!(initialpivots, findinitialpivots(fprj, frpj.localdims, obj.ninitialpivot))
 
-    fprj = obj.f isa ProjectableEvaluator ? _FuncAdapterTCI2Subset(obj.f) : _FuncAdapterTCI2Subset(obj.f)
+    fprj = if obj.f isa ProjectableEvaluator
+        _FuncAdapterTCI2Subset(obj.f)
+    else
+        _FuncAdapterTCI2Subset(obj.f)
+    end
     if all(fprj.(initialpivots) .== 0)
         return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
     end

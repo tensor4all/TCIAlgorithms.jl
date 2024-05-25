@@ -67,4 +67,15 @@ import TCIAlgorithms: Projector
         @test TCIA.fullindices(p, [[1, 1], [1, 1]]) == [[1, 1], [2, 2], [1, 1]]
         @test TCIA.fullindices(p, [1, 1]) == [1, 4, 1]
     end
+
+    @testset "check left and rightindexset" begin
+        N = 3
+        sitedims = [[2, 2] for _ in 1:N]
+
+        p = TCIA.Projector([[0, 0], [0, 0], [2, 2]], sitedims)
+        @test TCIA.isleftindexset_contained(p, [[1, 1]]) == true
+        @test TCIA.isleftindexset_contained(p, [[1, 1], [1, 1], [1, 2]]) == false
+        @test TCIA.isrightindexset_contained(p, [[2, 2]]) == true
+        @test TCIA.isrightindexset_contained(p, [[1, 2]]) == false
+    end
 end

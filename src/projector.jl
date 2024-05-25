@@ -108,17 +108,18 @@ function hasoverlap(p1::Projector, p2::Projector)::Bool
     return true
 end
 
-function leftindexset_contained(p1::Projector, p2::Projector)::Bool
-    for (a, b) in zip(Iterators.flatten(p1), Iterators.flatten(p2))
-        if a != 0 && b != 0
-            if a != b
-                return false
-            end
-        elseif a == 0 && b != 0
+function isleftindexset_contained(p::Projector, leftindexset::MMultiIndex)::Bool
+    _compat(p, i) = (p == 0) || (p == i)
+    for n in 1:length(leftindexset)
+        if !all(_compat.(p[n], leftindexset[n]))
             return false
         end
     end
     return true
+end
+
+function isrightindexset_contained(p::Projector, rightindexset::MMultiIndex)::Bool
+    return isleftindexset_contained(reverse(p), reverse(rightindexset))
 end
 
 function Base.reshape(

@@ -4,27 +4,29 @@ import TCIAlgorithms as TCIA
 
 import TCIAlgorithms: Projector
 
-@testset "ProjectableEvaluator" begin
-    @testset "Wrapper" begin
-        localdims1 = [2, 2, 2]
-        localdims2 = [2, 2, 2]
-        sitedims = [[2, 2], [2, 2], [2, 2]]
+import QuanticsGrids:
+    DiscretizedGrid, quantics_to_origcoord, origcoord_to_quantics
+import QuanticsGrids as QG
 
-        N = length(sitedims)
-        bonddims = [1, 4, 4, 1]
-        @assert length(bonddims) == N + 1
+@testset "makeprojectable" begin
+    R = 4
+    fxy(x, y) = x^2 + y^2
+    grid = DiscretizedGrid{2}(R, (-1, -1), (1, 1))
+    localdims = fill(4, R)
+    qf = x -> fxy(quantics_to_origcoord(grid, x)...)
 
-        tt = TCI.TensorTrain([
-            rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
-        ])
+    pqf = TCIA.makeprojectable(Float64, qf, localdims)
 
-        p = TCIA.Projector([[0, 0], [2, 2], [0, 0]], sitedims)
+    sitedims = [[x] for x in localdims]
 
-        ptt = TCIA.ProjectedTensorTrain(tt, p)
+    idx = fill(1, R)
+    @test pqf([[i] for i in idx]) ≈ qf(idx)
 
-        ptt_wrapper = TCIA._FuncAdapterTCI2Subset(ptt)
-        @test ptt_wrapper([[1, 1], [1, 1]]) ≈ ptt([[1, 1], [2, 2], [1, 1]])
-        @test ptt_wrapper([1, 1]) ≈ ptt([1, 4, 1])
-        @test ptt_wrapper.localdims == [4, 4]
-    end
+    leftindexset = [[1]]
+    rightindexset = [[1, 1]]
+    leftindexset_ = [[[x] for x in y] for y in leftindexset]
+    rightindexset_ = [[[x] for x in y] for y in rightindexset]
+
+    @test vec(pqf(leftindexset_, rightindexset_, Val(R - 3))) ≈
+        vec([qf([l..., i, r...]) for l in leftindexset, i in 1:4, r in rightindexset])
 end
