@@ -14,8 +14,8 @@ end
 
 @testset "Not" begin
     A = [1, 2, 3]
-    A[collect(TCIA.Not(1, 3))] == A[2:3]
-    A[collect(TCIA.Not(2, 3))] == [A[1], A[3]]
+    @test A[collect(TCIA.Not(1, 3))] == A[2:3]
+    @test A[collect(TCIA.Not(2, 3))] == [A[1], A[3]]
 end
 
 @testset "findinitialpivots" begin
