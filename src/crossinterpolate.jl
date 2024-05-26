@@ -127,11 +127,10 @@ function adaptiveinterpolate(
     creator::AbstractPatchCreator{T,M},
     pordering::PatchOrdering;
     sleep_time::Float64=1e-6,
-    maxnleaves=100,
+    maxnleaves=typemax(Int),
     verbosity=0,
 )::Dict{Projector,M} where {T,M}
-    leaves = Dict{AbstractPatchCreator, Union{Task,PatchCreatorResult{T,M}}}()
-    sitedims = [[x] for x in creator.localdims]
+    leaves = Dict{AbstractPatchCreator,Union{Task,PatchCreatorResult{T,M}}}()
 
     # Add root
     leaves[creator] = createpatch(creator)
@@ -175,9 +174,7 @@ function adaptiveinterpolate(
                     if verbosity > 0
                         println("Creating a task for $(prefix_) ...")
                     end
-                    t = @task fetch(
-                        @spawnat :any createpatch(pcreator_child)
-                    )
+                    t = @task fetch(@spawnat :any createpatch(pcreator_child))
                     newtasks[pcreator_child] = t
                     schedule(t)
                 end
@@ -196,7 +193,8 @@ function adaptiveinterpolate(
 
     leaves_done = Dict{Projector,M}()
     for (k, v) in leaves
-        leaves_done[k.f.projector] = isnothing(v.data) ? _zerott(T, k, pordering, creator.localdims) : v.data
+        leaves_done[k.f.projector] =
+            isnothing(v.data) ? _zerott(T, k, pordering, creator.localdims) : v.data
     end
 
     return leaves_done
@@ -249,7 +247,7 @@ function TCI2PatchCreator(
     ::Type{T},
     f,
     localdims::Vector{Int},
-    projector::Union{Projector,Nothing} = nothing;
+    projector::Union{Projector,Nothing}=nothing;
     rtol::Float64=1e-8,
     maxbonddim::Int=100,
     verbosity::Int=0,
@@ -328,15 +326,17 @@ function _crossinterpolate2(
     )
 end
 
-function project(obj::TCI2PatchCreator{T}, projector::Projector)::TCI2PatchCreator{T} where {T}
+function project(
+    obj::TCI2PatchCreator{T}, projector::Projector
+)::TCI2PatchCreator{T} where {T}
     projector <= obj.projector || error(
-        "Projector $projector is not a subset of the original projector $(obj.f.projector)"
+        "Projector $projector is not a subset of the original projector $(obj.f.projector)",
     )
 
     obj_copy = TCI2PatchCreator{T}(obj) # shallow copy
     obj_copy.projector = deepcopy(projector)
     #if !(obj_copy.f.projector <= projector)
-        obj_copy.f = project(obj_copy.f, projector)
+    obj_copy.f = project(obj_copy.f, projector)
     #end
     return obj_copy
 end
@@ -389,17 +389,13 @@ function _estimate_maxval(f, localdims; ntry=100)
     return maxval, pivot
 end
 
-
-function makeproj(
-    po::PatchOrdering, prefix::Vector{Int}, localdims::Vector{Int}
-)
+function makeproj(po::PatchOrdering, prefix::Vector{Int}, localdims::Vector{Int})
     data = [[0] for _ in localdims]
     for (i, n) in enumerate(po.ordering[1:length(prefix)])
         data[n][1] = prefix[i]
     end
     return Projector(data, [[x] for x in localdims])
 end
-
 
 function makeproj(
     po::PatchOrdering, prefix::Vector{Vector{Int}}, sitedims::Vector{Vector{Int}}

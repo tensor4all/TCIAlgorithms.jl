@@ -20,6 +20,12 @@ function sum(obj::ProjectableEvaluator{T})::T where {T}
     return zero(T)
 end
 
+"""
+Project the object on the overlap of `prj` and `obj.projector`.
+
+The requirement for the implementation is that
+the projector of the returned object is a subset of `prj`.
+"""
 function project(
     obj::ProjectableEvaluator{T}, prj::Projector
 )::ProjectableEvaluator{T} where {T}
