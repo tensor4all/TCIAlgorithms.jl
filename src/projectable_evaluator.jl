@@ -27,9 +27,14 @@ The requirement for the implementation is that
 the projector of the returned object is a subset of `prj`.
 """
 function project(
-    obj::ProjectableEvaluator{T}, prj::Projector
+    obj::ProjectableEvaluator{T}, prj::Projector; kwargs...
 )::ProjectableEvaluator{T} where {T}
     return error("Must be implemented!")
+end
+
+# Override this function
+function (obj::ProjectableEvaluator{T})(indexset::MMultiIndex)::T where {T}
+    return zero(T)
 end
 
 """
