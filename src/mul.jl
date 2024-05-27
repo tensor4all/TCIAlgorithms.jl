@@ -35,15 +35,15 @@ function project(
     kwargs...
 )::LazyMatrixMul{T} where {T}
     projector_a_new = Projector(
-        [[x[1], y[2]] for (x, y) in zip(prj, obj.projector_a.sitedims)],
+        [[x[1], y[2]] for (x, y) in zip(prj, obj.a.projector.sitedims)],
         obj.a.sitedims
     )
     projector_b_new = Projector(
-        [[x[1], y[2]] for (x, y) in zip(obj.projector_b.sitedims, prj)],
+        [[x[1], y[2]] for (x, y) in zip(obj.b.projector.sitedims, prj)],
         obj.b.sitedims
     )
-    obj.a = project(obj.a, projector_a_new; kawargs...)
-    obj.b = project(obj.b, projector_b_new; kawargs...)
+    obj.a = project(obj.a, projector_a_new; kwargs...)
+    obj.b = project(obj.b, projector_b_new; kwargs...)
     # TO BE FIXED: Cache is thrown away
     return LazyMatrixMul{T}(obj.a, obj.bl; coeff=obj.coeff)
 end
@@ -57,20 +57,6 @@ function LazyMatrixMul(a::ProjTensorTrain, b::ProjTensorTrain)
 end
 
 Base.length(obj::LazyMatrixMul) = length(obj.contraction)
-
-#function Base.lastindex(obj::LazyMatrixMul{T}) where {T}
-#return lastindex(obj.mpo[1])
-#end
-#
-#function Base.getindex(obj::LazyMatrixMul{T}, i) where {T}
-#return getindex(obj.mpo[1], i)
-#end
-#
-#function evaluate(
-#obj::LazyMatrixMul{T}, indexset::AbstractVector{Tuple{Int,Int}}
-#)::T where {T}
-#return obj.contraction(indexset)
-#end
 
 # multi-site-index evaluation
 function (obj::LazyMatrixMul{T})(indexset::MMultiIndex)::T where {T}

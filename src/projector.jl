@@ -40,11 +40,11 @@ function (p::Projector)(isite::Int, ilegg::Int)
 end
 
 # Extract ilegg-th index from the projector
-function only(p::Projector, ilegg::Int)::Projector
-    data = [[p.data[l][ilegg]] for l in 1:length(p)]
-    sitedims = [[p.sitedims[l][ilegg]] for l in 1:length(p)]
-    return Projector(data, sitedims)
-end
+#function only(p::Projector, ilegg::Int)::Projector
+    #data = [[p.data[l][ilegg]] for l in 1:length(p)]
+    #sitedims = [[p.sitedims[l][ilegg]] for l in 1:length(p)]
+    #return Projector(data, sitedims)
+#end
 
 Base.:(==)(a::Projector, b::Projector)::Bool = (a.data == b.data)
 Base.:(<)(a::Projector, b::Projector)::Bool = (a <= b) && (a != b)
