@@ -2,7 +2,7 @@
 Lazy evaluation for matrix multiplication of two TTOs
 Two site indices on each site.
 """
-struct MatrixProduct{T} <: ProjectableEvaluator{T}
+struct LazyMatrixMul{T} <: ProjectableEvaluator{T}
     coeff::T
     contraction::TCI.Contraction{T}
     projector::Projector
@@ -11,25 +11,29 @@ struct MatrixProduct{T} <: ProjectableEvaluator{T}
     b::ProjTensorTrain{T}
 end
 
-function MatrixProduct{T}(a::ProjTensorTrain, b::ProjTensorTrain; coeff::T=1) where {T}
+function LazyMatrixMul{T}(a::ProjTensorTrain{T}, b::ProjTensorTrain{T}; coeff=one(T)) where {T}
     # This restriction is due to simulicity and to be removed.
-    length.(a.sitedims) .== 2 || error("The number of site indices must be 2")
-    length.(b.sitedims) .== 2 || error("The number of site indices must be 2")
-    a_tt = TensorTrain{T,4}(a.data, sitedims)
-    b_tt = TensorTrain{T,4}(b.data, sitedims)
+    all(length.(a.sitedims) .== 2) || error("The number of site indices must be 2")
+    all(length.(b.sitedims) .== 2) || error("The number of site indices must be 2")
+    sitedims_ab = [[x[1], y[2]] for (x, y) in zip(a.sitedims, b.sitedims)]
+    a_tt = TensorTrain{T,4}(a.data, a.sitedims)
+    b_tt = TensorTrain{T,4}(b.data, b.sitedims)
     contraction = TCI.Contraction(a_tt, b_tt)
-    sitedims = [[x, y] for (x, y) in zip(a.sitedims, b.sitedims)]
     projector = Projector(
-        [[x[1], y[2]] for (x, y) in zip(ptt1.projector, ptt2.projector)], sitedims
+        [[x[1], y[2]] for (x, y) in zip(a.projector, b.projector)], sitedims_ab
     )
-    return MatrixProduct{T}(coeff, contraction, projector, sitedims, a, b)
+    return LazyMatrixMul{T}(coeff, contraction, projector, sitedims_ab, a, b)
+end
+
+function LazyMatrixMul(a::ProjTensorTrain{T}, b::ProjTensorTrain{T}; coeff=one(1)) where {T}
+    return LazyMatrixMul{T}(a, b; coeff=coeff)
 end
 
 function project(
-    obj::MatrixProduct{T},
+    obj::LazyMatrixMul{T},
     prj::Projector;
     kwargs...
-)::MatrixProduct{T} where {T}
+)::LazyMatrixMul{T} where {T}
     projector_a_new = Projector(
         [[x[1], y[2]] for (x, y) in zip(prj, obj.projector_a.sitedims)],
         obj.a.sitedims
@@ -41,41 +45,41 @@ function project(
     obj.a = project(obj.a, projector_a_new; kawargs...)
     obj.b = project(obj.b, projector_b_new; kawargs...)
     # TO BE FIXED: Cache is thrown away
-    return MatrixProduct{T}(obj.a, obj.bl; coeff=obj.coeff)
+    return LazyMatrixMul{T}(obj.a, obj.bl; coeff=obj.coeff)
 end
 
-function mul(a::ProjTensorTrain{T}, b::ProjTensorTrain{T}; coeff::T=1) where {T}
-    return MatrixProduct(coeff, TCI.Contraction(a, b))
+function lazymatmul(a::ProjTensorTrain{T}, b::ProjTensorTrain{T}; coeff=one(T)) where {T}
+    return LazyMatrixMul{T}(a, b; coeff=coeff)
 end
 
-function MatrixProduct(a::ProjTensorTrain, b::ProjTensorTrain)
-    return MatrixProduct(TCI.Contraction(a, b))
+function LazyMatrixMul(a::ProjTensorTrain, b::ProjTensorTrain)
+    return LazyMatrixMul(TCI.Contraction(a, b))
 end
 
-Base.length(obj::MatrixProduct) = length(obj.contraction)
+Base.length(obj::LazyMatrixMul) = length(obj.contraction)
 
-#function Base.lastindex(obj::MatrixProduct{T}) where {T}
+#function Base.lastindex(obj::LazyMatrixMul{T}) where {T}
 #return lastindex(obj.mpo[1])
 #end
 #
-#function Base.getindex(obj::MatrixProduct{T}, i) where {T}
+#function Base.getindex(obj::LazyMatrixMul{T}, i) where {T}
 #return getindex(obj.mpo[1], i)
 #end
 #
 #function evaluate(
-#obj::MatrixProduct{T}, indexset::AbstractVector{Tuple{Int,Int}}
+#obj::LazyMatrixMul{T}, indexset::AbstractVector{Tuple{Int,Int}}
 #)::T where {T}
 #return obj.contraction(indexset)
 #end
 
 # multi-site-index evaluation
-function (obj::MatrixProduct{T})(indexset::MMultiIndex)::T where {T}
-    return evaluate(obj, lineari(obj.sitedims, indexset))
+function (obj::LazyMatrixMul{T})(indexset::MMultiIndex)::T where {T}
+    return obj.contraction(lineari(obj.sitedims, indexset))
 end
 
 # multi-site-index evaluation
 function batchevaluateprj(
-    obj::MatrixProduct{T},
+    obj::LazyMatrixMul{T},
     leftindexset::AbstractVector{MMultiIndex},
     rightindexset::AbstractVector{MMultiIndex},
     ::Val{M},

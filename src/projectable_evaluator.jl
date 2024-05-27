@@ -34,7 +34,7 @@ end
 
 # Override this function
 function (obj::ProjectableEvaluator{T})(indexset::MMultiIndex)::T where {T}
-    return zero(T)
+    return error("Must be implemented!")
 end
 
 """
@@ -215,4 +215,12 @@ function project(
     obj::ProjectableEvaluatorAdapter{T}, prj::Projector
 )::ProjectableEvaluator{T} where {T}
     return ProjectableEvaluatorAdapter{T}(obj.f, obj.sitedims, prj)
+end
+
+
+function fulltensor(obj::ProjectableEvaluator)
+    localdims = collect(prod.(obj.sitedims))
+    r = [obj(collect(Tuple(i))) for i in CartesianIndices(Tuple(localdims))]
+    returnsize = collect(Iterators.flatten(obj.sitedims))
+    return reshape(r, returnsize...)
 end

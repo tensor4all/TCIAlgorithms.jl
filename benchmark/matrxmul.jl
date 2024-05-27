@@ -46,7 +46,7 @@ function benchmark1()
         n in 1:N
     ])
 
-    ab = TCIA.MatrixProduct(a, b)
+    ab = TCIA.LazyMatrixMul(a, b)
 
     nl = N ÷ 2
     nr = N - nl - 2
