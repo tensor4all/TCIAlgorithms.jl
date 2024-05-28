@@ -84,15 +84,19 @@ Returns: Vector of indices on projected and unprojected indices
 """
 function fulllength_leftindexset(
     projector::Projector, leftindexset::AbstractVector{MultiIndex}
-)
+)::Vector{MultiIndex}
+    if length(leftindexset[1]) == 0
+        return fulllength_leftindexset_len0(projector, leftindexset)
+    end
+
     c = 0
     fulllength = 0
     mapping = Vector{Int}(undef, length(leftindexset[1]))
     for n in 1:length(projector)
         if !isprojectedat(projector, n)
-            if c + 1 <= length(mapping)
+            #if c + 1 <= length(mapping)
                 mapping[c + 1] = n
-            end
+            #end
             c += 1
         end
         if c == length(leftindexset[1])
@@ -109,6 +113,15 @@ function fulllength_leftindexset(
     end
 
     return leftindexset_
+end
+
+function fulllength_leftindexset_len0(
+    projector::Projector, leftindexset::AbstractVector{MultiIndex}
+)::Vector{MultiIndex}
+    leftindexset == [Int[]] || error("Invalid leftindexset")
+    firstunprojected = findfirst(n->!isprojectedat(projector, n), (n for n in 1:length(projector)))
+    endp = firstunprojected === nothing ? length(projector) : firstunprojected - 1
+    return [lineari(projector.sitedims[1:endp], projector.data[1:endp])]
 end
 
 function fulllength_rightindexset(
@@ -335,9 +348,7 @@ function project(
 
     obj_copy = TCI2PatchCreator{T}(obj) # shallow copy
     obj_copy.projector = deepcopy(projector)
-    #if !(obj_copy.f.projector <= projector)
     obj_copy.f = project(obj_copy.f, projector)
-    #end
     return obj_copy
 end
 

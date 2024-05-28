@@ -37,10 +37,10 @@ import TCIAlgorithms as TCIA
         sitedims = [[2, 2] for _ in 1:N]
 
         p = TCIA.Projector([[1, 1], [0, 0], [1, 1], [0, 0], [0, 0]], sitedims)
-        TCIA.fulllength_leftindexset(p, [Int[]]) == [[1]]
+        @test TCIA.fulllength_leftindexset(p, [Int[]]) == [[1]]
 
         p = TCIA.Projector([[1, 1], [0, 0], [1, 1], [0, 0], [0, 0]], sitedims)
-        TCIA.fulllength_leftindexset(p, [[2]]) == [[1, 2]]
+        @test TCIA.fulllength_leftindexset(p, [[2]]) == [[1, 2]]
 
         p = TCIA.Projector([[0, 0], [0, 0], [1, 1], [0, 0], [1, 1]], sitedims)
         @test TCIA.fulllength_rightindexset(p, [Int[]]) == [[1]]
@@ -50,5 +50,10 @@ import TCIAlgorithms as TCIA
 
         p = TCIA.Projector([[1, 1], [0, 0], [1, 1], [0, 0], [1, 1]], sitedims)
         @test TCIA.fulllength_rightindexset(p, [Int[]]) == [[1]]
+    end
+
+    @testset "fulllength_leftindexset (empty set)" begin
+        projector = TCIA.Projector([[4], [4], [0]], [[4], [4], [4]])
+        @test TCIA.fulllength_leftindexset(projector, [Int[]]) == [[4, 4]]
     end
 end

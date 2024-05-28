@@ -74,19 +74,25 @@ function (obj::ProjectableEvaluator{T})(
     NR = length(rightindexset[1])
     L = length(obj)
 
-    results = zeros(
+    results_multii = zeros(
         T,
+        length(leftindexset),
+        Iterators.flatten(obj.sitedims[(NL + 1):(L - NR)])...,
+        length(rightindexset),
+    )
+    slice = map(
+        x -> x == 0 ? Colon() : x,
+        Iterators.flatten(obj.projector[n] for n in (NL + 1):(L - NR)),
+    )
+    results_multii[:, slice..., :] .= batchevaluateprj(
+        obj, leftindexset, rightindexset, Val(M)
+    )
+    return reshape(
+        results_multii,
         length(leftindexset),
         prod.(obj.sitedims[(NL + 1):(L - NR)])...,
         length(rightindexset),
     )
-
-    slice = (
-        isprojectedat(obj.projector, n) ? _lineari(sitedims, projector[n]) : Colon() for
-        n in (NL + 1):(L - NR)
-    )
-    results .= batchevaluateprj(obj, leftindexset, rightindexset, Val(M))[:, slice..., :]
-    return results
 end
 
 function projector(obj::ProjectableEvaluator{T})::Projector where {T}
@@ -150,12 +156,17 @@ function (obj::ProjectableEvaluator{T})(
 end
 
 """
-Convinient adapter to make a function that take only one site index per tensor projectable
+Convert function `f` to a ProjectableEvaluator object
 """
 struct ProjectableEvaluatorAdapter{T} <: ProjectableEvaluator{T}
     f::TCI.BatchEvaluator{T}
     sitedims::Vector{Vector{Int}}
     projector::Projector
+    function ProjectableEvaluatorAdapter{T}(
+        f::TCI.BatchEvaluator{T}, projector::Projector
+    ) where {T}
+        return new{T}(f, projector.sitedims, projector)
+    end
     function ProjectableEvaluatorAdapter{T}(
         f::TCI.BatchEvaluator{T}, sitedims::Vector{Vector{Int}}, projector::Projector
     ) where {T}
@@ -195,32 +206,41 @@ function batchevaluateprj(
     leftindexset_ = [collect(Base.only.(x)) for x in leftindexset[lmask]]
     rightindexset_ = [collect(Base.only.(x)) for x in rightindexset[rmask]]
 
-    result_within_proj = obj.f(leftindexset_, rightindexset_, Val(M))
+    result_lrmask = obj.f(leftindexset_, rightindexset_, Val(M))
 
     # Some of indices might be projected
     NL = length(leftindexset[1])
     NR = length(rightindexset[1])
-    projmask = [
-        isprojectedat(obj.projector, n) ? obj.projector[n] : Colon() for
-        n in (1 + NL):(length(obj) - NR)
-    ]
 
-    tmp = result_within_proj[:, projmask..., :]
+    NL + NR + M == length(obj) || error("Length mismatch NL: $NL, NR: $NR, M: $M, L: $(length(obj))")
+
     L = length(obj)
-    result = zeros(
+    result::Array{T,M+2} = zeros(
         T,
         length(leftindexset),
         prod.(obj.sitedims[(1 + NL):(L - NR)])...,
         length(rightindexset),
     )
-    result[lmask, .., rmask] .= tmp
+    result[lmask, .., rmask] .= begin
+        result_lrmask_multii = reshape(
+            result_lrmask,
+            size(result_lrmask)[1],
+            collect(Iterators.flatten(obj.sitedims[(1 + NL):(L - NR)]))...,
+            size(result_lrmask)[end],
+        )
+        projmask = map(
+            p -> p == 0 ? Colon() : p,
+            Iterators.flatten(obj.projector[n] for n in (1 + NL):(length(obj) - NR)),
+        )
+        result_lrmask_multii[:, projmask..., :]
+    end
     return result
 end
 
 function project(
     obj::ProjectableEvaluatorAdapter{T}, prj::Projector
 )::ProjectableEvaluator{T} where {T}
-    return ProjectableEvaluatorAdapter{T}(obj.f, obj.sitedims, prj)
+    return ProjectableEvaluatorAdapter{T}(obj.f, obj.sitedims, deepcopy(prj))
 end
 
 function fulltensor(obj::ProjectableEvaluator)

@@ -151,8 +151,10 @@ function isprojectedat(p::Projector, n::Int)::Bool
 end
 
 """
-indexset: MultiIndex, a vector of indices on unprojected indices
-Returns: MultiIndex, a vector of indices on all indices
+indexset: MMultiIndex, multi indices on unprojected indices
+Returns: MMultiIndex, multi indices on all indices
+
+All site indices on each site must be all projected or all unprojected.
 """
 function fullindices(projector, indexset::MMultiIndex)::MMultiIndex
     fullidx = Vector{Vector{Int}}(undef, length(projector))

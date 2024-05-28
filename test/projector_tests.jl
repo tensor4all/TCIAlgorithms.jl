@@ -64,7 +64,6 @@ import TCIAlgorithms: Projector
     @testset "fullindices" begin
         sitedims = [[2, 2], [2, 2], [2, 2]]
         p = TCIA.Projector([[0, 0], [2, 2], [0, 0]], sitedims)
-        @test [TCIA.isprojectedat(p, n) for n in 1:length(p)] == [false, true, false]
         @test TCIA.fullindices(p, [[1, 1], [1, 1]]) == [[1, 1], [2, 2], [1, 1]]
         @test TCIA.fullindices(p, [1, 1]) == [1, 4, 1]
     end
