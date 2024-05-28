@@ -14,7 +14,7 @@ import TCIAlgorithms as TCIA
 
         p = TCIA.Projector([[0, 0], [0, 0], [2, 2], [0, 0], [0, 0], [1, 1]], sitedims)
 
-        ptt = TCIA.ProjTensorTrain(tt, p)
+        ptt = TCIA.project(TCIA.ProjTensorTrain(tt), p)
 
         ptt_wrapper = TCIA._FuncAdapterTCI2Subset(ptt)
         @test ptt_wrapper.localdims == [4, 4, 4, 4]

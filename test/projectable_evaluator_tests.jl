@@ -4,8 +4,7 @@ import TCIAlgorithms as TCIA
 
 import TCIAlgorithms: Projector
 
-import QuanticsGrids:
-    DiscretizedGrid, quantics_to_origcoord, origcoord_to_quantics
+import QuanticsGrids: DiscretizedGrid, quantics_to_origcoord, origcoord_to_quantics
 import QuanticsGrids as QG
 
 @testset "makeprojectable" begin

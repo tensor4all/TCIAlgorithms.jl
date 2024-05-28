@@ -8,9 +8,13 @@ mutable struct DTensorTrain{T} <: ProjectableEvaluator{T}
 end
 
 function DTensorTrain(sitetensors::AbstractVector{Array{T,N}}) where {T,N}
-    sitedims = [collect(size(t)[2:end-1]) for t in sitetensors]
-    DTensorTrain{T}(sitetensors, sitedims,
-    sitetensors_fused = [reshape(x, size(x, 1), :, size(x)[end]) for x in obj.sitetensors]
+    sitedims = [collect(size(t)[2:(end - 1)]) for t in sitetensors]
+    return DTensorTrain{T}(
+        sitetensors,
+        sitedims;
+        sitetensors_fused=[
+            reshape(x, size(x, 1), :, size(x)[end]) for x in obj.sitetensors
+        ],
     )
 end
 

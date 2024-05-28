@@ -11,7 +11,9 @@ struct LazyMatrixMul{T} <: ProjectableEvaluator{T}
     b::ProjTensorTrain{T}
 end
 
-function LazyMatrixMul{T}(a::ProjTensorTrain{T}, b::ProjTensorTrain{T}; coeff=one(T)) where {T}
+function LazyMatrixMul{T}(
+    a::ProjTensorTrain{T}, b::ProjTensorTrain{T}; coeff=one(T)
+) where {T}
     # This restriction is due to simulicity and to be removed.
     all(length.(a.sitedims) .== 2) || error("The number of site indices must be 2")
     all(length.(b.sitedims) .== 2) || error("The number of site indices must be 2")
@@ -30,17 +32,13 @@ function LazyMatrixMul(a::ProjTensorTrain{T}, b::ProjTensorTrain{T}; coeff=one(1
 end
 
 function project(
-    obj::LazyMatrixMul{T},
-    prj::Projector;
-    kwargs...
+    obj::LazyMatrixMul{T}, prj::Projector; kwargs...
 )::LazyMatrixMul{T} where {T}
     projector_a_new = Projector(
-        [[x[1], y[2]] for (x, y) in zip(prj, obj.a.projector.sitedims)],
-        obj.a.sitedims
+        [[x[1], y[2]] for (x, y) in zip(prj, obj.a.projector.sitedims)], obj.a.sitedims
     )
     projector_b_new = Projector(
-        [[x[1], y[2]] for (x, y) in zip(obj.b.projector.sitedims, prj)],
-        obj.b.sitedims
+        [[x[1], y[2]] for (x, y) in zip(obj.b.projector.sitedims, prj)], obj.b.sitedims
     )
     obj.a = project(obj.a, projector_a_new; kwargs...)
     obj.b = project(obj.b, projector_b_new; kwargs...)
@@ -86,6 +84,8 @@ function batchevaluateprj(
         isprojectedat(obj.projector, n) ? 1 : prod(obj.sitedims[n]) for
         n in (NL + 1):(L - NR)
     ]
-    res = TCI.batchevaluate(obj.contraction, leftindexset_, rightindexset_, Val(M), projector)
+    res = TCI.batchevaluate(
+        obj.contraction, leftindexset_, rightindexset_, Val(M), projector
+    )
     return reshape(res, length(leftindexset), returnshape..., length(rightindexset))
 end

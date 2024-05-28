@@ -8,7 +8,7 @@ function allequal(collection)
 end
 
 function Not(index::Int, length::Int)
-    return vcat(1:index-1, index+1:length)
+    return vcat(1:(index - 1), (index + 1):length)
 end
 
 function _multii(sitedims::Vector{Int}, i::Int)::Vector{Int}

@@ -74,7 +74,12 @@ function (obj::ProjectableEvaluator{T})(
     NR = length(rightindexset[1])
     L = length(obj)
 
-    results = zeros(T, length(leftindexset), prod.(obj.sitedims[(NL + 1):(L - NR)])..., length(rightindexset))
+    results = zeros(
+        T,
+        length(leftindexset),
+        prod.(obj.sitedims[(NL + 1):(L - NR)])...,
+        length(rightindexset),
+    )
 
     slice = (
         isprojectedat(obj.projector, n) ? _lineari(sitedims, projector[n]) : Colon() for
@@ -154,7 +159,7 @@ struct ProjectableEvaluatorAdapter{T} <: ProjectableEvaluator{T}
     function ProjectableEvaluatorAdapter{T}(
         f::TCI.BatchEvaluator{T}, sitedims::Vector{Vector{Int}}, projector::Projector
     ) where {T}
-        new{T}(f, sitedims, projector)
+        return new{T}(f, sitedims, projector)
     end
     function ProjectableEvaluatorAdapter{T}(
         f::TCI.BatchEvaluator{T}, sitedims::Vector{Vector{Int}}
@@ -165,18 +170,14 @@ end
 
 Base.length(obj::ProjectableEvaluatorAdapter) = length(obj.sitedims)
 
-function makeprojectable(
-    ::Type{T}, f::Function, localdims::Vector{Int}
-) where {T}
+function makeprojectable(::Type{T}, f::Function, localdims::Vector{Int}) where {T}
     return ProjectableEvaluatorAdapter{T}(
         f isa TCI.BatchEvaluator ? f : TCI.makebatchevaluatable(T, f, localdims),
-        [[x] for x in localdims]
+        [[x] for x in localdims],
     )
 end
 
-function (obj::ProjectableEvaluatorAdapter{T})(
-    indexset::MMultiIndex
-)::T where {T}
+function (obj::ProjectableEvaluatorAdapter{T})(indexset::MMultiIndex)::T where {T}
     return indexset <= obj.projector ? obj.f(lineari(obj.sitedims, indexset)) : zero(T)
 end
 
@@ -200,13 +201,18 @@ function batchevaluateprj(
     NL = length(leftindexset[1])
     NR = length(rightindexset[1])
     projmask = [
-        isprojectedat(obj.projector, n) ? obj.projector[n] : Colon()
-        for n in 1+NL:length(obj)-NR
+        isprojectedat(obj.projector, n) ? obj.projector[n] : Colon() for
+        n in (1 + NL):(length(obj) - NR)
     ]
 
     tmp = result_within_proj[:, projmask..., :]
     L = length(obj)
-    result = zeros(T, length(leftindexset), prod.(obj.sitedims[1+NL:L-NR])..., length(rightindexset))
+    result = zeros(
+        T,
+        length(leftindexset),
+        prod.(obj.sitedims[(1 + NL):(L - NR)])...,
+        length(rightindexset),
+    )
     result[lmask, .., rmask] .= tmp
     return result
 end
@@ -216,7 +222,6 @@ function project(
 )::ProjectableEvaluator{T} where {T}
     return ProjectableEvaluatorAdapter{T}(obj.f, obj.sitedims, prj)
 end
-
 
 function fulltensor(obj::ProjectableEvaluator)
     localdims = collect(prod.(obj.sitedims))

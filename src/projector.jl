@@ -41,9 +41,9 @@ end
 
 # Extract ilegg-th index from the projector
 #function only(p::Projector, ilegg::Int)::Projector
-    #data = [[p.data[l][ilegg]] for l in 1:length(p)]
-    #sitedims = [[p.sitedims[l][ilegg]] for l in 1:length(p)]
-    #return Projector(data, sitedims)
+#data = [[p.data[l][ilegg]] for l in 1:length(p)]
+#sitedims = [[p.sitedims[l][ilegg]] for l in 1:length(p)]
+#return Projector(data, sitedims)
 #end
 
 Base.:(==)(a::Projector, b::Projector)::Bool = (a.data == b.data)
@@ -138,8 +138,6 @@ function Base.reshape(
     return Projector(newprojectordata, dims)
 end
 
-
-
 function isprojectedat(p::Projector, n::Int)::Bool
     if all(p.data[n] .== 0)
         return false
@@ -174,3 +172,12 @@ fullindices(projector, indexset::MultiIndex)::MultiIndex = lineari(
     projector.sitedims, fullindices(projector, multii(projector.sitedims, indexset))
 )
 
+function projectedshape(projector::Projector, startidx::Int, lastidx::Int)::Vector{Int}
+    res = Int[
+        prod(
+            projector[n][s] > 0 ? 1 : projector.sitedims[n][s] for
+            s in eachindex(projector.data[n])
+        ) for n in startidx:lastidx
+    ]
+    return res
+end

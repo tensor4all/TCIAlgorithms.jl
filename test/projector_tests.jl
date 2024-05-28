@@ -51,13 +51,14 @@ import TCIAlgorithms: Projector
             Projector([[0, 0], [2, 1, 1]], sitedimsnew)
     end
 
-    @testset "isprojectedat" begin
+    @testset "projectedshape" begin
         sitedims = [[2, 2], [2, 2], [2, 2]]
-        p = TCIA.Projector([[0, 0], [1, 1], [0, 0]], sitedims)
-        @test [TCIA.isprojectedat(p, n) for n in 1:length(p)] == [false, true, false]
 
-        p = TCIA.Projector([[0, 1]], sitedims)
-        @test_throws ErrorException TCIA.isprojectedat(p, 1)
+        p = TCIA.Projector([[0, 0], [1, 1], [0, 0]], sitedims)
+        @test TCIA.projectedshape(p, 1, 3) == [4, 1, 4]
+
+        p = TCIA.Projector([[0, 0], [1, 0], [0, 0]], sitedims)
+        @test TCIA.projectedshape(p, 1, 3) == [4, 2, 4]
     end
 
     @testset "fullindices" begin
