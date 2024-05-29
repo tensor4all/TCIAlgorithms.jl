@@ -151,9 +151,9 @@ function __taskfunc(creator::AbstractPatchCreator{T,M}, pordering; verbosity=0) 
         for ic in 1:creator.localdims[pordering.ordering[length(prefix) + 1]]
             prefix_ = vcat(prefix, ic)
             projector_ = makeproj(pordering, prefix_, creator.localdims)
-            if verbosity > 0
-                println("Creating a task for $(prefix_) ...")
-            end
+            #if verbosity > 0
+                ##println("Creating a task for $(prefix_) ...")
+            #end
             push!(newtasks, project(creator, projector_))
         end
         return nothing, newtasks
@@ -183,6 +183,10 @@ mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}
     checkbatchevaluatable::Bool
     loginterval::Int
     initialpivots::Vector{MultiIndex}
+end
+
+function Base.show(io::IO, obj::TCI2PatchCreator{T}) where {T}
+    return print(io, "patchcreator $(obj.f.projector.data)")
 end
 
 function TCI2PatchCreator{T}(obj::TCI2PatchCreator{T})::TCI2PatchCreator{T} where {T}
@@ -371,8 +375,8 @@ function adaptiveinterpolate(
     maxnleaves=typemax(Int), # Not used
     verbosity=0,
 )::Set{ProjTensorTrain} where {T}
-    queue = TaskQueue{TCI2PatchCreator{T},ProjTensorTrain{T}}(Set([creator]))
-    return loop(queue, x -> __taskfunc(x, pordering; verbosity=verbosity))
+    queue = TaskQueue{TCI2PatchCreator{T},ProjTensorTrain{T}}([creator])
+    return loop(queue, x -> __taskfunc(x, pordering; verbosity=verbosity); verbosity=verbosity)
 end
 
 

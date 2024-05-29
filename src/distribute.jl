@@ -1,61 +1,33 @@
 using Distributed
 
 struct TaskQueue{T,R}
-    queue::Set{T}
-    workers::Vector{Union{Future,Nothing}}
+    tasks::Vector{T}
     results::Set{R}
 end
 
-function TaskQueue{T,R}() where {T,R}
-    TaskQueue(Set{T}(), Union{Nothing,Future}[nothing for n in 1:nworkers()], Set{R}())
+function TaskQueue{T,R}(initialtasks::Vector{T}) where {T,R}
+    return TaskQueue(initialtasks, Set{R}())
 end
 
-Base.isempty(obj::TaskQueue{T,R}) where {T,R} = isempty(obj.queue)
-take!(obj::TaskQueue{T,R}) where {T,R} = pop!(obj.queue)
-put!(obj::TaskQueue{T,R}, x) where {T,R} = push!(obj.queue, x)
-
-availableworker(obj::TaskQueue{T,R}) where {T,R} = findfirst(isnothing, obj.workers)
-readytofetch(obj::TaskQueue{T,R}) where {T,R} = findfirst(x->x !== nothing && isready(x), obj.workers)
-
-function TaskQueue{T,R}(initialtasks::Set{T}) where {T,R}
-    TaskQueue(initialtasks, Union{Nothing,Future}[nothing for n in 1:nworkers()], Set{R}())
-end
-
-# loop
-function loop(queue::TaskQueue{T,R}, f::Function; sleepsec=1e-3) where {T,R}
-    while true
-        ireadytofetch = readytofetch(queue)
-        if ireadytofetch !== nothing
-            fetched = fetch(queue.workers[ireadytofetch])
-            if fetched isa RemoteException
-                err_msg = sprint(showerror, fetched.captured)
-                error("$err_msg")
-            end
-            result, newtasks = fetched
-            queue.workers[ireadytofetch] = nothing
-            if result !== nothing
-                push!(queue.results, result)
-            end
-            if newtasks !== nothing
-                for task in newtasks
-                    put!(queue, task)
-                end
-            end
+function loop(obj::TaskQueue{T,R}, f::Function; verbosity=0) where {T,R}
+    while length(obj.tasks) > 0
+        if verbosity > 0
+            println("Processing $(length(obj.tasks)) tasks...")
         end
-    
-        if !isempty(queue)
-            iworker = availableworker(queue)
-            if iworker !== nothing
-                t = take!(queue)
-                queue.workers[iworker] = @spawnat iworker f(t)
-            end
+        results = @distributed (append!) for t in obj.tasks
+            [f(t)]
         end
 
-        if isempty(queue) && all(isnothing, queue.workers)
-            break
+        empty!(obj.tasks)
+        for (r, newt) in results
+            if r !== nothing
+                push!(obj.results, r)
+            end
+            if newt !== nothing
+                append!(obj.tasks, newt)
+            end
         end
-
-        sleep(sleepsec)
     end
-    return queue.results
+
+    return obj.results
 end
