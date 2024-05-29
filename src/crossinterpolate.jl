@@ -95,7 +95,7 @@ function fulllength_leftindexset(
     for n in 1:length(projector)
         if !isprojectedat(projector, n)
             #if c + 1 <= length(mapping)
-                mapping[c + 1] = n
+            mapping[c + 1] = n
             #end
             c += 1
         end
@@ -119,7 +119,9 @@ function fulllength_leftindexset_len0(
     projector::Projector, leftindexset::AbstractVector{MultiIndex}
 )::Vector{MultiIndex}
     leftindexset == [Int[]] || error("Invalid leftindexset")
-    firstunprojected = findfirst(n->!isprojectedat(projector, n), (n for n in 1:length(projector)))
+    firstunprojected = findfirst(
+        n -> !isprojectedat(projector, n), (n for n in 1:length(projector))
+    )
     endp = firstunprojected === nothing ? length(projector) : firstunprojected - 1
     return [lineari(projector.sitedims[1:endp], projector.data[1:endp])]
 end
@@ -136,83 +138,28 @@ function _reconst_prefix(projector::Projector, pordering::PatchOrdering)
     return [Base.only(projector[n]) for n in pordering.ordering[1:np]]
 end
 
-function adaptiveinterpolate(
-    creator::AbstractPatchCreator{T,M},
-    pordering::PatchOrdering;
-    sleep_time::Float64=1e-6,
-    maxnleaves=typemax(Int),
-    verbosity=0,
-)::Dict{Projector,M} where {T,M}
-    leaves = Dict{AbstractPatchCreator,Union{Task,PatchCreatorResult{T,M}}}()
+function __taskfunc(creator::AbstractPatchCreator{T,M}, pordering; verbosity=0) where {T,M}
+    patch = createpatch(creator)
+    prefix::Vector{Int} = _reconst_prefix(creator.projector, pordering)
 
-    # Add root
-    leaves[creator] = createpatch(creator)
-
-    while true
-        sleep(sleep_time) # Not to run the loop too quickly
-
-        done = true
-        newtasks = Dict{AbstractPatchCreator{T,M},Task}()
-        for (pcreator, leaf) in leaves
-            # If the task is done, fetch the result, which
-            # will be analyzed in the next loop.
-            prefix::Vector{Int} = _reconst_prefix(pcreator.projector, pordering)
-            if leaf isa Task
-                if istaskdone(leaf)
-                    if verbosity > 0
-                        println("Fetching a task for $(prefix) ...")
-                    end
-                    fetched = fetch(leaf)
-                    if fetched isa RemoteException
-                        err_msg = sprint(showerror, fetched.captured)
-                        error("Error in creating a patch for $(prefix): $err_msg")
-                    end
-                    leaves[pcreator] = fetched
-                end
-                done = false
-                continue
+    if patch.isconverged
+        projector = makeproj(pordering, prefix, creator.localdims)
+        ptt = ProjTensorTrain(patch.data, projector.sitedims, projector)
+        return ptt, nothing
+    else
+        newtasks = Set{AbstractPatchCreator{T,M}}()
+        for ic in 1:creator.localdims[pordering.ordering[length(prefix) + 1]]
+            prefix_ = vcat(prefix, ic)
+            projector_ = makeproj(pordering, prefix_, creator.localdims)
+            if verbosity > 0
+                println("Creating a task for $(prefix_) ...")
             end
-
-            @assert leaf isa PatchCreatorResult{T,M}
-
-            if !leaf.isconverged && length(leaves) < maxnleaves
-                done = false
-                delete!(leaves, pcreator)
-
-                for ic in 1:creator.localdims[pordering.ordering[length(prefix) + 1]]
-                    prefix_ = vcat(prefix, ic)
-                    projector_ = makeproj(pordering, prefix_, pcreator.localdims)
-                    pcreator_child = project(pcreator, projector_)
-
-                    if verbosity > 0
-                        println("Creating a task for $(prefix_) ...")
-                    end
-                    t = @task fetch(@spawnat :any createpatch(pcreator_child))
-                    newtasks[pcreator_child] = t
-                    schedule(t)
-                end
-            end
+            push!(newtasks, project(creator, projector_))
         end
-
-        if done
-            @assert length(newtasks) == 0
-            break
-        end
-
-        for (k, v) in newtasks
-            leaves[k] = v
-        end
+        return nothing, newtasks
     end
-
-    leaves_done = Dict{Projector,M}()
-    for (k, v) in leaves
-        leaves_done[k.f.projector] =
-            isnothing(v.data) ? _zerott(T, k, pordering, creator.localdims) : v.data
-    end
-
-    return leaves_done
-    #ProjTensorTrainSet(leaves_done, pordering)
 end
+
 
 function _zerott(T, prefix, po::PatchOrdering, localdims::Vector{Int})
     localdims_ = localdims[maskactiveindices(po, length(prefix))]
@@ -418,6 +365,17 @@ function makeproj(
     return Projector(data, sitedims)
 end
 
+function adaptiveinterpolate(
+    creator::TCI2PatchCreator{T},
+    pordering::PatchOrdering;
+    maxnleaves=typemax(Int), # Not used
+    verbosity=0,
+)::Set{ProjTensorTrain} where {T}
+    queue = TaskQueue{TCI2PatchCreator{T},ProjTensorTrain{T}}(Set([creator]))
+    return loop(queue, x -> __taskfunc(x, pordering; verbosity=verbosity))
+end
+
+
 function ProjTensorTrainSet(
     tts::Dict{Vector{Vector{Int}},TensorTrain{T,N}},
     sitedims::AbstractVector{<:AbstractVector{Int}},
@@ -445,7 +403,7 @@ Return a ProjTensorTrain{T} defined on full indices.
 """
 function ProjTensorTrain(
     tt::TensorTrain{T,3}, localdims::AbstractVector{<:AbstractVector{Int}}, prj::Projector
-)::ProjTensorTrain{T,3} where {T}
+)::ProjTensorTrain{T} where {T}
     length(tt) == Base.sum((Base.only(p) == 0 for p in prj)) || error("Inconsistent length")
     L = length(prj)
 
@@ -491,5 +449,5 @@ function ProjTensorTrain(
     end
 
     fulltt = TensorTrain{T,3}(sitetensors)
-    return ProjTensorTrain{T,3}(fulltt, prj)
+    return ProjTensorTrain{T}(fulltt, prj)
 end

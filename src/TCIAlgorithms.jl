@@ -27,6 +27,7 @@ include("projector.jl")
 include("projectable_evaluator.jl")
 include("projtensortrain.jl")
 include("mul.jl")
+include("distribute.jl")
 include("crossinterpolate.jl")
 
 #include("util.jl")
