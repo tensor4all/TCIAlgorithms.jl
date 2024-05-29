@@ -73,6 +73,26 @@ function Base.:&(a::Projector, b::Projector)::Projector
     return Projector(ab, a.sitedims)
 end
 
+
+function Base.:|(a::Projector, b::Projector)::Projector
+    a.sitedims == b.sitedims || error("Sitedims mismatch")
+    length(a) == length(b) || error("Length mismatch")
+    ab = Vector{Int}[]
+    for (a_, b_) in zip(a, b)
+        ab_ = Int[]
+        for (a__, b__) in zip(a_, b_)
+            if a__ == b__
+                push!(ab_, a__)
+            else
+                push!(ab_, 0)
+            end
+        end
+        push!(ab, ab_)
+    end
+
+    return Projector(ab, a.sitedims)
+end
+
 function Base.:<=(a::Projector, b::Projector)::Bool
     length(a) == length(b) || error("Length mismatch")
     length(a) == length(b) || error("Length mismatch")
