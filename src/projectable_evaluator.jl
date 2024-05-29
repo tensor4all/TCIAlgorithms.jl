@@ -45,12 +45,12 @@ The difference is as follows.
 If some of `M` central indices are projected, the evaluation is done on the projected indices.
 The sizes of the correponding indices in the returned array are set to 1.
 
-`leftindexset` and `rightindexset` are defined for unprojected and projected indices.
+`leftmmultiidxset` and `rightmmultiidxset` are defined for unprojected and projected indices.
 """
 function batchevaluateprj(
     obj::ProjectableEvaluator{T},
-    leftindexset::AbstractVector{MMultiIndex},
-    rightindexset::AbstractVector{MMultiIndex},
+    leftmmultiidxset::AbstractVector{MMultiIndex},
+    rightmmultiidxset::AbstractVector{MMultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
     # Please override this funciton
@@ -62,36 +62,36 @@ This is similar to `batchevaluateprj`, but the evaluation is done on all `M` ind
 In the returned array, the element evaluates to 0 for a indexset that is out of the projector.
 """
 function (obj::ProjectableEvaluator{T})(
-    leftindexset::AbstractVector{MMultiIndex},
-    rightindexset::AbstractVector{MMultiIndex},
+    leftmmultiidxset::AbstractVector{MMultiIndex},
+    rightmmultiidxset::AbstractVector{MMultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
-    if length(leftindexset) * length(rightindexset) == 0
+    if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
 
-    NL = length(leftindexset[1])
-    NR = length(rightindexset[1])
+    NL = length(leftmmultiidxset[1])
+    NR = length(rightmmultiidxset[1])
     L = length(obj)
 
     results_multii = zeros(
         T,
-        length(leftindexset),
+        length(leftmmultiidxset),
         Iterators.flatten(obj.sitedims[(NL + 1):(L - NR)])...,
-        length(rightindexset),
+        length(rightmmultiidxset),
     )
     slice = map(
         x -> x == 0 ? Colon() : x,
         Iterators.flatten(obj.projector[n] for n in (NL + 1):(L - NR)),
     )
     results_multii[:, slice..., :] .= batchevaluateprj(
-        obj, leftindexset, rightindexset, Val(M)
+        obj, leftmmultiidxset, rightmmultiidxset, Val(M)
     )
     return reshape(
         results_multii,
-        length(leftindexset),
+        length(leftmmultiidxset),
         prod.(obj.sitedims[(NL + 1):(L - NR)])...,
-        length(rightindexset),
+        length(rightmmultiidxset),
     )
 end
 
@@ -107,34 +107,34 @@ function sitedims(obj::ProjectableEvaluator{T}, ilegg::Int)::Vector{Int} where {
     return [obj.sitedims[l][ilegg] for l in 1:length(obj)]
 end
 
-function _multii(obj::ProjectableEvaluator, leftindexset, rightindexset)
-    NL = length(leftindexset[1])
-    NR = length(rightindexset[1])
-    leftindexset_ = [multii(obj.sitedims[1:NL], x) for x in leftindexset]
-    rightindexset_ = [multii(obj.sitedims[(end - NR + 1):end], x) for x in rightindexset]
-    return leftindexset_, rightindexset_
+function _multii(obj::ProjectableEvaluator, leftmmultiidxset, rightmmultiidxset)
+    NL = length(leftmmultiidxset[1])
+    NR = length(rightmmultiidxset[1])
+    leftmmultiidxset_ = [multii(obj.sitedims[1:NL], x) for x in leftmmultiidxset]
+    rightmmultiidxset_ = [multii(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset]
+    return leftmmultiidxset_, rightmmultiidxset_
 end
 
-function _lineari(obj::ProjectableEvaluator, leftindexset, rightindexset)
-    NL = length(leftindexset[1])
-    NR = length(rightindexset[1])
-    leftindexset_ = [lineari(obj.sitedims[1:NL], x) for x in leftindexset]
-    rightindexset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightindexset]
-    return leftindexset_, rightindexset_
+function _lineari(obj::ProjectableEvaluator, leftmmultiidxset, rightmmultiidxset)
+    NL = length(leftmmultiidxset[1])
+    NR = length(rightmmultiidxset[1])
+    leftmmultiidxset_ = [lineari(obj.sitedims[1:NL], x) for x in leftmmultiidxset]
+    rightmmultiidxset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset]
+    return leftmmultiidxset_, rightmmultiidxset_
 end
 
 # Signe-site-index version
 function batchevaluateprj(
     obj::ProjectableEvaluator{T},
-    leftindexset::AbstractVector{MultiIndex},
-    rightindexset::AbstractVector{MultiIndex},
+    leftmmultiidxset::AbstractVector{MultiIndex},
+    rightmmultiidxset::AbstractVector{MultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
-    if length(leftindexset) * length(rightindexset) == 0
+    if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
-    leftindexset_, rightindexset_ = _multii(obj, leftindexset, rightindexset)
-    return batchevaluateprj(obj, leftindexset_, rightindexset_, Val(M))
+    leftmmultiidxset_, rightmmultiidxset_ = _multii(obj, leftmmultiidxset, rightmmultiidxset)
+    return batchevaluateprj(obj, leftmmultiidxset_, rightmmultiidxset_, Val(M))
 end
 
 # single-site-index evaluation
@@ -144,15 +144,15 @@ end
 
 # single-site-index evaluation
 function (obj::ProjectableEvaluator{T})(
-    leftindexset::AbstractVector{MultiIndex},
-    rightindexset::AbstractVector{MultiIndex},
+    leftmmultiidxset::AbstractVector{MultiIndex},
+    rightmmultiidxset::AbstractVector{MultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
-    if length(leftindexset) * length(rightindexset) == 0
+    if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
-    leftindexset_, rightindexset_ = _multii(obj, leftindexset, rightindexset)
-    return obj(leftindexset_, rightindexset_, Val(M))
+    leftmmultiidxset_, rightmmultiidxset_ = _multii(obj, leftmmultiidxset, rightmmultiidxset)
+    return obj(leftmmultiidxset_, rightmmultiidxset_, Val(M))
 end
 
 """
@@ -194,32 +194,32 @@ end
 
 function batchevaluateprj(
     obj::ProjectableEvaluatorAdapter{T},
-    leftindexset::AbstractVector{MMultiIndex},
-    rightindexset::AbstractVector{MMultiIndex},
+    leftmmultiidxset::AbstractVector{MMultiIndex},
+    rightmmultiidxset::AbstractVector{MMultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
-    if length(leftindexset) * length(rightindexset) == 0
+    if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
-    lmask = [isleftindexset_contained(obj.projector, x) for x in leftindexset]
-    rmask = [isrightindexset_contained(obj.projector, x) for x in rightindexset]
-    leftindexset_ = [collect(Base.only.(x)) for x in leftindexset[lmask]]
-    rightindexset_ = [collect(Base.only.(x)) for x in rightindexset[rmask]]
+    lmask = [isleftmmultiidx_contained(obj.projector, x) for x in leftmmultiidxset]
+    rmask = [isrightmmultiidx_contained(obj.projector, x) for x in rightmmultiidxset]
+    leftmmultiidxset_ = [collect(Base.only.(x)) for x in leftmmultiidxset[lmask]]
+    rightmmultiidxset_ = [collect(Base.only.(x)) for x in rightmmultiidxset[rmask]]
 
-    result_lrmask = obj.f(leftindexset_, rightindexset_, Val(M))
+    result_lrmask = obj.f(leftmmultiidxset_, rightmmultiidxset_, Val(M))
 
     # Some of indices might be projected
-    NL = length(leftindexset[1])
-    NR = length(rightindexset[1])
+    NL = length(leftmmultiidxset[1])
+    NR = length(rightmmultiidxset[1])
 
     NL + NR + M == length(obj) || error("Length mismatch NL: $NL, NR: $NR, M: $M, L: $(length(obj))")
 
     L = length(obj)
     result::Array{T,M+2} = zeros(
         T,
-        length(leftindexset),
+        length(leftmmultiidxset),
         prod.(obj.sitedims[(1 + NL):(L - NR)])...,
-        length(rightindexset),
+        length(rightmmultiidxset),
     )
     result[lmask, .., rmask] .= begin
         result_lrmask_multii = reshape(

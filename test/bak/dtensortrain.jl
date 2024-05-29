@@ -13,16 +13,16 @@ import TCIAlgorithms as TCIA
         ])
 
         leftindexset = [[[1, 1]], [[1, 2]]]
-        rightindexset = [[[1, 1]], [[1, 2]]]
+        rightmmultiidxset = [[[1, 1]], [[1, 2]]]
 
         NL = 1
         NR = 1
         leftindexset_ = [TCIA.lineari(tt.sitedims[1:NL], x) for x in leftindexset]
-        rightindexset_ = [
-            TCIA.lineari(tt.sitedims[(end - NR + 1):end], x) for x in rightindexset
+        rightmmultiidxset_ = [
+            TCIA.lineari(tt.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset
         ]
 
-        @test tt(leftindexset, rightindexset, Val(1)) ≈
-            tt_ref(leftindexset_, rightindexset_, Val(1))
+        @test tt(leftindexset, rightmmultiidxset, Val(1)) ≈
+            tt_ref(leftindexset_, rightmmultiidxset_, Val(1))
     end
 end

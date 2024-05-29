@@ -26,34 +26,34 @@ import TCIAlgorithms as TCIA
 
         leftindexset = [[1, 1]]
 
-        rightindexset = [[1]]
+        rightmmultiidxset = [[1]]
 
-        @test vec(ptt_wrapper(leftindexset, rightindexset, Val(1))) ≈
+        @test vec(ptt_wrapper(leftindexset, rightmmultiidxset, Val(1))) ≈
             vec([ptt([1, 1, 4, i, 1, 1]) for i in 1:4])
     end
 
-    @testset "fulllength_leftindexset and fulllength_rightindexset" begin
+    @testset "fulllength_leftmmultiidxset and fulllength_rightmmultiidxset" begin
         N = 5
         sitedims = [[2, 2] for _ in 1:N]
 
         p = TCIA.Projector([[1, 1], [0, 0], [1, 1], [0, 0], [0, 0]], sitedims)
-        @test TCIA.fulllength_leftindexset(p, [Int[]]) == [[1]]
+        @test TCIA.fulllength_leftmmultiidxset(p, [Int[]]) == [[1]]
 
         p = TCIA.Projector([[1, 1], [0, 0], [1, 1], [0, 0], [0, 0]], sitedims)
-        @test TCIA.fulllength_leftindexset(p, [[2]]) == [[1, 2]]
+        @test TCIA.fulllength_leftmmultiidxset(p, [[2]]) == [[1, 2]]
 
         p = TCIA.Projector([[0, 0], [0, 0], [1, 1], [0, 0], [1, 1]], sitedims)
-        @test TCIA.fulllength_rightindexset(p, [Int[]]) == [[1]]
+        @test TCIA.fulllength_rightmmultiidxset(p, [Int[]]) == [[1]]
 
         p = TCIA.Projector([[0, 0], [0, 0], [1, 1], [0, 0], [1, 1]], sitedims)
-        @test TCIA.fulllength_rightindexset(p, [[2]]) == [[2, 1]]
+        @test TCIA.fulllength_rightmmultiidxset(p, [[2]]) == [[2, 1]]
 
         p = TCIA.Projector([[1, 1], [0, 0], [1, 1], [0, 0], [1, 1]], sitedims)
-        @test TCIA.fulllength_rightindexset(p, [Int[]]) == [[1]]
+        @test TCIA.fulllength_rightmmultiidxset(p, [Int[]]) == [[1]]
     end
 
-    @testset "fulllength_leftindexset (empty set)" begin
+    @testset "fulllength_leftmmultiidxset (empty set)" begin
         projector = TCIA.Projector([[4], [4], [0]], [[4], [4], [4]])
-        @test TCIA.fulllength_leftindexset(projector, [Int[]]) == [[4, 4]]
+        @test TCIA.fulllength_leftmmultiidxset(projector, [Int[]]) == [[4, 4]]
     end
 end

@@ -22,10 +22,10 @@ import QuanticsGrids as QG
     @test pqf([[i] for i in idx]) ≈ qf(idx)
 
     leftindexset = [[1]]
-    rightindexset = [[1, 1]]
+    rightmmultiidxset = [[1, 1]]
     leftindexset_ = [[[x] for x in y] for y in leftindexset]
-    rightindexset_ = [[[x] for x in y] for y in rightindexset]
+    rightmmultiidxset_ = [[[x] for x in y] for y in rightmmultiidxset]
 
-    @test vec(pqf(leftindexset_, rightindexset_, Val(R - 3))) ≈
-        vec([qf([l..., i, r...]) for l in leftindexset, i in 1:4, r in rightindexset])
+    @test vec(pqf(leftindexset_, rightmmultiidxset_, Val(R - 3))) ≈
+        vec([qf([l..., i, r...]) for l in leftindexset, i in 1:4, r in rightmmultiidxset])
 end

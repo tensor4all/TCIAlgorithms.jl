@@ -56,42 +56,42 @@ function (obj::_FuncAdapterTCI2Subset)(indexset::MMultiIndex)
 end
 
 function (obj::_FuncAdapterTCI2Subset{T})(
-    leftindexset::AbstractVector{MultiIndex},
-    rightindexset::AbstractVector{MultiIndex},
+    leftmmultiidxset::AbstractVector{MultiIndex},
+    rightmmultiidxset::AbstractVector{MultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
-    if length(leftindexset) * length(rightindexset) == 0
+    if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
 
     orgL = length(obj.f)
-    leftindexset_fulllen = fulllength_leftindexset(obj.f.projector, leftindexset)
-    rightindexset_fulllen = fulllength_rightindexset(obj.f.projector, rightindexset)
+    leftmmultiidxset_fulllen = fulllength_leftmmultiidxset(obj.f.projector, leftmmultiidxset)
+    rightmmultiidxset_fulllen = fulllength_rightmmultiidxset(obj.f.projector, rightmmultiidxset)
 
-    NL = length(leftindexset_fulllen[1])
-    NR = length(rightindexset_fulllen[1])
+    NL = length(leftmmultiidxset_fulllen[1])
+    NR = length(rightmmultiidxset_fulllen[1])
     M_ = length(obj.f) - NL - NR
     projected = [
         isprojectedat(obj.f.projector, n) ? 1 : Colon() for n in (NL + 1):(orgL - NR)
     ]
-    res = batchevaluateprj(obj.f, leftindexset_fulllen, rightindexset_fulllen, Val(M_))
+    res = batchevaluateprj(obj.f, leftmmultiidxset_fulllen, rightmmultiidxset_fulllen, Val(M_))
     return res[:, projected..., :]
 end
 
 """
-leftindexset: Vector of indices on unprojected indices
+leftmmultiidxset: Vector of indices on unprojected indices
 Returns: Vector of indices on projected and unprojected indices
 """
-function fulllength_leftindexset(
-    projector::Projector, leftindexset::AbstractVector{MultiIndex}
+function fulllength_leftmmultiidxset(
+    projector::Projector, leftmmultiidxset::AbstractVector{MultiIndex}
 )::Vector{MultiIndex}
-    if length(leftindexset[1]) == 0
-        return fulllength_leftindexset_len0(projector, leftindexset)
+    if length(leftmmultiidxset[1]) == 0
+        return fulllength_leftmmultiidxset_len0(projector, leftmmultiidxset)
     end
 
     c = 0
     fulllength = 0
-    mapping = Vector{Int}(undef, length(leftindexset[1]))
+    mapping = Vector{Int}(undef, length(leftmmultiidxset[1]))
     for n in 1:length(projector)
         if !isprojectedat(projector, n)
             #if c + 1 <= length(mapping)
@@ -99,26 +99,26 @@ function fulllength_leftindexset(
             #end
             c += 1
         end
-        if c == length(leftindexset[1])
+        if c == length(leftmmultiidxset[1])
             fulllength = n
             break
         end
     end
 
     tmp = Int[_lineari(projector.sitedims[n], projector[n]) for n in 1:fulllength]
-    leftindexset_ = [deepcopy(tmp) for _ in leftindexset]
+    leftmmultiidxset_ = [deepcopy(tmp) for _ in leftmmultiidxset]
 
-    for il in 1:length(leftindexset_)
-        leftindexset_[il][mapping] .= leftindexset[il]
+    for il in 1:length(leftmmultiidxset_)
+        leftmmultiidxset_[il][mapping] .= leftmmultiidxset[il]
     end
 
-    return leftindexset_
+    return leftmmultiidxset_
 end
 
-function fulllength_leftindexset_len0(
-    projector::Projector, leftindexset::AbstractVector{MultiIndex}
+function fulllength_leftmmultiidxset_len0(
+    projector::Projector, leftmmultiidxset::AbstractVector{MultiIndex}
 )::Vector{MultiIndex}
-    leftindexset == [Int[]] || error("Invalid leftindexset")
+    leftmmultiidxset == [Int[]] || error("Invalid leftmmultiidxset")
     firstunprojected = findfirst(
         n -> !isprojectedat(projector, n), (n for n in 1:length(projector))
     )
@@ -126,10 +126,10 @@ function fulllength_leftindexset_len0(
     return [lineari(projector.sitedims[1:endp], projector.data[1:endp])]
 end
 
-function fulllength_rightindexset(
-    projector::Projector, rightindexset::AbstractVector{MultiIndex}
+function fulllength_rightmmultiidxset(
+    projector::Projector, rightmmultiidxset::AbstractVector{MultiIndex}
 )
-    r = fulllength_leftindexset(reverse(projector), reverse.(rightindexset))
+    r = fulllength_leftmmultiidxset(reverse(projector), reverse.(rightmmultiidxset))
     return collect(reverse.(r))
 end
 

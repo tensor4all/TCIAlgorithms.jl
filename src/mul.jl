@@ -65,17 +65,17 @@ end
 function batchevaluateprj(
     obj::LazyMatrixMul{T},
     leftindexset::AbstractVector{MMultiIndex},
-    rightindexset::AbstractVector{MMultiIndex},
+    rightmmultiidxset::AbstractVector{MMultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
-    if length(leftindexset) * length(rightindexset) == 0
+    if length(leftindexset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
     NL = length(leftindexset[1])
-    NR = length(rightindexset[1])
+    NR = length(rightmmultiidxset[1])
     L = length(obj)
     leftindexset_ = [lineari(obj.sitedims[1:NL], x) for x in leftindexset]
-    rightindexset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightindexset]
+    rightmmultiidxset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset]
     projector = Int[
         isprojectedat(obj.projector, n) ? _lineari(obj.sitedims[n], obj.projector[n]) : 0
         for n in (NL + 1):(L - NR)
@@ -85,7 +85,7 @@ function batchevaluateprj(
         n in (NL + 1):(L - NR)
     ]
     res = TCI.batchevaluate(
-        obj.contraction, leftindexset_, rightindexset_, Val(M), projector
+        obj.contraction, leftindexset_, rightmmultiidxset_, Val(M), projector
     )
-    return reshape(res, length(leftindexset), returnshape..., length(rightindexset))
+    return reshape(res, length(leftindexset), returnshape..., length(rightmmultiidxset))
 end

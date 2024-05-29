@@ -21,19 +21,19 @@ end
 # multi-site-index evaluation
 function (obj::DTensorTrain{T})(
     leftindexset::AbstractVector{MMultiIndex},
-    rightindexset::AbstractVector{MMultiIndex},
+    rightmmultiidxset::AbstractVector{MMultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
-    if length(leftindexset) * length(rightindexset) == 0
+    if length(leftindexset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
 
     NL = length(leftindexset[1])
-    NR = length(rightindexset[1])
+    NR = length(rightmmultiidxset[1])
     leftindexset_ = [lineari(obj.sitedims[1:NL], x) for x in leftindexset]
-    rightindexset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightindexset]
+    rightmmultiidxset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset]
 
     sitetensors_fused = [reshape(x, size(x, 1), :, size(x)[end]) for x in obj.sitetensors]
 
-    return TensorTrain(sitetensors_fused)(leftindexset_, rightindexset_, Val(M))
+    return TensorTrain(sitetensors_fused)(leftindexset_, rightmmultiidxset_, Val(M))
 end
