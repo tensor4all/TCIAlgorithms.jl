@@ -19,7 +19,6 @@ addprocs(max(0, MAX_WORKERS - nworkers()))
     end
 end
 
-
 @testset "TaskQueue" begin
     queue = TCIA.TaskQueue{Int,Float64}(collect(1:10))
     results = TCIA.loop(queue, workerfunc; verbosity=0)

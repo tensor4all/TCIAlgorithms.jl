@@ -1,5 +1,8 @@
 using TCIAlgorithms
+import TCIAlgorithms as TCIA
 using Test
+
+include("_util.jl")
 
 include("util_tests.jl")
 include("projector_tests.jl")

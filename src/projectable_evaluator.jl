@@ -111,7 +111,9 @@ function _multii(obj::ProjectableEvaluator, leftmmultiidxset, rightmmultiidxset)
     NL = length(leftmmultiidxset[1])
     NR = length(rightmmultiidxset[1])
     leftmmultiidxset_ = [multii(obj.sitedims[1:NL], x) for x in leftmmultiidxset]
-    rightmmultiidxset_ = [multii(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset]
+    rightmmultiidxset_ = [
+        multii(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset
+    ]
     return leftmmultiidxset_, rightmmultiidxset_
 end
 
@@ -119,7 +121,9 @@ function _lineari(obj::ProjectableEvaluator, leftmmultiidxset, rightmmultiidxset
     NL = length(leftmmultiidxset[1])
     NR = length(rightmmultiidxset[1])
     leftmmultiidxset_ = [lineari(obj.sitedims[1:NL], x) for x in leftmmultiidxset]
-    rightmmultiidxset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset]
+    rightmmultiidxset_ = [
+        lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset
+    ]
     return leftmmultiidxset_, rightmmultiidxset_
 end
 
@@ -133,7 +137,9 @@ function batchevaluateprj(
     if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
-    leftmmultiidxset_, rightmmultiidxset_ = _multii(obj, leftmmultiidxset, rightmmultiidxset)
+    leftmmultiidxset_, rightmmultiidxset_ = _multii(
+        obj, leftmmultiidxset, rightmmultiidxset
+    )
     return batchevaluateprj(obj, leftmmultiidxset_, rightmmultiidxset_, Val(M))
 end
 
@@ -151,7 +157,9 @@ function (obj::ProjectableEvaluator{T})(
     if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
-    leftmmultiidxset_, rightmmultiidxset_ = _multii(obj, leftmmultiidxset, rightmmultiidxset)
+    leftmmultiidxset_, rightmmultiidxset_ = _multii(
+        obj, leftmmultiidxset, rightmmultiidxset
+    )
     return obj(leftmmultiidxset_, rightmmultiidxset_, Val(M))
 end
 
@@ -212,10 +220,11 @@ function batchevaluateprj(
     NL = length(leftmmultiidxset[1])
     NR = length(rightmmultiidxset[1])
 
-    NL + NR + M == length(obj) || error("Length mismatch NL: $NL, NR: $NR, M: $M, L: $(length(obj))")
+    NL + NR + M == length(obj) ||
+        error("Length mismatch NL: $NL, NR: $NR, M: $M, L: $(length(obj))")
 
     L = length(obj)
-    result::Array{T,M+2} = zeros(
+    result::Array{T,M + 2} = zeros(
         T,
         length(leftmmultiidxset),
         prod.(obj.sitedims[(1 + NL):(L - NR)])...,
@@ -243,9 +252,16 @@ function project(
     return ProjectableEvaluatorAdapter{T}(obj.f, obj.sitedims, deepcopy(prj))
 end
 
-function fulltensor(obj::ProjectableEvaluator)
+"""
+Evaluate `obj` at all possible indexsets and return a full tensor
+"""
+function fulltensor(obj::ProjectableEvaluator{T}; fused::Bool=false)::Array{T} where {T}
     localdims = collect(prod.(obj.sitedims))
     r = [obj(collect(Tuple(i))) for i in CartesianIndices(Tuple(localdims))]
-    returnsize = collect(Iterators.flatten(obj.sitedims))
+    if fused
+        returnsize = collect(prod.(obj.sitedims))
+    else
+        returnsize = collect(Iterators.flatten(obj.sitedims))
+    end
     return reshape(r, returnsize...)
 end

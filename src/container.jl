@@ -1,17 +1,19 @@
 struct ProjContainer{T,V<:ProjectableEvaluator{T}} <: ProjectableEvaluator{T}
-    data::Vector{V}
+    data::Vector{V} # Projectors of `data` can overlap with each other
     sitedims::Vector{Vector{Int}}
-    projector::Projector
+    projector::Projector # The projector of the container, which is the union of the projectors of `data`
 
-    function ProjContainer{T,V}(data::Vector{V}) where {T,V}
+    function ProjContainer{T,V}(data::AbstractVector{V}) where {T,V}
         sitedims = data[1].sitedims
         for x in data
             sitedims == x.sitedims || error("Sitedims mismatch")
         end
         projector = reduce(|, x.projector for x in data)
-        new{T,V}(data, sitedims, projector)
+        return new{T,V}(data, sitedims, projector)
     end
 end
+
+# implement project
 
 const ProjTTContainer{T} = ProjContainer{T,ProjTensorTrain{T}}
 
@@ -31,6 +33,10 @@ function (obj::ProjContainer{T,V})(
     return sum(o(leftmmultiidxset, rightmmultiidxset, Val(M)) for o in obj.data)
 end
 
-Base.show(io::IO, obj::ProjContainer{T,V}) where {T,V} = print(io, "ProjContainer{$T,$V} with $(length(obj.data)) elements")
+function Base.show(io::IO, obj::ProjContainer{T,V}) where {T,V}
+    return print(io, "ProjContainer{$T,$V} with $(length(obj.data)) elements")
+end
 
-Base.show(io::IO, obj::ProjContainer{T,ProjTensorTrain{T}}) where {T} = print(io, "ProjTTContainer{$T} with $(length(obj.data)) elements")
+function Base.show(io::IO, obj::ProjContainer{T,ProjTensorTrain{T}}) where {T}
+    return print(io, "ProjTTContainer{$T} with $(length(obj.data)) elements")
+end

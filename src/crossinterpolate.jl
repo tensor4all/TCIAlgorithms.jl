@@ -65,8 +65,12 @@ function (obj::_FuncAdapterTCI2Subset{T})(
     end
 
     orgL = length(obj.f)
-    leftmmultiidxset_fulllen = fulllength_leftmmultiidxset(obj.f.projector, leftmmultiidxset)
-    rightmmultiidxset_fulllen = fulllength_rightmmultiidxset(obj.f.projector, rightmmultiidxset)
+    leftmmultiidxset_fulllen = fulllength_leftmmultiidxset(
+        obj.f.projector, leftmmultiidxset
+    )
+    rightmmultiidxset_fulllen = fulllength_rightmmultiidxset(
+        obj.f.projector, rightmmultiidxset
+    )
 
     NL = length(leftmmultiidxset_fulllen[1])
     NR = length(rightmmultiidxset_fulllen[1])
@@ -74,7 +78,9 @@ function (obj::_FuncAdapterTCI2Subset{T})(
     projected = [
         isprojectedat(obj.f.projector, n) ? 1 : Colon() for n in (NL + 1):(orgL - NR)
     ]
-    res = batchevaluateprj(obj.f, leftmmultiidxset_fulllen, rightmmultiidxset_fulllen, Val(M_))
+    res = batchevaluateprj(
+        obj.f, leftmmultiidxset_fulllen, rightmmultiidxset_fulllen, Val(M_)
+    )
     return res[:, projected..., :]
 end
 
@@ -152,14 +158,13 @@ function __taskfunc(creator::AbstractPatchCreator{T,M}, pordering; verbosity=0) 
             prefix_ = vcat(prefix, ic)
             projector_ = makeproj(pordering, prefix_, creator.localdims)
             #if verbosity > 0
-                ##println("Creating a task for $(prefix_) ...")
+            ##println("Creating a task for $(prefix_) ...")
             #end
             push!(newtasks, project(creator, projector_))
         end
         return nothing, newtasks
     end
 end
-
 
 function _zerott(T, prefix, po::PatchOrdering, localdims::Vector{Int})
     localdims_ = localdims[maskactiveindices(po, length(prefix))]
@@ -376,9 +381,10 @@ function adaptiveinterpolate(
     verbosity=0,
 )::Set{ProjTensorTrain} where {T}
     queue = TaskQueue{TCI2PatchCreator{T},ProjTensorTrain{T}}([creator])
-    return loop(queue, x -> __taskfunc(x, pordering; verbosity=verbosity); verbosity=verbosity)
+    return loop(
+        queue, x -> __taskfunc(x, pordering; verbosity=verbosity); verbosity=verbosity
+    )
 end
-
 
 function ProjTensorTrainSet(
     tts::Dict{Vector{Vector{Int}},TensorTrain{T,N}},

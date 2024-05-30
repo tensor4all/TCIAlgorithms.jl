@@ -73,7 +73,6 @@ function Base.:&(a::Projector, b::Projector)::Projector
     return Projector(ab, a.sitedims)
 end
 
-
 function Base.:|(a::Projector, b::Projector)::Projector
     a.sitedims == b.sitedims || error("Sitedims mismatch")
     length(a) == length(b) || error("Length mismatch")

@@ -2,7 +2,7 @@
 Lazy evaluation for matrix multiplication of two TTOs
 Two site indices on each site.
 """
-struct LazyMatrixMul{T} <: ProjectableEvaluator{T}
+mutable struct LazyMatrixMul{T} <: ProjectableEvaluator{T}
     coeff::T
     contraction::TCI.Contraction{T}
     projector::Projector
@@ -31,19 +31,21 @@ function LazyMatrixMul(a::ProjTensorTrain{T}, b::ProjTensorTrain{T}; coeff=one(1
     return LazyMatrixMul{T}(a, b; coeff=coeff)
 end
 
+Base.length(obj::LazyMatrixMul) = length(obj.projector)
+
 function project(
     obj::LazyMatrixMul{T}, prj::Projector; kwargs...
 )::LazyMatrixMul{T} where {T}
     projector_a_new = Projector(
-        [[x[1], y[2]] for (x, y) in zip(prj, obj.a.projector.sitedims)], obj.a.sitedims
+        [[x[1], y[2]] for (x, y) in zip(prj, obj.a.projector)], obj.a.sitedims
     )
     projector_b_new = Projector(
-        [[x[1], y[2]] for (x, y) in zip(obj.b.projector.sitedims, prj)], obj.b.sitedims
+        [[x[1], y[2]] for (x, y) in zip(obj.b.projector, prj)], obj.b.sitedims
     )
     obj.a = project(obj.a, projector_a_new; kwargs...)
     obj.b = project(obj.b, projector_b_new; kwargs...)
     # TO BE FIXED: Cache is thrown away
-    return LazyMatrixMul{T}(obj.a, obj.bl; coeff=obj.coeff)
+    return LazyMatrixMul{T}(obj.a, obj.b; coeff=obj.coeff)
 end
 
 function lazymatmul(a::ProjTensorTrain{T}, b::ProjTensorTrain{T}; coeff=one(T)) where {T}
@@ -53,8 +55,6 @@ end
 function LazyMatrixMul(a::ProjTensorTrain, b::ProjTensorTrain)
     return LazyMatrixMul(TCI.Contraction(a, b))
 end
-
-Base.length(obj::LazyMatrixMul) = length(obj.contraction)
 
 # multi-site-index evaluation
 function (obj::LazyMatrixMul{T})(indexset::MMultiIndex)::T where {T}
@@ -75,7 +75,9 @@ function batchevaluateprj(
     NR = length(rightmmultiidxset[1])
     L = length(obj)
     leftindexset_ = [lineari(obj.sitedims[1:NL], x) for x in leftindexset]
-    rightmmultiidxset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset]
+    rightmmultiidxset_ = [
+        lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset
+    ]
     projector = Int[
         isprojectedat(obj.projector, n) ? _lineari(obj.sitedims[n], obj.projector[n]) : 0
         for n in (NL + 1):(L - NR)

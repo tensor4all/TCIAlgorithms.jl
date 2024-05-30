@@ -31,7 +31,9 @@ function (obj::DTensorTrain{T})(
     NL = length(leftindexset[1])
     NR = length(rightmmultiidxset[1])
     leftindexset_ = [lineari(obj.sitedims[1:NL], x) for x in leftindexset]
-    rightmmultiidxset_ = [lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset]
+    rightmmultiidxset_ = [
+        lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset
+    ]
 
     sitetensors_fused = [reshape(x, size(x, 1), :, size(x)[end]) for x in obj.sitetensors]
 
