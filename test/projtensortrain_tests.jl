@@ -1,0 +1,74 @@
+using Test
+import TensorCrossInterpolation as TCI
+import TCIAlgorithms as TCIA
+
+import TCIAlgorithms: Projector
+
+@testset "ProjTensorTrain" begin
+    N = 4
+    χ = 2
+    bonddims = [1, χ, χ, χ, 1]
+    @assert length(bonddims) == N + 1
+
+    localdims1 = [2, 2, 2, 2]
+    localdims2 = [3, 3, 3, 3]
+    sitedims = [[x, y] for (x, y) in zip(localdims1, localdims2)]
+    localdims = collect(prod.(sitedims))
+
+    tt = TCI.TensorTrain([
+        rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
+    ])
+
+    for (n, tensor) in enumerate(tt)
+        size(tensor)[2:(end - 1)] == sitedims[n]
+    end
+
+    # Projection 
+    prj = TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0]], sitedims)
+    _test_projection(TCIA.ProjTensorTrain(tt), prj)
+
+    # Projection with truncation
+    #globalprj = TCIA.Projector([[0, 0], [0, 0], [0, 0], [0, 0]], sitedims)
+    ptt_truncated = TCIA.ProjTensorTrain{Float64}(tt)
+    ptt_truncated = TCIA.project(ptt_truncated, prj; compression=true)
+    indexset1 = [[1, 1], [1, 1], [1, 1], [1, 1]]
+    @test tt(indexset1) ≈ ptt_truncated(indexset1)
+end
+
+@testset "ProjTensorTrain <= TensorTrain" begin
+    N = 4
+    bonddims = [1, 10, 10, 10, 1]
+    @assert length(bonddims) == N + 1
+
+    localdims1 = [1, 1, 1, 1]
+    localdims2 = [1, 1, 1, 1]
+
+    tt = TCI.TensorTrain([
+        rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
+    ])
+
+    ptt = TCIA.ProjTensorTrain(tt)
+
+    @test tt([[1, 1], [1, 1], [1, 1], [1, 1]]) ≈ ptt([[1, 1], [1, 1], [1, 1], [1, 1]])
+end
+
+@testset "batchevaluateprj" begin
+    sitedims = [[2, 2], [2, 2], [2, 2], [2, 2]]
+
+    N = length(sitedims)
+    bonddims = [1, 4, 4, 4, 1]
+    @assert length(bonddims) == N + 1
+
+    tt = TCI.TensorTrain([rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N])
+
+    p = TCIA.Projector([[0, 0], [2, 2], [0, 0], [0, 0]], sitedims)
+
+    ptt = TCIA.project(TCIA.ProjTensorTrain(tt), p; compression=true)
+
+    leftindexset = [[[1, 1]]]
+    rightmmultiidxset = [[[1, 1]]]
+    batchprj = TCIA.batchevaluateprj(ptt, leftindexset, rightmmultiidxset, Val(2))
+
+    @assert size(batchprj) == (1, 1, 4, 1)
+    @test batchprj[1, 1, 1, 1] ≈ ptt([1, 4, 1, 1])
+end

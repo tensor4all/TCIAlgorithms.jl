@@ -1,6 +1,15 @@
+using Distributed
+
 using TCIAlgorithms
 import TCIAlgorithms as TCIA
 using Test
+
+const MAX_WORKERS = 2
+
+# Add worker processes if necessary.
+if nworkers() < MAX_WORKERS
+    addprocs(max(0, MAX_WORKERS - nworkers()))
+end
 
 include("_util.jl")
 

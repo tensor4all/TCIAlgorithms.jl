@@ -3,7 +3,9 @@ struct ProjContainer{T,V<:ProjectableEvaluator{T}} <: ProjectableEvaluator{T}
     sitedims::Vector{Vector{Int}}
     projector::Projector # The projector of the container, which is the union of the projectors of `data`
 
-    function ProjContainer{T,V}(data::AbstractVector{V}) where {T,V}
+
+    function ProjContainer{T,V}(data) where {T,V}
+        data = V[x for x in data]
         sitedims = data[1].sitedims
         for x in data
             sitedims == x.sitedims || error("Sitedims mismatch")
@@ -13,13 +15,21 @@ struct ProjContainer{T,V<:ProjectableEvaluator{T}} <: ProjectableEvaluator{T}
     end
 end
 
+#function ProjContainer(data::AbstractVector{<:ProjectableEvaluator{T}}) where {T}
+    #return ProjContainer{T,ProjectableEvaluator{T}}(data)
+#end
+
 # implement project
 
 const ProjTTContainer{T} = ProjContainer{T,ProjTensorTrain{T}}
 
-function ProjTTContainer(data::Vector{ProjTensorTrain{T}}) where {T}
+function ProjTTContainer(data::AbstractVector{ProjTensorTrain{T}}) where {T}
     return ProjContainer{T,ProjTensorTrain{T}}(data)
 end
+
+#function ProjTTContainer(data) where {T}
+    #return ProjContainer{T,ProjTensorTrain{T}}(data)
+#end
 
 function (obj::ProjContainer{T,V})(mmultiidx::MMultiIndex)::T where {T,V}
     return Base.sum(o(mmultiidx) for o in obj.data)

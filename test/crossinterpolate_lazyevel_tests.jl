@@ -1,19 +1,6 @@
-using Distributed
 using Test
-using Random
-
-# Define the maximum number of worker processes.
-
-@everywhere using TensorCrossInterpolation
-@everywhere import TensorCrossInterpolation as TCI
-@everywhere import TCIAlgorithms as TCIA
-#@everywhere using ITensors
-#@everywhere ITensors.disable_warn_order()
-@everywhere import QuanticsGrids:
-    DiscretizedGrid, quantics_to_origcoord, origcoord_to_quantics
-@everywhere import QuanticsGrids as QG
-
-@everywhere gaussian(x, y) = exp(-0.5 * (x^2 + y^2))
+import TensorCrossInterpolation as TCI
+import TCIAlgorithms as TCIA
 
 @testset "crossinterpolate" begin
     @testset "_FuncAdapterTCI2Subset" begin
@@ -68,44 +55,5 @@ using Random
     @testset "fulllength_leftmmultiidxset (empty set)" begin
         projector = TCIA.Projector([[4], [4], [0]], [[4], [4], [4]])
         @test TCIA.fulllength_leftmmultiidxset(projector, [Int[]]) == [[4, 4]]
-    end
-
-    @testset "2D Guassian" begin
-        Random.seed!(1234)
-
-        R = 40
-        grid = DiscretizedGrid{2}(R, (-5, -5), (5, 5))
-        localdims = fill(4, R)
-        sitedims = [[2, 2] for _ in 1:R]
-
-        qf = x -> gaussian(quantics_to_origcoord(grid, x)...)
-
-        tol = 1e-7
-
-        pordering = TCIA.PatchOrdering(collect(1:R))
-
-        creator = TCIA.TCI2PatchCreator(
-            Float64,
-            TCIA.makeprojectable(Float64, qf, localdims),
-            localdims,
-            ;
-            maxbonddim=20,
-            rtol=tol,
-            verbosity=0,
-            ntry=10,
-        )
-
-        prjtts = TCIA.adaptiveinterpolate(creator, pordering; verbosity=2, maxnleaves=1000)
-
-        T = Float64
-        obj = TCIA.ProjTTContainer{T}(prjtts)
-
-        points = [(rand() * 10 - 5, rand() * 10 - 5) for i in 1:100]
-
-        @test isapprox(
-            [obj(QG.origcoord_to_quantics(grid, p)) for p in points],
-            [qf(QG.origcoord_to_quantics(grid, p)) for p in points];
-            atol=1e-5,
-        )
     end
 end

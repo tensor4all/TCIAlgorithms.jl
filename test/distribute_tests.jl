@@ -1,8 +1,6 @@
 using Distributed
 using Test
 
-const MAX_WORKERS = 4
-
 # Add worker processes if necessary.
 addprocs(max(0, MAX_WORKERS - nworkers()))
 
