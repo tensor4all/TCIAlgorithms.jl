@@ -42,8 +42,9 @@ struct _FuncAdapterTCI2Subset{T} <: TCI.BatchEvaluator{T}
 end
 
 function _FuncAdapterTCI2Subset(f::ProjectableEvaluator{T}) where {T}
-    prjmsk = [!isprojectedat(f.projector, n) for n in 1:length(f)]
-    return _FuncAdapterTCI2Subset(f, f.sitedims[prjmsk], collect(prod.(f.sitedims[prjmsk])))
+    prjmsk = [!isprojectedat(f.projector, n) for n in 1:length(f.sitedims)]
+    localdims = collect(prod.(f.sitedims[prjmsk]))
+    return _FuncAdapterTCI2Subset(f, f.sitedims[prjmsk], localdims)
 end
 
 Base.length(obj::_FuncAdapterTCI2Subset) = length(obj.localdims)
@@ -64,7 +65,7 @@ function (obj::_FuncAdapterTCI2Subset{T})(
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
 
-    orgL = length(obj.f)
+    orgL = length(obj.f.sitedims)
     leftmmultiidxset_fulllen = fulllength_leftmmultiidxset(
         obj.f.projector, leftmmultiidxset
     )
@@ -74,7 +75,7 @@ function (obj::_FuncAdapterTCI2Subset{T})(
 
     NL = length(leftmmultiidxset_fulllen[1])
     NR = length(rightmmultiidxset_fulllen[1])
-    M_ = length(obj.f) - NL - NR
+    M_ = length(obj.f.sitedims) - NL - NR
     projected = [
         isprojectedat(obj.f.projector, n) ? 1 : Colon() for n in (NL + 1):(orgL - NR)
     ]
@@ -150,7 +151,12 @@ function __taskfunc(creator::AbstractPatchCreator{T,M}, pordering; verbosity=0) 
 
     if patch.isconverged
         projector = makeproj(pordering, prefix, creator.localdims)
-        ptt = ProjTensorTrain(patch.data, projector.sitedims, projector)
+        tt = if patch.data === nothing
+            _zerott(T, prefix, pordering, creator.localdims)
+        else
+            patch.data
+        end
+        ptt = ProjTensorTrain(tt, projector.sitedims, projector)
         return ptt, nothing
     else
         newtasks = Set{AbstractPatchCreator{T,M}}()
@@ -178,7 +184,7 @@ mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}
     f::ProjectableEvaluator{T}
     localdims::Vector{Int}
     projector::Projector
-    rtol::Float64
+    tolerance::Float64
     maxbonddim::Int
     verbosity::Int
     tcikwargs::Dict
@@ -199,7 +205,7 @@ function TCI2PatchCreator{T}(obj::TCI2PatchCreator{T})::TCI2PatchCreator{T} wher
         obj.f,
         obj.localdims,
         obj.projector,
-        obj.rtol,
+        obj.tolerance,
         obj.maxbonddim,
         obj.verbosity,
         obj.tcikwargs,
@@ -214,10 +220,10 @@ end
 
 function TCI2PatchCreator(
     ::Type{T},
-    f,
+    f::ProjectableEvaluator{T},
     localdims::Vector{Int},
     projector::Union{Projector,Nothing}=nothing;
-    rtol::Float64=1e-8,
+    tolerance::Float64=1e-8,
     maxbonddim::Int=100,
     verbosity::Int=0,
     tcikwargs=Dict(),
@@ -240,16 +246,28 @@ function TCI2PatchCreator(
         f,
         localdims,
         projector,
-        rtol,
+        tolerance,
         maxbonddim,
         verbosity,
         tcikwargs,
         maxval,
-        rtol * maxval,
+        tolerance * maxval,
         ninitialpivot,
         checkbatchevaluatable,
         loginterval,
         initialpivots,
+    )
+end
+
+function TCI2PatchCreator(
+    ::Type{T},
+    f,
+    localdims::Vector{Int},
+    projector::Union{Projector,Nothing}=nothing;
+    kwargs...,
+) where {T}
+    return TCI2PatchCreator(
+        T, makeprojectable(T, f, localdims), localdims, projector; kwargs...
     )
 end
 
@@ -375,15 +393,28 @@ function makeproj(
 end
 
 function adaptiveinterpolate(
-    creator::TCI2PatchCreator{T},
-    pordering::PatchOrdering;
-    maxnleaves=typemax(Int), # Not used
-    verbosity=0,
-)::Set{ProjTensorTrain} where {T}
+    creator::TCI2PatchCreator{T}, pordering::PatchOrdering; verbosity=0
+)::ProjTTContainer{T} where {T}
     queue = TaskQueue{TCI2PatchCreator{T},ProjTensorTrain{T}}([creator])
-    return loop(
+    results = loop(
         queue, x -> __taskfunc(x, pordering; verbosity=verbosity); verbosity=verbosity
     )
+    return ProjTTContainer(results)
+end
+
+
+function adaptiveinterpolate(
+    f::ProjectableEvaluator{T},
+    pordering::PatchOrdering=PatchOrdering(collect(1:length(f.sitedims)));
+    verbosity=0,
+    maxbonddim=typemax(Int),
+    tolerance=1e-8,
+)::ProjTTContainer{T} where {T}
+    creator = TCI2PatchCreator(
+        T, f, collect(prod.(f.sitedims)); maxbonddim, tolerance, verbosity, ntry=10
+    )
+    tmp = adaptiveinterpolate(creator, pordering; verbosity)
+    return reshape(tmp, f.sitedims)
 end
 
 function ProjTensorTrainSet(

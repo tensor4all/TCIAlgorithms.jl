@@ -54,6 +54,7 @@ function batchevaluateprj(
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
     # Please override this funciton
+    error("Must be implemented!")
     return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
 end
 
@@ -130,15 +131,16 @@ end
 # Signe-site-index version
 function batchevaluateprj(
     obj::ProjectableEvaluator{T},
-    leftmmultiidxset::AbstractVector{MultiIndex},
-    rightmmultiidxset::AbstractVector{MultiIndex},
+    leftmultiidxset::AbstractVector{MultiIndex},
+    rightmultiidxset::AbstractVector{MultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
-    if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
+    M >= 0 || error("The order of the result must be non-negative")
+    if length(leftmultiidxset) * length(rightmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
     leftmmultiidxset_, rightmmultiidxset_ = _multii(
-        obj, leftmmultiidxset, rightmmultiidxset
+        obj, leftmultiidxset, rightmultiidxset
     )
     return batchevaluateprj(obj, leftmmultiidxset_, rightmmultiidxset_, Val(M))
 end

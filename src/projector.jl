@@ -115,7 +115,7 @@ Base.:>=(a::Projector, b::Projector) = (b <= a)
 
 Base.:<=(a::Vector{Vector{Int}}, b::Projector) = (Projector(a, b.sitedims) <= b)
 
-function hasoverlap(p1::Projector, p2::Projector)::Bool
+function hasoverlap(p1, p2)::Bool
     length(p1) == length(p2) || error("Length mismatch")
     for (a, b) in zip(Iterators.flatten(p1), Iterators.flatten(p2))
         if a != 0 && b != 0
@@ -126,6 +126,7 @@ function hasoverlap(p1::Projector, p2::Projector)::Bool
     end
     return true
 end
+
 
 function isleftmmultiidx_contained(p::Projector, leftmmultiidxset::MMultiIndex)::Bool
     _compat(p, i) = (p == 0) || (p == i)

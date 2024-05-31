@@ -14,9 +14,10 @@ function loop(obj::TaskQueue{T,R}, f::Function; verbosity=0) where {T,R}
         if verbosity > 0
             println("Processing $(length(obj.tasks)) tasks...")
         end
-        results = @distributed (append!) for t in obj.tasks
-            [f(t)]
-        end
+        #results = @distributed (append!) for t in obj.tasks
+            #[f(t)]
+        #end
+        results = [f(t) for t in obj.tasks]
 
         empty!(obj.tasks)
         for (r, newt) in results

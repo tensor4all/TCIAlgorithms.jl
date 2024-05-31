@@ -2,13 +2,9 @@ using Distributed
 using Test
 using Random
 
-# Define the maximum number of worker processes.
-
 @everywhere using TensorCrossInterpolation
 @everywhere import TensorCrossInterpolation as TCI
 @everywhere import TCIAlgorithms as TCIA
-#@everywhere using ITensors
-#@everywhere ITensors.disable_warn_order()
 @everywhere import QuanticsGrids:
     DiscretizedGrid, quantics_to_origcoord, origcoord_to_quantics
 @everywhere import QuanticsGrids as QG
@@ -90,15 +86,12 @@ using Random
             localdims,
             ;
             maxbonddim=20,
-            rtol=tol,
+            tolerance=tol,
             verbosity=0,
             ntry=10,
         )
 
-        prjtts = TCIA.adaptiveinterpolate(creator, pordering; verbosity=2, maxnleaves=1000)
-
-        T = Float64
-        obj = TCIA.ProjTTContainer{T}(prjtts)
+        obj = TCIA.adaptiveinterpolate(creator, pordering; verbosity=2)
 
         points = [(rand() * 10 - 5, rand() * 10 - 5) for i in 1:100]
 
@@ -107,5 +100,27 @@ using Random
             [qf(QG.origcoord_to_quantics(grid, p)) for p in points];
             atol=1e-5,
         )
+    end
+
+    @testset "zerofunction" begin
+        Random.seed!(1234)
+
+        R = 4
+        localdims = fill(4, R)
+
+        qf = x -> 0.0
+
+        tol = 1e-7
+
+        pordering = TCIA.PatchOrdering(collect(1:R))
+
+        creator = TCIA.TCI2PatchCreator(
+            Float64, qf, localdims; maxbonddim=10, tolerance=tol, verbosity=0, ntry=10
+        )
+
+        obj = TCIA.adaptiveinterpolate(creator, pordering; verbosity=0)
+
+        qidx = fill(1, R)
+        @test obj([[q] for q in qidx]) == 0.0
     end
 end

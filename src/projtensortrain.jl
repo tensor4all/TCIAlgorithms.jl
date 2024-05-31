@@ -85,7 +85,7 @@ function Base.reshape(
     prod.(sitedims) == prod.(obj.sitedims) ||
         error("The total number of siteindices must be the same at all tensors!")
 
-    return ProjTensorTrain{T}(obj.data, reshape(obj.projector, sitedims), sitedims)
+    return ProjTensorTrain{T}(obj.data, reshape(obj.projector, sitedims))
 end
 
 Base.length(obj::ProjTensorTrain{T}) where {T} = length(obj.data)

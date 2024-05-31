@@ -48,7 +48,12 @@ function project(
     return LazyMatrixMul{T}(obj.a, obj.b; coeff=obj.coeff)
 end
 
-function lazymatmul(a::ProjTensorTrain{T}, b::ProjTensorTrain{T}; coeff=one(T)) where {T}
+function lazymatmul(
+    a::ProjTensorTrain{T}, b::ProjTensorTrain{T}; coeff=one(T)
+)::Union{LazyMatrixMul{T},Nothing} where {T}
+    if !hasoverlap((x[2] for x in a.projector), (x[1] for x in b.projector))
+        return nothing
+    end
     return LazyMatrixMul{T}(a, b; coeff=coeff)
 end
 
@@ -68,6 +73,7 @@ function batchevaluateprj(
     rightmmultiidxset::AbstractVector{MMultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
+    M >= 0 || error("The order of the result must be non-negative")
     if length(leftindexset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
@@ -75,11 +81,11 @@ function batchevaluateprj(
     NR = length(rightmmultiidxset[1])
     L = length(obj)
     leftindexset_ = [lineari(obj.sitedims[1:NL], x) for x in leftindexset]
-    rightmmultiidxset_ = [
+    rightindexset_ = [
         lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset
     ]
-    projector = Int[
-        isprojectedat(obj.projector, n) ? _lineari(obj.sitedims[n], obj.projector[n]) : 0
+    projector = Vector{Int}[
+        isprojectedat(obj.projector, n) ? obj.projector[n] : [0, 0]
         for n in (NL + 1):(L - NR)
     ]
     returnshape = [
@@ -87,7 +93,20 @@ function batchevaluateprj(
         n in (NL + 1):(L - NR)
     ]
     res = TCI.batchevaluate(
-        obj.contraction, leftindexset_, rightmmultiidxset_, Val(M), projector
+        obj.contraction, leftindexset_, rightindexset_, Val(M), projector
     )
     return reshape(res, length(leftindexset), returnshape..., length(rightmmultiidxset))
+end
+
+function lazymatmul(
+    a::ProjTTContainer{T}, b::ProjTTContainer{T}
+)::ProjContainer{T,LazyMatrixMul{T}} where {T}
+    muls = LazyMatrixMul{T}[]
+    for l in a, r in b
+        p = lazymatmul(l, r)
+        if p !== nothing
+            push!(muls, p)
+        end
+    end
+    return ProjContainer{T,LazyMatrixMul{T}}(muls)
 end
