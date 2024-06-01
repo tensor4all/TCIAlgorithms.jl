@@ -1,6 +1,10 @@
 """
 Lazy evaluation for matrix multiplication of two TTOs
-Two site indices on each site.
+
+This is for the lazy evaluation of the matrix multiplication of two TTOs.
+If underlying data needs to be changed by projection, it will be copied.
+
+TODO: make immutable
 """
 mutable struct LazyMatrixMul{T} <: ProjectableEvaluator{T}
     coeff::T
@@ -109,4 +113,14 @@ function lazymatmul(
         end
     end
     return ProjContainer{T,LazyMatrixMul{T}}(muls)
+end
+
+
+function approxtt(
+    obj::LazyMatrixMul{T}; maxbonddim=typemax(Int), tolerance=1e-12, kwargs...
+)::ProjTensorTrain{T} where {T}
+    return ProjTensorTrain(
+        TCI.contract_zipup(obj.a, obj.b; maxbonddim=maxbonddim, tolerance=tolerance),
+        obj.projector
+    )
 end

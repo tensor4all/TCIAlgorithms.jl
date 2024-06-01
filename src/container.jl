@@ -45,6 +45,15 @@ function Base.reshape(
     ProjContainer{T,V}([reshape(x, sitedims) for x in obj.data])
 end
 
+function approxtt(
+    obj::ProjContainer{T,V}; maxbonddim=typemax(Int), tolerance=1e-12, kwargs...
+)::ProjTensorTrain{T} where {T,V}
+    reduce(
+        (x, y) -> add(x, y; maxbonddim=maxbonddim, tolerance=tolerance, kwargs...),
+        (approxtt(x; maxbonddim=maxbonddim, tolerance=tolerance, kwargs...) for x in obj.data)
+    )
+end
+
 function (obj::ProjContainer{T,V})(mmultiidx::MMultiIndex)::T where {T,V}
     return Base.sum(o(mmultiidx) for o in obj.data)
 end

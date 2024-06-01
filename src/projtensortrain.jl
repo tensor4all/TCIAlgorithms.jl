@@ -73,6 +73,12 @@ function ProjTensorTrain(tt::TensorTrain{T,N}) where {T,N}
     return ProjTensorTrain{T}(tt)
 end
 
+function ProjTensorTrain(
+    tt::TensorTrain{T,N}, sitedims::AbstractVector{<:AbstractVector{<:Integer}}
+) where {T,N}
+    return reshape(ProjTensorTrain{T}(tt), sitedims)
+end
+
 function (obj::ProjTensorTrain{T})(indexset::MMultiIndex)::T where {T}
     return obj.data(lineari(obj.sitedims, indexset))
 end
@@ -193,4 +199,29 @@ end
 
 function makeprojectable(tt::TensorTrain{T,N}) where {T,N}
     return ProjTensorTrain(tt)
+end
+
+function approxtt(
+    obj::ProjTensorTrain{T}; maxbonddim=typemax(Int), tolerance=1e-12, kwargs...
+)::ProjTensorTrain{T} where {T}
+    return project(
+        ProjTensorTrain(
+            truncate(obj.data; tolerance=tolerance, maxbonddim=maxbonddim), obj.sitedims
+        ),
+        obj.projector,
+    )
+end
+
+function add(
+    a::ProjTensorTrain{T},
+    b::ProjTensorTrain{T};
+    maxbonddim=typemax(Int),
+    tolerance=1e-12,
+    kwargs...,
+)::ProjTensorTrain{T} where {T}
+    ab = ProjTensorTrain(
+        TCI.add(a.data, b.data; maxbonddim=maxbonddim, tolerance=tolerance)
+    )
+    ab = reshape(ab, a.sitedims)
+    return project(ab, a.projector | b.projector)
 end

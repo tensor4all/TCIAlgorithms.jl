@@ -72,3 +72,28 @@ end
     @assert size(batchprj) == (1, 1, 4, 1)
     @test batchprj[1, 1, 1, 1] ≈ ptt([1, 4, 1, 1])
 end
+
+@testset "add" begin
+    sitedims = [[2, 2], [2, 2], [2, 2], [2, 2]]
+
+    N = length(sitedims)
+    bonddims = [1, 4, 4, 4, 1]
+    @assert length(bonddims) == N + 1
+
+    proja = TCIA.Projector([[0, 0], [2, 2], [0, 0], [0, 0]], sitedims)
+    projb = TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0]], sitedims)
+
+    a = begin
+        tt = TCI.TensorTrain([rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N])
+        TCIA.project(TCIA.ProjTensorTrain(tt), proja; compression=false)
+    end
+
+    b = begin
+        tt = TCI.TensorTrain([rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N])
+        TCIA.project(TCIA.ProjTensorTrain(tt), projb; compression=false)
+    end
+
+    ab = TCIA.add(a, b; maxbonddim=2 * maximum(bonddims), tolerance=1e-14)
+
+    @test TCIA.fulltensor(ab) ≈ TCIA.fulltensor(a) + TCIA.fulltensor(b)
+end

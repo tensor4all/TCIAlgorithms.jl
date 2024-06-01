@@ -7,17 +7,10 @@ Attributes:
 """
 abstract type ProjectableEvaluator{T} <: TCI.BatchEvaluator{T} end
 
-# To be implemented reshape
-
 function Base.show(io::IO, obj::ProjectableEvaluator{T}) where {T}
     return print(
         io, "$(typeof(obj)), sitedims: $(obj.sitedims), projector: $(obj.projector.data)"
     )
-end
-
-function sum(obj::ProjectableEvaluator{T})::T where {T}
-    error("Must be implemented!")
-    return zero(T)
 end
 
 """
@@ -34,6 +27,24 @@ end
 
 # Override this function
 function (obj::ProjectableEvaluator{T})(indexset::MMultiIndex)::T where {T}
+    return error("Must be implemented!")
+end
+
+# Override this function
+function Base.reshape(
+    obj::ProjectableEvaluator{T}, sitedims::AbstractVector{<:AbstractVector{Int}}
+)::ProjectableEvaluator{T} where {T}
+    return error("Must be implemented!")
+end
+
+"""
+Compute a tensor train approximation of the object.
+The computation should be quick because the result will be used as initial guesses for the optimization.
+Override this function
+ """
+function approxtt(
+    obj::ProjectableEvaluator{T}; maxbonddim=typemax(Int), tolerance=1e-12, kwargs...
+)::ProjTensorTrain{T} where {T}
     return error("Must be implemented!")
 end
 
