@@ -184,12 +184,11 @@ mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}
     f::ProjectableEvaluator{T}
     localdims::Vector{Int}
     projector::Projector
-    tolerance::Float64
     maxbonddim::Int
     verbosity::Int
     tcikwargs::Dict
     maxval::Float64
-    atol::Float64
+    tolerance::Float64
     ninitialpivot::Int
     checkbatchevaluatable::Bool
     loginterval::Int
@@ -205,12 +204,11 @@ function TCI2PatchCreator{T}(obj::TCI2PatchCreator{T})::TCI2PatchCreator{T} wher
         obj.f,
         obj.localdims,
         obj.projector,
-        obj.tolerance,
         obj.maxbonddim,
         obj.verbosity,
         obj.tcikwargs,
         obj.maxval,
-        obj.atol,
+        obj.tolerance,
         obj.ninitialpivot,
         obj.checkbatchevaluatable,
         obj.loginterval,
@@ -246,12 +244,11 @@ function TCI2PatchCreator(
         f,
         localdims,
         projector,
-        tolerance,
         maxbonddim,
         verbosity,
         tcikwargs,
         maxval,
-        tolerance * maxval,
+        tolerance,
         ninitialpivot,
         checkbatchevaluatable,
         loginterval,
@@ -331,7 +328,11 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
             reshape(approxtt(obj.f; maxbonddim=obj.maxbonddim), obj.f.sitedims),
             reshape(obj.projector, obj.f.sitedims))
         # Converting a TT to a TCI2 object
-        TensorCI2{T}(project_on_subsetsiteinds(projtt); tolerance=1e-14)
+        tci = TensorCI2{T}(project_on_subsetsiteinds(projtt); tolerance=1e-14)
+        if tci.maxsamplevalue == 0.0
+           return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
+        end
+        tci
     else
         # Random initial pivots
         initialpivots = MultiIndex[]
@@ -354,7 +355,7 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
     return _crossinterpolate2!(
         tci,
         fsubset,
-        obj.atol;
+        obj.tolerance;
         maxbonddim=obj.maxbonddim,
         verbosity=obj.verbosity,
         checkbatchevaluatable=obj.checkbatchevaluatable,
