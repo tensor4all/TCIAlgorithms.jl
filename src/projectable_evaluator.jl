@@ -88,7 +88,7 @@ function (obj::ProjectableEvaluator{T})(
 
     NL = length(leftmmultiidxset[1])
     NR = length(rightmmultiidxset[1])
-    L = length(obj)
+    L = length(obj.sitedims)
 
     results_multii = zeros(
         T,

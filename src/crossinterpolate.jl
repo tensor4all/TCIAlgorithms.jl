@@ -187,12 +187,11 @@ mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}
     maxbonddim::Int
     verbosity::Int
     tcikwargs::Dict
-    maxval::Float64
     tolerance::Float64
     ninitialpivot::Int
     checkbatchevaluatable::Bool
     loginterval::Int
-    initialpivots::Vector{MultiIndex}
+    initialpivots::Vector{MultiIndex} # Make it to Vector{MMultiIndex}?
 end
 
 function Base.show(io::IO, obj::TCI2PatchCreator{T}) where {T}
@@ -207,7 +206,6 @@ function TCI2PatchCreator{T}(obj::TCI2PatchCreator{T})::TCI2PatchCreator{T} wher
         obj.maxbonddim,
         obj.verbosity,
         obj.tcikwargs,
-        obj.maxval,
         obj.tolerance,
         obj.ninitialpivot,
         obj.checkbatchevaluatable,
@@ -225,20 +223,26 @@ function TCI2PatchCreator(
     maxbonddim::Int=100,
     verbosity::Int=0,
     tcikwargs=Dict(),
-    ntry=100,
+    ntry=10,
     ninitialpivot=5,
     checkbatchevaluatable=false,
     loginterval=10,
     initialpivots=Vector{MultiIndex}[],
 )::TCI2PatchCreator{T} where {T}
-    maxval, _ = _estimate_maxval(f, localdims; ntry=ntry)
+    #t1 = time_ns()
     if projector === nothing
         projector = Projector([[0] for _ in localdims], [[x] for x in localdims])
     end
 
+    #t2 = time_ns()
+
     if !(f.projector <= projector)
         f = project(f, projector)
     end
+    #t3 = time_ns()
+
+    #@show ntry
+    #println("Time: ", (t2 - t1) / 1e9, (t3 - t2) / 1e9)
 
     return TCI2PatchCreator{T}(
         f,
@@ -247,7 +251,6 @@ function TCI2PatchCreator(
         maxbonddim,
         verbosity,
         tcikwargs,
-        maxval,
         tolerance,
         ninitialpivot,
         checkbatchevaluatable,
@@ -320,6 +323,7 @@ end
 function createpatch(obj::TCI2PatchCreator{T}) where {T}
     proj = obj.projector
     fsubset = _FuncAdapterTCI2Subset(obj.f)
+    @show "AAAA", proj.data
 
     tci = 
     if isapproxttavailable(obj.f)
@@ -352,6 +356,7 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
         TensorCI2{T}(fsubset, fsubset.localdims, initialpivots)
     end
 
+    @show length(fsubset.sitedims)
     return _crossinterpolate2!(
         tci,
         fsubset,
@@ -363,6 +368,7 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
     )
 end
 
+#==
 function _estimate_maxval(f, localdims; ntry=100)
     pivot = fill(1, length(localdims))
     maxval::Float64 = abs(f(pivot))
@@ -377,6 +383,7 @@ function _estimate_maxval(f, localdims; ntry=100)
     end
     return maxval, pivot
 end
+==#
 
 function makeproj(po::PatchOrdering, prefix::Vector{Int}, localdims::Vector{Int})
     data = [[0] for _ in localdims]
@@ -399,7 +406,10 @@ end
 function adaptiveinterpolate(
     creator::TCI2PatchCreator{T}, pordering::PatchOrdering; verbosity=0
 )::ProjTTContainer{T} where {T}
+    #flush(stdout)
     queue = TaskQueue{TCI2PatchCreator{T},ProjTensorTrain{T}}([creator])
+    #@show "BB"
+    #flush(stdout)
     results = loop(
         queue, x -> __taskfunc(x, pordering; verbosity=verbosity); verbosity=verbosity
     )
@@ -413,32 +423,14 @@ function adaptiveinterpolate(
     verbosity=0,
     maxbonddim=typemax(Int),
     tolerance=1e-8,
+    initialpivots=Vector{MultiIndex}[], # Make it to Vector{MMultiIndex}?
 )::ProjTTContainer{T} where {T}
+    t1 = time_ns()
     creator = TCI2PatchCreator(
-        T, f, collect(prod.(f.sitedims)); maxbonddim, tolerance, verbosity, ntry=10
+        T, f, collect(prod.(f.sitedims)); maxbonddim, tolerance, verbosity, ntry=10,  initialpivots=initialpivots
     )
     tmp = adaptiveinterpolate(creator, pordering; verbosity)
     return reshape(tmp, f.sitedims)
-end
-
-function ProjTensorTrainSet(
-    tts::Dict{Vector{Vector{Int}},TensorTrain{T,N}},
-    sitedims::AbstractVector{<:AbstractVector{Int}},
-    po::PatchOrdering,
-)::ProjTensorTrainSet{T} where {T,N}
-    keys_ = keys(tts)
-    L = Base.only(unique([length(tt) + length(p) for (p, tt) in tts]))
-    L == length(sitedims) || error("Inconsistent length")
-
-    globalprojecter = makeproj([fill(0, length(s)) for s in sitedims], sitedims)
-
-    tts_ = ProjTensorTrain{T,N}[]
-    for prefix in keys_
-        p = makeproj(po, prefix, sitedims)
-        push!(tts_, ProjTensorTrain(tts[prefix], sitedims, p))
-    end
-
-    return ProjTensorTrainSet(tts_, globalprojecter, sitedims)
 end
 
 """

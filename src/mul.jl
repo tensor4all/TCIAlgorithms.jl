@@ -28,6 +28,11 @@ function LazyMatrixMul{T}(
     projector = Projector(
         [[x[1], y[2]] for (x, y) in zip(a.projector, b.projector)], sitedims_ab
     )
+    for n in 1:length(projector)
+        if !(all(projector[n] .== 0) || all(projector[n] .> 0))
+            error("Projector at $n-th site must be either 0 or positive: $(projector[n])")
+        end
+    end
     return LazyMatrixMul{T}(coeff, contraction, projector, sitedims_ab, a, b)
 end
 
@@ -77,6 +82,9 @@ function batchevaluateprj(
     rightmmultiidxset::AbstractVector{MMultiIndex},
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
+    #if !all([all(p .== 0) for p in obj.projector.data])
+        #@show obj.projector.data
+    #end
     M >= 0 || error("The order of the result must be non-negative")
     if length(leftindexset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
@@ -115,16 +123,13 @@ function lazymatmul(
     return ProjContainer{T,LazyMatrixMul{T}}(muls)
 end
 
-
 function approxtt(
     obj::LazyMatrixMul{T}; maxbonddim=typemax(Int), tolerance=1e-14, kwargs...
 )::ProjTensorTrain{T} where {T}
     a_tto = TensorTrain{T,4}(obj.a.data, obj.a.sitedims)
     b_tto = TensorTrain{T,4}(obj.b.data, obj.b.sitedims)
-    return ProjTensorTrain(
-        TCI.contract_zipup(a_tto, b_tto; maxbonddim=maxbonddim, tolerance=tolerance),
-        obj.projector
-    )
+    ab_tto = TCI.contract_zipup(a_tto, b_tto; maxbonddim=maxbonddim, tolerance=tolerance)
+    return project(ProjTensorTrain(ab_tto), obj.projector)
 end
 
 function isapproxttavailable(obj::LazyMatrixMul)
