@@ -77,11 +77,9 @@ function (obj::_FuncAdapterTCI2Subset{T})(
     NR = length(rightmmultiidxset_fulllen[1])
     M_ = length(obj.f.sitedims) - NL - NR
     projected = [
-        isprojectedat(obj.f.projector, n) ? 1 : Colon() for n in (NL + 1):(orgL - NR)
+        isprojectedat(obj.f.projector, n) ? _lineari(obj.sitedims[n], obj.f.projector[n]) : Colon() for n in (NL + 1):(orgL - NR)
     ]
-    res = batchevaluateprj(
-        obj.f, leftmmultiidxset_fulllen, rightmmultiidxset_fulllen, Val(M_)
-    )
+    res = obj.f(leftmmultiidxset_fulllen, rightmmultiidxset_fulllen, Val(M_))
     return res[:, projected..., :]
 end
 
@@ -241,9 +239,6 @@ function TCI2PatchCreator(
     end
     #t3 = time_ns()
 
-    #@show ntry
-    #println("Time: ", (t2 - t1) / 1e9, (t3 - t2) / 1e9)
-
     return TCI2PatchCreator{T}(
         f,
         localdims,
@@ -323,7 +318,6 @@ end
 function createpatch(obj::TCI2PatchCreator{T}) where {T}
     proj = obj.projector
     fsubset = _FuncAdapterTCI2Subset(obj.f)
-    @show "AAAA", proj.data
 
     tci = 
     if isapproxttavailable(obj.f)
@@ -356,7 +350,6 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
         TensorCI2{T}(fsubset, fsubset.localdims, initialpivots)
     end
 
-    @show length(fsubset.sitedims)
     return _crossinterpolate2!(
         tci,
         fsubset,
@@ -406,10 +399,7 @@ end
 function adaptiveinterpolate(
     creator::TCI2PatchCreator{T}, pordering::PatchOrdering; verbosity=0
 )::ProjTTContainer{T} where {T}
-    #flush(stdout)
     queue = TaskQueue{TCI2PatchCreator{T},ProjTensorTrain{T}}([creator])
-    #@show "BB"
-    #flush(stdout)
     results = loop(
         queue, x -> __taskfunc(x, pordering; verbosity=verbosity); verbosity=verbosity
     )

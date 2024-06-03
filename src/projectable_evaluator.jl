@@ -52,31 +52,7 @@ function isapproxttavailable(obj::ProjectableEvaluator)
     return false
 end
 
-"""
-Please override this funciton
 
-This is similar to batch evaluation.
-The difference is as follows.
-If some of `M` central indices are projected, the evaluation is done on the projected indices.
-The sizes of the correponding indices in the returned array are set to 1.
-
-`leftmmultiidxset` and `rightmmultiidxset` are defined for unprojected and projected indices.
-"""
-function batchevaluateprj(
-    obj::ProjectableEvaluator{T},
-    leftmmultiidxset::AbstractVector{MMultiIndex},
-    rightmmultiidxset::AbstractVector{MMultiIndex},
-    ::Val{M},
-)::Array{T,M + 2} where {T,M}
-    # Please override this funciton
-    error("Must be implemented!")
-    return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
-end
-
-"""
-This is similar to `batchevaluateprj`, but the evaluation is done on all `M` indices.
-In the returned array, the element evaluates to 0 for a indexset that is out of the projector.
-"""
 function (obj::ProjectableEvaluator{T})(
     leftmmultiidxset::AbstractVector{MMultiIndex},
     rightmmultiidxset::AbstractVector{MMultiIndex},
@@ -85,6 +61,10 @@ function (obj::ProjectableEvaluator{T})(
     if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
+
+    return error("Must be implemented for $(typeof(obj))!")
+
+    #### TRASH #####
 
     NL = length(leftmmultiidxset[1])
     NR = length(rightmmultiidxset[1])
@@ -144,8 +124,7 @@ function _lineari(obj::ProjectableEvaluator, leftmmultiidxset, rightmmultiidxset
 end
 
 # Signe-site-index version
-function batchevaluateprj(
-    obj::ProjectableEvaluator{T},
+function (obj::ProjectableEvaluator{T})(
     leftmultiidxset::AbstractVector{MultiIndex},
     rightmultiidxset::AbstractVector{MultiIndex},
     ::Val{M},
@@ -157,7 +136,7 @@ function batchevaluateprj(
     leftmmultiidxset_, rightmmultiidxset_ = _multii(
         obj, leftmultiidxset, rightmultiidxset
     )
-    return batchevaluateprj(obj, leftmmultiidxset_, rightmmultiidxset_, Val(M))
+    return obj(leftmmultiidxset_, rightmmultiidxset_, Val(M))
 end
 
 # single-site-index evaluation
@@ -166,19 +145,19 @@ function (obj::ProjectableEvaluator{T})(indexset::MultiIndex)::T where {T}
 end
 
 # single-site-index evaluation
-function (obj::ProjectableEvaluator{T})(
-    leftmmultiidxset::AbstractVector{MultiIndex},
-    rightmmultiidxset::AbstractVector{MultiIndex},
-    ::Val{M},
-)::Array{T,M + 2} where {T,M}
-    if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
-        return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
-    end
-    leftmmultiidxset_, rightmmultiidxset_ = _multii(
-        obj, leftmmultiidxset, rightmmultiidxset
-    )
-    return obj(leftmmultiidxset_, rightmmultiidxset_, Val(M))
-end
+#function (obj::ProjectableEvaluator{T})(
+    #leftmmultiidxset::AbstractVector{MultiIndex},
+    #rightmmultiidxset::AbstractVector{MultiIndex},
+    #::Val{M},
+#)::Array{T,M + 2} where {T,M}
+    #if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
+        #return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
+    #end
+    #leftmmultiidxset_, rightmmultiidxset_ = _multii(
+        #obj, leftmmultiidxset, rightmmultiidxset
+    #)
+    #return obj(leftmmultiidxset_, rightmmultiidxset_, Val(M))
+#end
 
 """
 Convert function `f` to a ProjectableEvaluator object
@@ -217,8 +196,7 @@ function (obj::ProjectableEvaluatorAdapter{T})(indexset::MMultiIndex)::T where {
     return indexset <= obj.projector ? obj.f(lineari(obj.sitedims, indexset)) : zero(T)
 end
 
-function batchevaluateprj(
-    obj::ProjectableEvaluatorAdapter{T},
+function (obj::ProjectableEvaluatorAdapter{T})(
     leftmmultiidxset::AbstractVector{MMultiIndex},
     rightmmultiidxset::AbstractVector{MMultiIndex},
     ::Val{M},
@@ -247,19 +225,13 @@ function batchevaluateprj(
         prod.(obj.sitedims[(1 + NL):(L - NR)])...,
         length(rightmmultiidxset),
     )
-    result[lmask, .., rmask] .= begin
-        result_lrmask_multii = reshape(
+    result[lmask, .., rmask] .= 
+        reshape(
             result_lrmask,
             size(result_lrmask)[1],
             collect(Iterators.flatten(obj.sitedims[(1 + NL):(L - NR)]))...,
             size(result_lrmask)[end],
         )
-        projmask = map(
-            p -> p == 0 ? Colon() : p,
-            Iterators.flatten(obj.projector[n] for n in (1 + NL):(length(obj) - NR)),
-        )
-        result_lrmask_multii[:, projmask..., :]
-    end
     return result
 end
 

@@ -64,8 +64,7 @@ function (obj::ProjContainer{T,V})(mmultiidx::MMultiIndex)::T where {T,V}
     return Base.sum(o(mmultiidx) for o in obj.data)
 end
 
-function batchevaluateprj(
-    obj::ProjContainer{T,V},
+function (obj::ProjContainer{T,V})(
     leftmmultiidxset::AbstractVector{MMultiIndex},
     rightmmultiidxset::AbstractVector{MMultiIndex},
     ::Val{M},
@@ -74,50 +73,11 @@ function batchevaluateprj(
     if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
-
     result = obj.data[1](leftmmultiidxset, rightmmultiidxset, Val(M))
     for o in obj.data[2:end]
         result .+= o(leftmmultiidxset, rightmmultiidxset, Val(M))
     end
-
-    L = length(obj.sitedims)
-    NL = length(leftmmultiidxset[1])
-    NR = length(rightmmultiidxset[1])
-
-    @show NL, NR, M
-    @show collect(Iterators.flatten(obj.sitedims[(NL + 1):(end - NR)]))
-    @show size(result)
-    @show length(leftmmultiidxset)
-    @show length(rightmmultiidxset)
-
-    results_multii = reshape(
-        result,
-        size(result)[1],
-        Iterators.flatten(obj.sitedims[(NL + 1):(end - NR)])...,
-        size(result)[end],
-    )
-
-    slice = map(
-        x -> x == 0 ? Colon() : 1,
-        Iterators.flatten((obj.projector[n] for n in (NL + 1):(L - NR))),
-    )
-
-    return_shape = [
-        prod(p_ == 0 ? s_ : 1 for (s_, p_) in zip(obj.sitedims[n], obj.projector[n])) for
-        n in (NL + 1):(L - NR)
-    ]
-
-    results_multii_reduced = results_multii[:, slice..., :]
-    @show size(results_multii)
-    @show size(results_multii_reduced)
-    @show return_shape
-    @show obj.projector.data[1:4]
-    return reshape(
-        results_multii_reduced,
-        length(leftmmultiidxset),
-        Iterators.flatten(return_shape)...,
-        length(rightmmultiidxset),
-    )
+    return result
 end
 
 function Base.show(io::IO, obj::ProjContainer{T,V}) where {T,V}
