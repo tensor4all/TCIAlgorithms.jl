@@ -225,3 +225,108 @@ function add(
     ab = reshape(ab, a.sitedims)
     return project(ab, a.projector | b.projector)
 end
+
+"""
+Project the tensor train on the subset of site indices.
+The returned tensor train object has the number of site indices equal to the number of the unprojected subset in the input.
+The dimension of the unprojected site indices are the same as the original ones, i.e., before the projection.
+On each tensor core in the input tensor train, site indices are either projected or not projected.
+The data will be copied, and in the returned tensor train, the site indices are fused.
+"""
+function project_on_subsetsiteinds(obj::ProjTensorTrain{T}) where {T}
+    tensors = Vector{Array{T,3}}(undef, length(obj.data))
+    projected = fill(false, length(obj.data))
+    for i in 1:length(obj.data)
+        if all(obj.projector[i] .== 0)
+            tensors[i] = _to_3d_array(obj.data[i])
+            continue
+        elseif all(obj.projector[i] .> 0)
+            tensors[i] = _to_3d_array(_from_3d_array(obj.data[i], obj.sitedims[i])[:, obj.projector[i]..., :])
+            projected[i] = true
+        else
+            error("At site $i, all site indices are not projected or projected")
+        end
+        tensors[i] = _to_3d_array(tensors[i])
+    end
+
+    tensor_merged = deepcopy(tensors)
+    to_be_merged::Vector{Bool} = deepcopy(projected)
+    while count(to_be_merged) > 0
+        tensor_merged_ = Array{T,3}[]
+        to_be_merged_ = Bool[]
+        @show count(to_be_merged), to_be_merged
+        while length(tensor_merged) > 0
+            @assert length(tensor_merged) == length(to_be_merged)
+            @show length(tensor_merged)
+            if length(tensor_merged) == 1
+                @show "A", size(tensor_merged[1])
+                push!(tensor_merged_, popfirst!(tensor_merged))
+                push!(to_be_merged_, popfirst!(to_be_merged))
+            elseif !to_be_merged[1] && !to_be_merged[2]
+                #for _ in 1:2
+                    push!(tensor_merged_, popfirst!(tensor_merged))
+                    push!(to_be_merged_, popfirst!(to_be_merged))
+                #end
+                @show "B"
+            elseif to_be_merged[1] || to_be_merged[2]
+                push!(tensor_merged_, _merge(tensor_merged[1], tensor_merged[2]))
+                push!(to_be_merged_, to_be_merged[1] && to_be_merged[2])
+                for _ in 1:2
+                    popfirst!(tensor_merged)
+                    popfirst!(to_be_merged)
+                end
+                @show "C"
+            else
+                error("This should not happen")
+            end
+        end
+        tensor_merged = tensor_merged_
+        to_be_merged = to_be_merged_
+    end
+
+    return TensorTrain{T,3}(tensor_merged)
+end
+
+function _merge(A::Array{T,3}, B::Array{T,3}) where {T}
+    AB = _contract(A, B, (3,), (1,))
+    return _to_3d_array(AB)
+end
+
+function _to_3d_array(obj::Array{T,N})::Array{T,3} where {T,N}
+    return reshape(obj, size(obj)[1], :, size(obj)[end])
+end
+
+function _from_3d_array(obj::Array{T,3}, sitedims) where T
+    return reshape(obj, size(obj)[1], sitedims..., size(obj)[end])
+end
+
+"""
+Evaluate `obj` at all possible indexsets and return a full tensor
+if `reducesitedims` is true, in the returned tensor, the dimensions of the projected site indices are reduced to 1.
+"""
+function fulltensor(obj::ProjTensorTrain{T}; fused::Bool=false, reducesitedims=false)::Array{T} where {T}
+    sitetensors = Array{T,3}[]
+    sitedims = Vector{Int}[]
+    for i in 1:length(obj.sitedims)
+        sitetensor = reshape(obj.data[i], size(obj.data[i])[1], obj.sitedims[i]..., size(obj.data[i])[3])
+        if reducesitedims
+            p = map(x->x==0 ? Colon() : x, obj.projector[i])
+            push!(sitetensors, _to_3d_array(sitetensor[:, p..., :]))
+        else
+            push!(sitetensors, _to_3d_array(sitetensor))
+        end
+        push!(sitedims, collect(size(sitetensors[end])[2:end-1]))
+    end
+
+    result::Array{T,3} = _merge(sitetensors[1], sitetensors[2])
+    for i in 3:length(sitetensors)
+        result = _merge(result, sitetensors[i])
+    end
+
+    if fused
+        returnsize = collect(prod.(sitedims))
+    else
+        returnsize = collect(Iterators.flatten(sitedims))
+    end
+    return reshape(result, returnsize...)
+end

@@ -330,6 +330,9 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
     proj = obj.projector
     fsubset = _FuncAdapterTCI2Subset(obj.f)
 
+    # Compute an approximate TT
+    tt = approxtt(obj.f; maxbonddim=obj.maxbonddim)
+
     initialpivots = MultiIndex[]
     let
         mask = [!isprojectedat(proj, n) for n in 1:length(proj)]
