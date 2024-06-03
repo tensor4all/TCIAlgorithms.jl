@@ -9,8 +9,6 @@ using Random
     DiscretizedGrid, quantics_to_origcoord, origcoord_to_quantics
 @everywhere import QuanticsGrids as QG
 
-@everywhere gaussian(x, y) = exp(-0.5 * (x^2 + y^2))
-
 @testset "crossinterpolate" begin
     @testset "_FuncAdapterTCI2Subset" begin
         N = 6

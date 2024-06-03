@@ -117,10 +117,12 @@ end
 
 
 function approxtt(
-    obj::LazyMatrixMul{T}; maxbonddim=typemax(Int), tolerance=1e-12, kwargs...
+    obj::LazyMatrixMul{T}; maxbonddim=typemax(Int), tolerance=1e-14, kwargs...
 )::ProjTensorTrain{T} where {T}
+    a_tto = TensorTrain{T,4}(obj.a.data, obj.a.sitedims)
+    b_tto = TensorTrain{T,4}(obj.b.data, obj.b.sitedims)
     return ProjTensorTrain(
-        TCI.contract_zipup(obj.a, obj.b; maxbonddim=maxbonddim, tolerance=tolerance),
+        TCI.contract_zipup(a_tto, b_tto; maxbonddim=maxbonddim, tolerance=tolerance),
         obj.projector
     )
 end

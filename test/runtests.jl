@@ -4,6 +4,7 @@ using TCIAlgorithms
 import TCIAlgorithms as TCIA
 using Test
 
+@everywhere gaussian(x, y) = exp(-0.5 * (x^2 + y^2))
 const MAX_WORKERS = 2
 
 # Add worker processes if necessary.

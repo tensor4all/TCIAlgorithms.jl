@@ -324,25 +324,27 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
     proj = obj.projector
     fsubset = _FuncAdapterTCI2Subset(obj.f)
 
-    initialpivots = MultiIndex[]
-    let
-        mask = [!isprojectedat(proj, n) for n in 1:length(proj)]
-        for idx in obj.initialpivots
-            idx_ = [[i] for i in idx]
-            if idx_ <= proj
-                push!(initialpivots, idx[mask])
-            end
-        end
-    end
-    append!(initialpivots, findinitialpivots(fsubset, fsubset.localdims, obj.ninitialpivot))
-
-    # Compute an approximate TT and initial pivots
     tci = 
     if isapproxttavailable(obj.f)
-        projtt = ProjTensorTrain(approxtt(obj.f; maxbonddim=obj.maxbonddim), obj.f.sitedims)
-        projtt = project(ptt, obj.projector)
+        # Construct initial pivots from an approximate TT
+        projtt = project(
+            reshape(approxtt(obj.f; maxbonddim=obj.maxbonddim), obj.f.sitedims),
+            reshape(obj.projector, obj.f.sitedims))
+        # Converting a TT to a TCI2 object
         TensorCI2{T}(project_on_subsetsiteinds(projtt); tolerance=1e-14)
     else
+        # Random initial pivots
+        initialpivots = MultiIndex[]
+        let
+            mask = [!isprojectedat(proj, n) for n in 1:length(proj)]
+            for idx in obj.initialpivots
+                idx_ = [[i] for i in idx]
+                if idx_ <= proj
+                    push!(initialpivots, idx[mask])
+                end
+            end
+        end
+        append!(initialpivots, findinitialpivots(fsubset, fsubset.localdims, obj.ninitialpivot))
         if all(fsubset.(initialpivots) .== 0)
            return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
         end

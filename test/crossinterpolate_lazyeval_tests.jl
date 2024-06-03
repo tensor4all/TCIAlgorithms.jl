@@ -9,7 +9,6 @@ using Random
     DiscretizedGrid, quantics_to_origcoord, origcoord_to_quantics
 @everywhere import QuanticsGrids as QG
 
-@everywhere gaussian(x, y) = exp(-0.5 * (x^2 + y^2))
 
 @testset "crossinterpolate_lazyeval" begin
     @testset "2D Gaussian * 2D Gaussian" begin
@@ -54,7 +53,7 @@ using Random
             atol=1e-4,
         )
 
-        exp2tt = TCIA.adaptiveinterpolate(exp2lazy, pordering; verbosity=0)
+        exp2tt = TCIA.adaptiveinterpolate(exp2lazy, pordering; verbosity=0, maxbonddim=100)
 
         @test isapprox(
             [exp2(p...) for p in points],

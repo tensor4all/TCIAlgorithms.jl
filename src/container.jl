@@ -55,7 +55,7 @@ function approxtt(
 end
 
 function isapproxttavailable(obj::ProjContainer)
-    return false
+    return reduce(&, isapproxttavailable(x) for x in obj.data)
 end
 
 function (obj::ProjContainer{T,V})(mmultiidx::MMultiIndex)::T where {T,V}
