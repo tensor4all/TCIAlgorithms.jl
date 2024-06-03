@@ -54,6 +54,10 @@ function approxtt(
     )
 end
 
+function isapproxttavailable(obj::ProjContainer)
+    return false
+end
+
 function (obj::ProjContainer{T,V})(mmultiidx::MMultiIndex)::T where {T,V}
     return Base.sum(o(mmultiidx) for o in obj.data)
 end

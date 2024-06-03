@@ -124,3 +124,7 @@ function approxtt(
         obj.projector
     )
 end
+
+function isapproxttavailable(obj::LazyMatrixMul)
+    return true
+end

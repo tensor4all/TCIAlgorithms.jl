@@ -212,6 +212,10 @@ function approxtt(
     )
 end
 
+function isapproxttavailable(obj::ProjTensorTrain)
+    return true
+end
+
 function add(
     a::ProjTensorTrain{T},
     b::ProjTensorTrain{T};
@@ -252,39 +256,35 @@ function project_on_subsetsiteinds(obj::ProjTensorTrain{T}) where {T}
     tensor_merged = deepcopy(tensors)
     to_be_merged::Vector{Bool} = deepcopy(projected)
     while count(to_be_merged) > 0
-        tensor_merged_ = Array{T,3}[]
-        to_be_merged_ = Bool[]
-        @show count(to_be_merged), to_be_merged
-        while length(tensor_merged) > 0
-            @assert length(tensor_merged) == length(to_be_merged)
-            @show length(tensor_merged)
-            if length(tensor_merged) == 1
-                @show "A", size(tensor_merged[1])
-                push!(tensor_merged_, popfirst!(tensor_merged))
-                push!(to_be_merged_, popfirst!(to_be_merged))
-            elseif !to_be_merged[1] && !to_be_merged[2]
-                #for _ in 1:2
-                    push!(tensor_merged_, popfirst!(tensor_merged))
-                    push!(to_be_merged_, popfirst!(to_be_merged))
-                #end
-                @show "B"
-            elseif to_be_merged[1] || to_be_merged[2]
-                push!(tensor_merged_, _merge(tensor_merged[1], tensor_merged[2]))
-                push!(to_be_merged_, to_be_merged[1] && to_be_merged[2])
-                for _ in 1:2
-                    popfirst!(tensor_merged)
-                    popfirst!(to_be_merged)
-                end
-                @show "C"
-            else
-                error("This should not happen")
-            end
-        end
-        tensor_merged = tensor_merged_
-        to_be_merged = to_be_merged_
+        tensor_merged, to_be_merged = _merge_projected(tensor_merged, to_be_merged)
     end
 
     return TensorTrain{T,3}(tensor_merged)
+end
+
+function _merge_projected(tensor_merged::Vector{Array{T,3}}, to_be_merged) where T
+    tensor_merged_ = Array{T,3}[]
+    to_be_merged_ = Bool[]
+    while length(tensor_merged) > 0
+        @assert length(tensor_merged) == length(to_be_merged)
+        if length(tensor_merged) == 1
+            push!(tensor_merged_, popfirst!(tensor_merged))
+            push!(to_be_merged_, popfirst!(to_be_merged))
+        elseif !to_be_merged[1] && !to_be_merged[2]
+            push!(tensor_merged_, popfirst!(tensor_merged))
+            push!(to_be_merged_, popfirst!(to_be_merged))
+        elseif to_be_merged[1] || to_be_merged[2]
+            push!(tensor_merged_, _merge(tensor_merged[1], tensor_merged[2]))
+            push!(to_be_merged_, to_be_merged[1] && to_be_merged[2])
+            for _ in 1:2
+                popfirst!(tensor_merged)
+                popfirst!(to_be_merged)
+            end
+        else
+            error("This should not happen")
+        end
+    end
+    return tensor_merged_, to_be_merged_
 end
 
 function _merge(A::Array{T,3}, B::Array{T,3}) where {T}
@@ -311,11 +311,14 @@ function fulltensor(obj::ProjTensorTrain{T}; fused::Bool=false, reducesitedims=f
         sitetensor = reshape(obj.data[i], size(obj.data[i])[1], obj.sitedims[i]..., size(obj.data[i])[3])
         if reducesitedims
             p = map(x->x==0 ? Colon() : x, obj.projector[i])
-            push!(sitetensors, _to_3d_array(sitetensor[:, p..., :]))
+            sitetensor_ = sitetensor[:, p..., :]
+            push!(sitetensors, _to_3d_array(sitetensor_))
+            push!(sitedims, collect(size(sitetensor_)[2:end-1]))
         else
-            push!(sitetensors, _to_3d_array(sitetensor))
+            sitetensor_ = sitetensor
+            push!(sitetensors, _to_3d_array(sitetensor_))
+            push!(sitedims, collect(size(sitetensor_)[2:end-1]))
         end
-        push!(sitedims, collect(size(sitetensors[end])[2:end-1]))
     end
 
     result::Array{T,3} = _merge(sitetensors[1], sitetensors[2])

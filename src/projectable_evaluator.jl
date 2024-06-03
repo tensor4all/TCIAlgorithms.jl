@@ -22,19 +22,19 @@ the projector of the returned object is a subset of `prj`.
 function project(
     obj::ProjectableEvaluator{T}, prj::Projector; kwargs...
 )::ProjectableEvaluator{T} where {T}
-    return error("Must be implemented!")
+    return error("Must be implemented for $(typeof(obj))!")
 end
 
 # Override this function
 function (obj::ProjectableEvaluator{T})(indexset::MMultiIndex)::T where {T}
-    return error("Must be implemented!")
+    return error("Must be implemented for $(typeof(obj))!")
 end
 
 # Override this function
 function Base.reshape(
     obj::ProjectableEvaluator{T}, sitedims::AbstractVector{<:AbstractVector{Int}}
 )::ProjectableEvaluator{T} where {T}
-    return error("Must be implemented!")
+    return error("Must be implemented for $(typeof(obj))!")
 end
 
 """
@@ -45,7 +45,11 @@ Override this function
 function approxtt(
     obj::ProjectableEvaluator{T}; maxbonddim=typemax(Int), tolerance=1e-12, kwargs...
 )::ProjTensorTrain{T} where {T}
-    return error("Must be implemented!")
+    return error("Must be implemented for $(typeof(obj))!")
+end
+
+function isapproxttavailable(obj::ProjectableEvaluator)
+    return false
 end
 
 """

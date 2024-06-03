@@ -97,3 +97,43 @@ end
 
     @test TCIA.fulltensor(ab) ≈ TCIA.fulltensor(a) + TCIA.fulltensor(b)
 end
+
+@testset "project_on_subsetsiteinds" begin
+    N = 4
+    χ = 2
+    bonddims = [1, χ, χ, χ, 1]
+    @assert length(bonddims) == N + 1
+
+    localdims1 = [2, 2, 2, 2]
+    localdims2 = [3, 3, 3, 3]
+    sitedims = [[x, y] for (x, y) in zip(localdims1, localdims2)]
+    localdims = collect(prod.(sitedims))
+
+    tt = TCI.TensorTrain([
+        rand(bonddims[n], localdims1[n], localdims2[n], bonddims[n + 1]) for n in 1:N
+    ])
+
+    for (n, tensor) in enumerate(tt)
+        size(tensor)[2:(end - 1)] == sitedims[n]
+    end
+
+    # Projection 
+    for prj in [
+        TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0]], sitedims),
+        TCIA.Projector([[1, 1], [1, 1], [0, 0], [0, 0]], sitedims),
+        TCIA.Projector([[0, 0], [1, 1], [0, 0], [0, 0]], sitedims),
+        TCIA.Projector([[0, 0], [0, 0], [1, 1], [0, 0]], sitedims),
+        TCIA.Projector([[0, 0], [0, 0], [1, 1], [1, 1]], sitedims),
+        TCIA.Projector([[0, 0], [0, 0], [0, 0], [1, 1]], sitedims),
+    ]
+        prjtt = TCIA.project(TCIA.ProjTensorTrain(tt), prj)
+        res = TCIA.project_on_subsetsiteinds(prjtt)
+        localdims = Base.only.(TCI.sitedims(res))
+        #@show localdims
+        #@show size.(res.sitetensors)
+        #@show size(TCIA.fulltensor(prjtt; reducesitedims=true))
+        #@show size([res(collect(Tuple(i))) for i in CartesianIndices(Tuple(localdims))])
+        @test vec(TCIA.fulltensor(prjtt; reducesitedims=true)) ≈
+            vec([res(collect(Tuple(i))) for i in CartesianIndices(Tuple(localdims))])
+    end
+end

@@ -271,11 +271,9 @@ function TCI2PatchCreator(
     )
 end
 
-function _crossinterpolate2(
-    ::Type{T},
+function _crossinterpolate2!(
+    tci::TensorCI2{T},
     f,
-    localdims::Vector{Int},
-    initialpivots::Vector{MultiIndex},
     tolerance::Float64;
     maxbonddim::Int=typemax(Int),
     verbosity::Int=0,
@@ -283,11 +281,7 @@ function _crossinterpolate2(
     loginterval=10,
 ) where {T}
     ncheckhistory = 3
-    tci, others = TCI.crossinterpolate2(
-        T,
-        f,
-        localdims,
-        initialpivots;
+    ranks, errors = TCI.optimize!(tci, f;
         tolerance=tolerance,
         maxbonddim=maxbonddim,
         verbosity=verbosity,
@@ -305,8 +299,8 @@ function _crossinterpolate2(
         )
     end
 
-    ncheckhistory_ = min(ncheckhistory, length(others))
-    maxbonddim_hist = maximum(others[(end - ncheckhistory_ + 1):end])
+    ncheckhistory_ = min(ncheckhistory, length(errors))
+    maxbonddim_hist = maximum(ranks[(end - ncheckhistory_ + 1):end])
 
     return PatchCreatorResult{T,TensorTrain{T,3}}(
         TensorTrain(tci), TCI.maxbonderror(tci) < tolerance && maxbonddim_hist < maxbonddim
@@ -330,9 +324,6 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
     proj = obj.projector
     fsubset = _FuncAdapterTCI2Subset(obj.f)
 
-    # Compute an approximate TT
-    tt = approxtt(obj.f; maxbonddim=obj.maxbonddim)
-
     initialpivots = MultiIndex[]
     let
         mask = [!isprojectedat(proj, n) for n in 1:length(proj)]
@@ -345,15 +336,22 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
     end
     append!(initialpivots, findinitialpivots(fsubset, fsubset.localdims, obj.ninitialpivot))
 
-    if all(fsubset.(initialpivots) .== 0)
-        return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
+    # Compute an approximate TT and initial pivots
+    tci = 
+    if isapproxttavailable(obj.f)
+        projtt = ProjTensorTrain(approxtt(obj.f; maxbonddim=obj.maxbonddim), obj.f.sitedims)
+        projtt = project(ptt, obj.projector)
+        TensorCI2{T}(project_on_subsetsiteinds(projtt); tolerance=1e-14)
+    else
+        if all(fsubset.(initialpivots) .== 0)
+           return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
+        end
+        TensorCI2{T}(fsubset, fsubset.localdims, initialpivots)
     end
 
-    return _crossinterpolate2(
-        T,
+    return _crossinterpolate2!(
+        tci,
         fsubset,
-        fsubset.localdims,
-        initialpivots,
         obj.atol;
         maxbonddim=obj.maxbonddim,
         verbosity=obj.verbosity,
