@@ -84,12 +84,6 @@ function batchevaluateprj(
     NL = length(leftmmultiidxset[1])
     NR = length(rightmmultiidxset[1])
 
-    @show NL, NR, M
-    @show collect(Iterators.flatten(obj.sitedims[(NL + 1):(end - NR)]))
-    @show size(result)
-    @show length(leftmmultiidxset)
-    @show length(rightmmultiidxset)
-
     results_multii = reshape(
         result,
         size(result)[1],
@@ -108,10 +102,6 @@ function batchevaluateprj(
     ]
 
     results_multii_reduced = results_multii[:, slice..., :]
-    @show size(results_multii)
-    @show size(results_multii_reduced)
-    @show return_shape
-    @show obj.projector.data[1:4]
     return reshape(
         results_multii_reduced,
         length(leftmmultiidxset),

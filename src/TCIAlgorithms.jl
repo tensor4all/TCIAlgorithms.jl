@@ -18,6 +18,7 @@ using TCIITensorConversion
 import LinearAlgebra as LA
 
 using ITensors # TO BE REMOVED
+import FastMPOContractions as FMPOC
 
 const MMultiIndex = Vector{Vector{Int}}
 const TensorTrainState{T} = TensorTrain{T,3} where {T}

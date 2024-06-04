@@ -28,11 +28,6 @@ function LazyMatrixMul{T}(
     projector = Projector(
         [[x[1], y[2]] for (x, y) in zip(a.projector, b.projector)], sitedims_ab
     )
-    for n in 1:length(projector)
-        if !(all(projector[n] .== 0) || all(projector[n] .> 0))
-            error("Projector at $n-th site must be either 0 or positive: $(projector[n])")
-        end
-    end
     return LazyMatrixMul{T}(coeff, contraction, projector, sitedims_ab, a, b)
 end
 
@@ -125,10 +120,23 @@ end
 
 function approxtt(
     obj::LazyMatrixMul{T}; maxbonddim=typemax(Int), tolerance=1e-14, kwargs...
-)::ProjTensorTrain{T} where {T}
+)::Union{ProjTensorTrain{T},Nothing} where {T}
+    sites_a_dangling = [Index(ld[1], "ell=$ell, a_dangling") for (ell, ld) in enumerate(obj.a.sitedims)]
+    sites_ab_shared = [Index(ld[2], "ell=$ell, ab_shared") for (ell, ld) in enumerate(obj.a.sitedims)]
+    sites_b_dangling = [Index(ld[2], "ell=$ell, b_dangling") for (ell, ld) in enumerate(obj.b.sitedims)]
+    sites_a = collect(collect(x) for x in zip(sites_a_dangling, sites_ab_shared))
+    sites_b = collect(collect(x) for x in zip(sites_ab_shared, sites_b_dangling))
+    sites_ab = collect(collect(x) for x in zip(sites_a_dangling, sites_b_dangling))
+
     a_tto = TensorTrain{T,4}(obj.a.data, obj.a.sitedims)
     b_tto = TensorTrain{T,4}(obj.b.data, obj.b.sitedims)
-    ab_tto = TCI.contract_zipup(a_tto, b_tto; maxbonddim=maxbonddim, tolerance=tolerance)
+
+    a_MPO = MPO(a_tto; sites=sites_a)
+    b_MPO = MPO(b_tto; sites=sites_b)
+
+    ab_MPO = obj.coeff * FMPOC.contract_fit(a_MPO, b_MPO; maxdim=maxbonddim, cutoff=tolerance^2)
+    ab_tto = TensorTrain{T,4}(ab_MPO; sites=sites_ab)
+
     return project(ProjTensorTrain(ab_tto), obj.projector)
 end
 

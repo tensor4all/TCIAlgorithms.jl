@@ -241,9 +241,6 @@ function TCI2PatchCreator(
     end
     #t3 = time_ns()
 
-    #@show ntry
-    #println("Time: ", (t2 - t1) / 1e9, (t3 - t2) / 1e9)
-
     return TCI2PatchCreator{T}(
         f,
         localdims,
@@ -323,7 +320,6 @@ end
 function createpatch(obj::TCI2PatchCreator{T}) where {T}
     proj = obj.projector
     fsubset = _FuncAdapterTCI2Subset(obj.f)
-    @show "AAAA", proj.data
 
     tci = 
     if isapproxttavailable(obj.f)
@@ -356,7 +352,6 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
         TensorCI2{T}(fsubset, fsubset.localdims, initialpivots)
     end
 
-    @show length(fsubset.sitedims)
     return _crossinterpolate2!(
         tci,
         fsubset,

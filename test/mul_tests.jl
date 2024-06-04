@@ -39,6 +39,9 @@ import TCIAlgorithms: Projector, project, ProjTensorTrain, LazyMatrixMul, makepr
         ab_ref = TCI.contract_naive(a_tt, b_tt)
 
         @test TCIA.fulltensor(ab) ≈ TCIA.fulltensor(ProjTensorTrain(ab_ref))
+
+        # Fit algorithm
+        @test TCIA.fulltensor(TCIA.approxtt(ab)) ≈ TCIA.fulltensor(ProjTensorTrain(ab_ref))
     end
 
     @testset "projecting lazymul" begin
