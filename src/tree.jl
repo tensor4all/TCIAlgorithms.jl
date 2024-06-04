@@ -1,33 +1,34 @@
 
 # Define a mutable struct for TreeNode with a type parameter V for the value
 mutable struct TreeNode{V}
-    path::Vector{Int} 
+    path::Vector{Int}
     value::Vector{V}
-    children::Dict{Vector{Int}, TreeNode{V}}
+    children::Dict{Vector{Int},TreeNode{V}}
 end
 
 _isvalidpath(path::Vector{Int}) = all(path .> 0)
 
 # Function to create a new node
-function create_node(path::Vector{Int}, value::V) where V
+function create_node(path::Vector{Int}, value::V) where {V}
     _isvalidpath(path) || throw(ArgumentError("Invalid path $path"))
-    TreeNode{V}(deepcopy(path), [value], Dict{Vector{Int}, TreeNode{V}}())
+    return TreeNode{V}(deepcopy(path), [value], Dict{Vector{Int},TreeNode{V}}())
 end
 
-function create_node(::Type{V}, path::Vector{Int}) where V
+function create_node(::Type{V}, path::Vector{Int}) where {V}
     _isvalidpath(path) || throw(ArgumentError("Invalid path $path"))
-    TreeNode{V}(deepcopy(path), V[], Dict{Vector{Int}, TreeNode{V}}())
+    return TreeNode{V}(deepcopy(path), V[], Dict{Vector{Int},TreeNode{V}}())
 end
 
 # Function to add a value to the tree
-function add_value!(node::TreeNode{V}, path::Vector{Int}, value::V) where V
+function add_value!(node::TreeNode{V}, path::Vector{Int}, value::V) where {V}
     _isvalidpath(path) || throw(ArgumentError("Invalid path $path"))
 
-    path[1:length(node.path)] == node.path || error("path $path does not match node path $(node.path)")
+    path[1:length(node.path)] == node.path ||
+        error("path $path does not match node path $(node.path)")
 
     path = deepcopy(path)
     current = node
-    for i in length(node.path)+1:length(path)
+    for i in (length(node.path) + 1):length(path)
         # Get the current path
         current_path = path[1:i]
         # If the node does not exist, create a new node with nothing value
@@ -38,18 +39,18 @@ function add_value!(node::TreeNode{V}, path::Vector{Int}, value::V) where V
         current = current.children[current_path]
     end
     # Set the value at the last node
-    push!(current.value, value)
+    return push!(current.value, value)
 end
 
 """
 Remove a value at a given path
 """
-function delete_value!(root::TreeNode{V}, path::Vector{Int}, value::V)::Vector{V} where V
+function delete_value!(root::TreeNode{V}, path::Vector{Int}, value::V)::Vector{V} where {V}
     node = find_node(root, path)
     if node === nothing
         error("Not found $path")
     end
-    matches = findall(x->x==value, node.value)
+    matches = findall(x -> x == value, node.value)
     if length(matches) == 0
         error("Not found $value at $path")
     elseif length(matches) > 1
@@ -62,28 +63,31 @@ end
 """
 Remove a value at a given path
 """
-function delete_node!(root::TreeNode{V}, path::Vector{Int}) where V
-    parentnode = find_node(root, path[1:end-1])
+function delete_node!(root::TreeNode{V}, path::Vector{Int}) where {V}
+    parentnode = find_node(root, path[1:(end - 1)])
     if parentnode === nothing
         error("Not found parent node for $path")
     end
-    Base.delete!(parentnode.children, path)
+    return Base.delete!(parentnode.children, path)
 end
 
 # Function to print the tree
-function print_tree(node::TreeNode{V}, indent::Int = 0) where V
+function print_tree(node::TreeNode{V}, indent::Int=0) where {V}
     value_str = length(node.value) == 0 ? "nothing" : string(node.value)
-    println(repeat(" ", indent * 2) * "Path: " * string(node.path) * ", Value: " * value_str)
+    println(
+        repeat(" ", indent * 2) * "Path: " * string(node.path) * ", Value: " * value_str
+    )
     for child in values(node.children)
         print_tree(child, indent + 1)
     end
 end
 
 # Function to find a node by its path
-function find_node(node::TreeNode{V}, path::Vector{Int}) where V
-    node.path == path[1:length(node.path)] || error("path $path does not match node path $(node.path)")
+function find_node(node::TreeNode{V}, path::Vector{Int}) where {V}
+    node.path == path[1:length(node.path)] ||
+        error("path $path does not match node path $(node.path)")
     current = node
-    for i in length(node.path)+1:length(path)
+    for i in (length(node.path) + 1):length(path)
         current_path = path[1:i]
         if current_path in keys(current.children)
             current = current.children[current_path]
@@ -99,19 +103,19 @@ struct TreeNodeIterator{V}
     stack::Vector{TreeNode{V}}
 end
 
-function Base.iterate(iter::TreeNodeIterator{V}) where V
+function Base.iterate(iter::TreeNodeIterator{V}) where {V}
     isempty(iter.stack) && return nothing
     current = pop!(iter.stack)
     append!(iter.stack, values(current.children))
     return current, iter
 end
 
-function Base.iterate(iter::TreeNodeIterator{V}, state) where V
-    iterate(state)
+function Base.iterate(iter::TreeNodeIterator{V}, state) where {V}
+    return iterate(state)
 end
 
 # Implementing length for TreeNodeIterator
-function Base.length(iter::TreeNodeIterator{V}) where V
+function Base.length(iter::TreeNodeIterator{V}) where {V}
     count = 0
     for _ in all_nodes(iter.stack[1])
         count += 1
@@ -119,10 +123,10 @@ function Base.length(iter::TreeNodeIterator{V}) where V
     return count
 end
 
-function all_nodes(node::TreeNode{V}) where V
-    TreeNodeIterator([node])
+function all_nodes(node::TreeNode{V}) where {V}
+    return TreeNodeIterator([node])
 end
 
-function isleaf(node::TreeNode{V}) where V
+function isleaf(node::TreeNode{V}) where {V}
     return length(node.children) == 0
 end

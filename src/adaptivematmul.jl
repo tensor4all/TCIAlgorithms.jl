@@ -26,8 +26,6 @@ function adaptivematmul(
     end
 
     return ProjTTContainer{T}(_mergesmallpatches(root_tt; tolerance, maxbonddim))
-#
-    #return ProjTTContainer{T}(reduce(append!, [node.value for node in all_nodes(root)]))
 end
 
 """
@@ -76,37 +74,15 @@ function _performmul!(
         end
     end
     return root
-    #return ProjTTContainer{T}(reduce(append!, [node.value for node in all_nodes(root)]))
 end
 
-#"""
-#Merge TTs until the bond dimensions reaches the upper limit.
-#Data will be deepcopied!
-#"""
-#function mergesmallpatches!(
-    #root::TreeNode{ProjTensorTrain{T}}; tolerance=1e-14, maxbonddim=typemax(Int)
-#)::ProjTTContainer{T} where {T}
-    #done = ProjTensorTrain{T}[]
-    #while true
-        #num_done = length(done)
-        #_mergesmallpatches!(root, done; tolerance, maxbonddim)
-        #@show num_done
-        #if num_done == length(done)
-            #break
-        #end
-    #end
-    #return ProjTTContainer{T}(done)
-#end
-#
 function _mergesmallpatches(
-    node::TreeNode{ProjTensorTrain{T}};
-    tolerance=1e-14,
-    maxbonddim=typemax(Int),
+    node::TreeNode{ProjTensorTrain{T}}; tolerance=1e-14, maxbonddim=typemax(Int)
 )::Vector{ProjTensorTrain{T}} where {T}
     tt_child::Vector{ProjTensorTrain{T}} = reduce(
         append!,
         (_mergesmallpatches(c; tolerance, maxbonddim) for c in values(node.children));
-        init = ProjTensorTrain{T}[]
+        init=ProjTensorTrain{T}[],
     )
 
     all_values = vcat(tt_child, node.value)

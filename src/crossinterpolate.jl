@@ -107,7 +107,6 @@ function fulllength_rightmmultiidxset(
     return collect(reverse.(r))
 end
 
-
 #======================================================================
    TCI2 Interpolation of a function
 ======================================================================#
@@ -209,7 +208,9 @@ function _crossinterpolate2!(
     loginterval=10,
 ) where {T}
     ncheckhistory = 3
-    ranks, errors = TCI.optimize!(tci, f;
+    ranks, errors = TCI.optimize!(
+        tci,
+        f;
         tolerance=tolerance,
         maxbonddim=maxbonddim,
         verbosity=verbosity,
@@ -235,21 +236,20 @@ function _crossinterpolate2!(
     )
 end
 
-
 function createpatch(obj::TCI2PatchCreator{T}) where {T}
     proj = obj.projector
     fsubset = _FuncAdapterTCI2Subset(obj.f)
 
-    tci = 
-    if isapproxttavailable(obj.f)
+    tci = if isapproxttavailable(obj.f)
         # Construct initial pivots from an approximate TT
         projtt = project(
             reshape(approxtt(obj.f; maxbonddim=obj.maxbonddim), obj.f.sitedims),
-            reshape(obj.projector, obj.f.sitedims))
+            reshape(obj.projector, obj.f.sitedims),
+        )
         # Converting a TT to a TCI2 object
         tci = TensorCI2{T}(project_on_subsetsiteinds(projtt); tolerance=1e-14)
         if tci.maxsamplevalue == 0.0
-           return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
+            return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
         end
         tci
     else
@@ -264,9 +264,12 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
                 end
             end
         end
-        append!(initialpivots, findinitialpivots(fsubset, fsubset.localdims, obj.ninitialpivot))
+        append!(
+            initialpivots,
+            findinitialpivots(fsubset, fsubset.localdims, obj.ninitialpivot),
+        )
         if all(fsubset.(initialpivots) .== 0)
-           return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
+            return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
         end
         TensorCI2{T}(fsubset, fsubset.localdims, initialpivots)
     end
@@ -292,7 +295,6 @@ function adaptiveinterpolate(
     return ProjTTContainer(results)
 end
 
-
 function adaptiveinterpolate(
     f::ProjectableEvaluator{T},
     pordering::PatchOrdering=PatchOrdering(collect(1:length(f.sitedims)));
@@ -303,7 +305,14 @@ function adaptiveinterpolate(
 )::ProjTTContainer{T} where {T}
     t1 = time_ns()
     creator = TCI2PatchCreator(
-        T, f, collect(prod.(f.sitedims)); maxbonddim, tolerance, verbosity, ntry=10,  initialpivots=initialpivots
+        T,
+        f,
+        collect(prod.(f.sitedims));
+        maxbonddim,
+        tolerance,
+        verbosity,
+        ntry=10,
+        initialpivots=initialpivots,
     )
     tmp = adaptiveinterpolate(creator, pordering; verbosity)
     return reshape(tmp, f.sitedims)

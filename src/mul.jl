@@ -77,7 +77,7 @@ function batchevaluateprj(
     ::Val{M},
 )::Array{T,M + 2} where {T,M}
     #if !all([all(p .== 0) for p in obj.projector.data])
-        #@show obj.projector.data
+    #@show obj.projector.data
     #end
     M >= 0 || error("The order of the result must be non-negative")
     if length(leftindexset) * length(rightmmultiidxset) == 0
@@ -91,8 +91,8 @@ function batchevaluateprj(
         lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset
     ]
     projector = Vector{Int}[
-        isprojectedat(obj.projector, n) ? obj.projector[n] : [0, 0]
-        for n in (NL + 1):(L - NR)
+        isprojectedat(obj.projector, n) ? obj.projector[n] : [0, 0] for
+        n in (NL + 1):(L - NR)
     ]
     returnshape = [
         isprojectedat(obj.projector, n) ? 1 : prod(obj.sitedims[n]) for
@@ -120,9 +120,15 @@ end
 function approxtt(
     obj::LazyMatrixMul{T}; maxbonddim=typemax(Int), tolerance=1e-14, kwargs...
 )::Union{ProjTensorTrain{T},Nothing} where {T}
-    sites_a_dangling = [Index(ld[1], "ell=$ell, a_dangling") for (ell, ld) in enumerate(obj.a.sitedims)]
-    sites_ab_shared = [Index(ld[2], "ell=$ell, ab_shared") for (ell, ld) in enumerate(obj.a.sitedims)]
-    sites_b_dangling = [Index(ld[2], "ell=$ell, b_dangling") for (ell, ld) in enumerate(obj.b.sitedims)]
+    sites_a_dangling = [
+        Index(ld[1], "ell=$ell, a_dangling") for (ell, ld) in enumerate(obj.a.sitedims)
+    ]
+    sites_ab_shared = [
+        Index(ld[2], "ell=$ell, ab_shared") for (ell, ld) in enumerate(obj.a.sitedims)
+    ]
+    sites_b_dangling = [
+        Index(ld[2], "ell=$ell, b_dangling") for (ell, ld) in enumerate(obj.b.sitedims)
+    ]
     sites_a = collect(collect(x) for x in zip(sites_a_dangling, sites_ab_shared))
     sites_b = collect(collect(x) for x in zip(sites_ab_shared, sites_b_dangling))
     sites_ab = collect(collect(x) for x in zip(sites_a_dangling, sites_b_dangling))
@@ -133,7 +139,8 @@ function approxtt(
     a_MPO = MPO(a_tto; sites=sites_a)
     b_MPO = MPO(b_tto; sites=sites_b)
 
-    ab_MPO = obj.coeff * FMPOC.contract_fit(a_MPO, b_MPO; maxdim=maxbonddim, cutoff=tolerance^2)
+    ab_MPO =
+        obj.coeff * FMPOC.contract_fit(a_MPO, b_MPO; maxdim=maxbonddim, cutoff=tolerance^2)
     ab_tto = TensorTrain{T,4}(ab_MPO; sites=sites_ab)
 
     return project(ProjTensorTrain(ab_tto), obj.projector)

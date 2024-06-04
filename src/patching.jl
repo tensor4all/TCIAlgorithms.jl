@@ -40,7 +40,6 @@ mutable struct PatchCreatorResult{T,M}
     isconverged::Bool
 end
 
-
 function _reconst_prefix(projector::Projector, pordering::PatchOrdering)
     np = Base.sum((isprojectedat(projector, n) for n in 1:length(projector)))
     return [Base.only(projector[n]) for n in pordering.ordering[1:np]]
@@ -78,10 +77,7 @@ function _zerott(T, prefix, po::PatchOrdering, localdims::Vector{Int})
     return TensorTrain([zeros(T, 1, d, 1) for d in localdims_])
 end
 
-
-function project(
-    obj::AbstractPatchCreator{T,M}, projector::Projector
-) where {T,M}
+function project(obj::AbstractPatchCreator{T,M}, projector::Projector) where {T,M}
     projector <= obj.projector || error(
         "Projector $projector is not a subset of the original projector $(obj.f.projector)",
     )
@@ -91,7 +87,6 @@ function project(
     obj_copy.f = project(obj_copy.f, projector)
     return obj_copy
 end
-
 
 function makeproj(po::PatchOrdering, prefix::Vector{Int}, localdims::Vector{Int})
     data = [[0] for _ in localdims]
@@ -111,9 +106,7 @@ function makeproj(
     return Projector(data, sitedims)
 end
 
-function makechildproj(
-    proj::Projector, po::PatchOrdering
-)::Vector{Projector}
+function makechildproj(proj::Projector, po::PatchOrdering)::Vector{Projector}
     path = createpath(proj, po)
     result = Projector[]
 
@@ -130,7 +123,6 @@ function makechildproj(
 
     return result
 end
-
 
 """
 `tt` is a TensorTrain{T,3} and `prj` is a Projector.
@@ -189,21 +181,23 @@ function ProjTensorTrain(
 end
 
 function _fuse(sitedims, p)
-    all(p .> 0) ? _lineari(sitedims, p) : 0
+    return all(p .> 0) ? _lineari(sitedims, p) : 0
 end
 
 # Create a path for a tree
 function createpath(proj::Projector, po::PatchOrdering)::Vector{Int}
     _fuse = (sitedims, p) -> all(p .> 0) ? _lineari(sitedims, p) : 0
     key = [_fuse(proj.sitedims[po[n]], proj[po[n]]) for n in 1:length(proj)]
-    firstzero = findfirst(x->x==0, key)
+    firstzero = findfirst(x -> x == 0, key)
     if firstzero === nothing
         return key
     else
-        return key[1:firstzero-1]
+        return key[1:(firstzero - 1)]
     end
 end
 
-function add!(root::TreeNode{V}, obj::ProjectableEvaluator{T}, po::PatchOrdering) where {V,T}
-    add_value!(root, createpath(obj.projector, po), obj)
+function add!(
+    root::TreeNode{V}, obj::ProjectableEvaluator{T}, po::PatchOrdering
+) where {V,T}
+    return add_value!(root, createpath(obj.projector, po), obj)
 end

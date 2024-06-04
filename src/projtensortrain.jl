@@ -41,7 +41,7 @@ mutable struct ProjTensorTrain{T} <: ProjectableEvaluator{T}
 end
 
 #function linkdims(obj::ProjTensorTrain)
-    #TCI.linkdims(obj.data)
+#TCI.linkdims(obj.data)
 #end
 
 function _check_projector_compatibility(
@@ -234,9 +234,7 @@ function add(
     a_MPS = MPS(a.data)
     b_MPS = MPS(b.data; sites=siteinds(a_MPS))
     ab_MPS = +(a_MPS, b_MPS; maxdim=maxbonddim, cutoff=tolerance^2)
-    ab = reshape(
-        ProjTensorTrain(TensorTrain{T,3}(MPO([x for x in ab_MPS]))),
-        a.sitedims)
+    ab = reshape(ProjTensorTrain(TensorTrain{T,3}(MPO([x for x in ab_MPS]))), a.sitedims)
     return project(ab, a.projector | b.projector)
     #==
     ab = ProjTensorTrain(
@@ -263,7 +261,9 @@ function project_on_subsetsiteinds(obj::ProjTensorTrain{T}) where {T}
             tensors[i] = _to_3d_array(obj.data[i])
             continue
         elseif all(obj.projector[i] .> 0)
-            tensors[i] = _to_3d_array(_from_3d_array(obj.data[i], obj.sitedims[i])[:, obj.projector[i]..., :])
+            tensors[i] = _to_3d_array(
+                _from_3d_array(obj.data[i], obj.sitedims[i])[:, obj.projector[i]..., :]
+            )
             projected[i] = true
         else
             error("At site $i, all site indices are not projected or projected")
@@ -280,7 +280,7 @@ function project_on_subsetsiteinds(obj::ProjTensorTrain{T}) where {T}
     return TensorTrain{T,3}(tensor_merged)
 end
 
-function _merge_projected(tensor_merged::Vector{Array{T,3}}, to_be_merged) where T
+function _merge_projected(tensor_merged::Vector{Array{T,3}}, to_be_merged) where {T}
     tensor_merged_ = Array{T,3}[]
     to_be_merged_ = Bool[]
     while length(tensor_merged) > 0
@@ -314,7 +314,7 @@ function _to_3d_array(obj::Array{T,N})::Array{T,3} where {T,N}
     return reshape(obj, size(obj)[1], :, size(obj)[end])
 end
 
-function _from_3d_array(obj::Array{T,3}, sitedims) where T
+function _from_3d_array(obj::Array{T,3}, sitedims) where {T}
     return reshape(obj, size(obj)[1], sitedims..., size(obj)[end])
 end
 
@@ -322,20 +322,24 @@ end
 Evaluate `obj` at all possible indexsets and return a full tensor
 if `reducesitedims` is true, in the returned tensor, the dimensions of the projected site indices are reduced to 1.
 """
-function fulltensor(obj::ProjTensorTrain{T}; fused::Bool=false, reducesitedims=false)::Array{T} where {T}
+function fulltensor(
+    obj::ProjTensorTrain{T}; fused::Bool=false, reducesitedims=false
+)::Array{T} where {T}
     sitetensors = Array{T,3}[]
     sitedims = Vector{Int}[]
     for i in 1:length(obj.sitedims)
-        sitetensor = reshape(obj.data[i], size(obj.data[i])[1], obj.sitedims[i]..., size(obj.data[i])[3])
+        sitetensor = reshape(
+            obj.data[i], size(obj.data[i])[1], obj.sitedims[i]..., size(obj.data[i])[3]
+        )
         if reducesitedims
-            p = map(x->x==0 ? Colon() : x, obj.projector[i])
+            p = map(x -> x == 0 ? Colon() : x, obj.projector[i])
             sitetensor_ = sitetensor[:, p..., :]
             push!(sitetensors, _to_3d_array(sitetensor_))
-            push!(sitedims, collect(size(sitetensor_)[2:end-1]))
+            push!(sitedims, collect(size(sitetensor_)[2:(end - 1)]))
         else
             sitetensor_ = sitetensor
             push!(sitetensors, _to_3d_array(sitetensor_))
-            push!(sitedims, collect(size(sitetensor_)[2:end-1]))
+            push!(sitedims, collect(size(sitetensor_)[2:(end - 1)]))
         end
     end
 

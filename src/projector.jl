@@ -127,7 +127,6 @@ function hasoverlap(p1, p2)::Bool
     return true
 end
 
-
 function isleftmmultiidx_contained(p::Projector, leftmmultiidxset::MMultiIndex)::Bool
     _compat(p, i) = (p == 0) || (p == i)
     for n in 1:length(leftmmultiidxset)

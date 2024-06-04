@@ -118,7 +118,6 @@ function Base.show(io::IO, obj::ProjContainer{T,ProjTensorTrain{T}}) where {T}
     return print(io, "ProjTTContainer{$T} with $(length(obj.data)) elements")
 end
 
-
 function fulltensor(obj::ProjContainer{T})::Array{T} where {T}
     return Base.sum((fulltensor(o) for o in obj.data))
 end

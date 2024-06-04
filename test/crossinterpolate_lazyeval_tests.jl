@@ -9,7 +9,6 @@ using Random
     DiscretizedGrid, quantics_to_origcoord, origcoord_to_quantics
 @everywhere import QuanticsGrids as QG
 
-
 @testset "crossinterpolate_lazyeval" begin
     @testset "2D Gaussian * 2D Gaussian" begin
         Random.seed!(1234)

@@ -154,9 +154,7 @@ function batchevaluateprj(
     if length(leftmultiidxset) * length(rightmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
-    leftmmultiidxset_, rightmmultiidxset_ = _multii(
-        obj, leftmultiidxset, rightmultiidxset
-    )
+    leftmmultiidxset_, rightmmultiidxset_ = _multii(obj, leftmultiidxset, rightmultiidxset)
     return batchevaluateprj(obj, leftmmultiidxset_, rightmmultiidxset_, Val(M))
 end
 

@@ -37,17 +37,17 @@ import TCIAlgorithms as TCIA
         root = TCIA.create_node(NT, Int[])
 
         ptt = TCIA.project(tt, TCIA.Projector([[0, 0], [0, 0], [0, 0], [0, 0]], sitedims))
-        TCIA. add!(root, ptt, po)
+        TCIA.add!(root, ptt, po)
         @test length(TCIA.find_node(root, Int[]).value) == 1
         @test TCIA.find_node(root, Int[]).value[1] == ptt
 
         ptt2 = TCIA.project(tt, TCIA.Projector([[0, 1], [0, 0], [0, 0], [0, 0]], sitedims))
-        TCIA. add!(root, ptt2, po)
+        TCIA.add!(root, ptt2, po)
         @test length(TCIA.find_node(root, Int[]).value) == 2
         @test TCIA.find_node(root, Int[]).value[2] == ptt2
 
         ptt3 = TCIA.project(tt, TCIA.Projector([[1, 1], [1, 1], [0, 0], [0, 0]], sitedims))
-        TCIA. add!(root, ptt3, po)
+        TCIA.add!(root, ptt3, po)
         @test length(TCIA.find_node(root, [1, 1]).value) == 1
         @test TCIA.find_node(root, [1, 1]).value[1] == ptt3
     end
