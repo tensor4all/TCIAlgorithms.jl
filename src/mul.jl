@@ -28,11 +28,11 @@ function LazyMatrixMul{T}(
     projector = Projector(
         [[x[1], y[2]] for (x, y) in zip(a.projector, b.projector)], sitedims_ab
     )
-    #for n in 1:length(projector)
-        #if !(all(projector[n] .== 0) || all(projector[n] .> 0))
-            #error("Projector at $n-th site must be either 0 or positive: $(projector[n])")
-        #end
-    #end
+    for n in 1:length(projector)
+        if !(all(projector[n] .== 0) || all(projector[n] .> 0))
+            error("Projector at $n-th site must be either 0 or positive: $(projector[n])")
+        end
+    end
     return LazyMatrixMul{T}(coeff, contraction, projector, sitedims_ab, a, b)
 end
 
@@ -76,7 +76,8 @@ function (obj::LazyMatrixMul{T})(indexset::MMultiIndex)::T where {T}
 end
 
 # multi-site-index evaluation
-function (obj::LazyMatrixMul{T})(
+function batchevaluateprj(
+    obj::LazyMatrixMul{T},
     leftindexset::AbstractVector{MMultiIndex},
     rightmmultiidxset::AbstractVector{MMultiIndex},
     ::Val{M},
@@ -90,20 +91,23 @@ function (obj::LazyMatrixMul{T})(
     end
     NL = length(leftindexset[1])
     NR = length(rightmmultiidxset[1])
-    #L = length(obj)
+    L = length(obj)
     leftindexset_ = [lineari(obj.sitedims[1:NL], x) for x in leftindexset]
     rightindexset_ = [
         lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset
     ]
-    #projector = Vector{Int}[
-        #isprojectedat(obj.projector, n) ? obj.projector[n] : [0, 0]
-        #for n in (NL + 1):(L - NR)
-    #]
-    #returnshape = [
-        #isprojectedat(obj.projector, n) ? 1 : prod(obj.sitedims[n]) for
-        #n in (NL + 1):(L - NR)
-    #]
-    return obj.contraction(leftindexset_, rightindexset_, Val(M))
+    projector = Vector{Int}[
+        isprojectedat(obj.projector, n) ? obj.projector[n] : [0, 0]
+        for n in (NL + 1):(L - NR)
+    ]
+    returnshape = [
+        isprojectedat(obj.projector, n) ? 1 : prod(obj.sitedims[n]) for
+        n in (NL + 1):(L - NR)
+    ]
+    res = TCI.batchevaluate(
+        obj.contraction, leftindexset_, rightindexset_, Val(M), projector
+    )
+    return reshape(res, length(leftindexset), returnshape..., length(rightmmultiidxset))
 end
 
 function lazymatmul(

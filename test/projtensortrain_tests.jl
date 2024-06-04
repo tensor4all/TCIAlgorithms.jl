@@ -28,6 +28,7 @@ import TCIAlgorithms: Projector
     _test_projection(TCIA.ProjTensorTrain(tt), prj)
 
     # Projection with truncation
+    #globalprj = TCIA.Projector([[0, 0], [0, 0], [0, 0], [0, 0]], sitedims)
     ptt_truncated = TCIA.ProjTensorTrain{Float64}(tt)
     ptt_truncated = TCIA.project(ptt_truncated, prj; compression=true)
     indexset1 = [[1, 1], [1, 1], [1, 1], [1, 1]]
@@ -66,11 +67,10 @@ end
 
     leftindexset = [[[1, 1]]]
     rightmmultiidxset = [[[1, 1]]]
-    batchprj = ptt(leftindexset, rightmmultiidxset, Val(2))
+    batchprj = TCIA.batchevaluateprj(ptt, leftindexset, rightmmultiidxset, Val(2))
 
-    @assert size(batchprj) == (1, 4, 4, 1)
-    # FIXME: Check all elements
-    @test batchprj[1, 4, 1, 1] ≈ ptt([1, 4, 1, 1])
+    @assert size(batchprj) == (1, 1, 4, 1)
+    @test batchprj[1, 1, 1, 1] ≈ ptt([1, 4, 1, 1])
 end
 
 @testset "add" begin

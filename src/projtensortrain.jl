@@ -109,7 +109,8 @@ function TCI.sitetensor(obj::ProjTensorTrain{T}, i) where {T}
     return reshape(tensor, size(tensor, 1), obj.sitedims[i]..., size(tensor)[end])
 end
 
-function (obj::ProjTensorTrain{T})(
+function batchevaluateprj(
+    obj::ProjTensorTrain{T},
     leftmmultiidxset::AbstractVector{MMultiIndex},
     rightmmultiidxset::AbstractVector{MMultiIndex},
     ::Val{M},
@@ -117,20 +118,20 @@ function (obj::ProjTensorTrain{T})(
     if length(leftmmultiidxset) * length(rightmmultiidxset) == 0
         return Array{T,M + 2}(undef, ntuple(i -> 0, M + 2)...)
     end
+
     NL = length(leftmmultiidxset[1])
     NR = length(rightmmultiidxset[1])
-    #L = length(obj)
+    L = length(obj)
     leftmmultiidxset_ = [lineari(obj.sitedims[1:NL], x) for x in leftmmultiidxset]
     rightmmultiidxset_ = [
         lineari(obj.sitedims[(end - NR + 1):end], x) for x in rightmmultiidxset
     ]
-    return obj.cache(leftmmultiidxset_, rightmmultiidxset_, Val(M))
-    #projector = [obj.projector[n] for n in (NL + 1):(L - NR)]
-    #returnshape = projectedshape(obj.projector, NL + 1, L - NR)
-    #res = TCI.batchevaluate(
-        #obj.cache, leftmmultiidxset_, rightmmultiidxset_, Val(M), projector
-    #)
-    #return reshape(res, length(leftmmultiidxset), returnshape..., length(rightmmultiidxset))
+    projector = [obj.projector[n] for n in (NL + 1):(L - NR)]
+    returnshape = projectedshape(obj.projector, NL + 1, L - NR)
+    res = TCI.batchevaluate(
+        obj.cache, leftmmultiidxset_, rightmmultiidxset_, Val(M), projector
+    )
+    return reshape(res, length(leftmmultiidxset), returnshape..., length(rightmmultiidxset))
 end
 
 function projectat!(A::Array{T,N}, idxpos, targetidx)::Array{T,N} where {T,N}
