@@ -30,6 +30,7 @@ include("projtensortrain.jl")
 include("container.jl")
 include("mul.jl")
 include("distribute.jl")
+include("patching.jl")
 include("crossinterpolate.jl")
 
 #include("util.jl")
