@@ -18,7 +18,16 @@ function adaptivematmul(
     # Perform lazy matrix multiplications
     _performmul!(root, pordering; tolerance=tolerance, maxbonddim=maxbonddim)
 
-    return ProjTTContainer{T}(reduce(append!, [node.value for node in all_nodes(root)]))
+    allpatches = reduce(append!, [node.value for node in all_nodes(root)])
+
+    root_tt = create_node(ProjTensorTrain{T}, Int[])
+    for x in allpatches
+        add!(root_tt, x, pordering)
+    end
+
+    return ProjTTContainer{T}(_mergesmallpatches(root_tt; tolerance, maxbonddim))
+#
+    #return ProjTTContainer{T}(reduce(append!, [node.value for node in all_nodes(root)]))
 end
 
 """
@@ -121,40 +130,4 @@ function _mergesmallpatches(
     else
         return [sum_value]
     end
-
-    #==
-    for node in all_nodes(root)
-        @show node.path, isleaf(node)
-        if isleaf(node) || isempty(node.value)
-            continue
-        end
-        @show node.path, isleaf(node)
-        @assert length(node.children) == 0
-        @show node.path
-        @show length(node.value)
-        if length(node.value) == 1
-            continue
-        end
-
-        sum_value = reduce(
-            (x, y) -> add(x, y; tolerance=tolerance, maxbonddim=maxbonddim), node.value
-        )
-
-        @assert maximum(TCI.linkdims(sum_value.data)) <= maxbonddim
-        @show maximum(TCI.linkdims(sum_value.data)), maxbonddim
-
-        if maximum(TCI.linkdims(sum_value.data)) == maxbonddim
-            for v in node.value
-                push!(done, v)
-                @assert delete_value!(root, node.path, v) !== nothing
-            end
-            @assert delete_node!(root, node.path) !== nothing
-        else
-            for v in node.value
-                @assert delete_value!(root, node.path, v) !== nothing
-            end
-            add_value!(root, node.path, sum_value)
-        end
-    end
-    ==#
 end

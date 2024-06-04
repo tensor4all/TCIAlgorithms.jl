@@ -5,7 +5,17 @@ using TensorCrossInterpolation
 import TensorCrossInterpolation as TCI
 import TCIAlgorithms as TCIA
 
-import TCIAlgorithms: create_node, add!, find_node, all_nodes, delete!, ProjTensorTrain, Projector, project, ProjTTContainer, adaptivematmul
+import TCIAlgorithms:
+    create_node,
+    add!,
+    find_node,
+    all_nodes,
+    delete!,
+    ProjTensorTrain,
+    Projector,
+    project,
+    ProjTTContainer,
+    adaptivematmul
 
 @testset "adaptivematmul" begin
     @testset "adpativematmul" begin
@@ -53,5 +63,55 @@ import TCIAlgorithms: create_node, add!, find_node, all_nodes, delete!, ProjTens
 
         abmat = reshape(permutedims(TCIA.fulltensor(ab), (1, 3, 5, 2, 4, 6)), 2^3, 3^3)
         abmat ≈ amat * bmat
+    end
+
+    @testset "mergesmalpacthes" begin
+        Random.seed!(1234)
+        T = Float64
+        N = 4
+        χ = 10
+        bonddims = [1, fill(χ, N - 1)..., 1]
+        tolerance = 1e-8
+        @assert length(bonddims) == N + 1
+
+        sitedims = [[2, 2] for _ in 1:N]
+
+        a = ProjTensorTrain(
+            TCI.TensorTrain([
+                randn(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N
+            ]),
+        )
+
+        projectors = Projector[]
+        rest = [[0, 0] for _ in 1:(N - 2)]
+        for i1 in 1:2, j1 in 1:2, i2 in 1:2, j2 in 1:2
+            push!(
+                projectors,
+                TCIA.Projector([[i1, j1], [i2, j2], deepcopy(rest)...], sitedims),
+            )
+        end
+
+        pa = ProjTTContainer([
+            project(a, p; compression=true, tolerance=tolerance, maxbonddim=1) for
+            p in projectors
+        ])
+
+        @test length(pa.data) == 16
+
+        pordering = TCIA.PatchOrdering(collect(1:N))
+        root = TCIA.create_node(ProjTensorTrain{T}, Int[])
+        for x in pa
+            TCIA.add!(root, x, pordering)
+        end
+
+        maxbonddim = 10
+        results = TCIA._mergesmallpatches(root; tolerance, maxbonddim=maxbonddim)
+
+        @test 1 < length(results) < 16 # This is not an actual test, just a sanity check
+
+        ref = TCIA.fulltensor(pa)
+        reconst = TCIA.fulltensor(TCIA.ProjTTContainer(results))
+
+        @test ref ≈ reconst
     end
 end
