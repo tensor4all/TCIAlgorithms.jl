@@ -2,25 +2,21 @@
 # Define a mutable struct for TreeNode with a type parameter V for the value
 mutable struct TreeNode{V}
     path::Vector{Int}
-    value::Union{V, Nothing}
+    value::Vector{V}
     children::Dict{Vector{Int}, TreeNode{V}}
 end
 
 # Function to create a new node
-function create_node(::Type{V}, path::Vector{Int}, value::Union{V, Nothing}) where V
-    TreeNode{V}(deepcopy(path), value, Dict{Vector{Int}, TreeNode{V}}())
-end
-
 function create_node(path::Vector{Int}, value::V) where V
     TreeNode{V}(deepcopy(path), value, Dict{Vector{Int}, TreeNode{V}}())
 end
 
 function create_node(::Type{V}, path::Vector{Int}) where V
-    TreeNode{V}(deepcopy(path), nothing, Dict{Vector{Int}, TreeNode{V}}())
+    TreeNode{V}(deepcopy(path), V[], Dict{Vector{Int}, TreeNode{V}}())
 end
 
 # Function to add a node to the tree
-function add_node!(root::TreeNode{V}, path::Vector{Int}, value::Union{V, Nothing}) where V
+function add_node!(root::TreeNode{V}, path::Vector{Int}, value::V) where V
     path = deepcopy(path)
     current = root
     for i in 1:length(path)
@@ -28,18 +24,18 @@ function add_node!(root::TreeNode{V}, path::Vector{Int}, value::Union{V, Nothing
         current_path = path[1:i]
         # If the node does not exist, create a new node with nothing value
         if !(current_path in keys(current.children))
-            current.children[current_path] = create_node(V, current_path, nothing)
+            current.children[current_path] = create_node(V, current_path)
         end
         # Move to the next node
         current = current.children[current_path]
     end
     # Set the value at the last node
-    current.value = value
+    push!(current.value, value)
 end
 
 # Function to print the tree
 function print_tree(node::TreeNode{V}, indent::Int = 0) where V
-    value_str = node.value === nothing ? "nothing" : string(node.value)
+    value_str = length(node.value) == 0 ? "nothing" : string(node.value)
     println(repeat(" ", indent * 2) * "Path: " * string(node.path) * ", Value: " * value_str)
     for child in values(node.children)
         print_tree(child, indent + 1)

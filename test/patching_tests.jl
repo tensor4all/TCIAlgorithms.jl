@@ -33,7 +33,7 @@ import TCIAlgorithms as TCIA
         NT = Union{TCIA.ProjTensorTrain{T},TCIA.LazyMatrixMul{T}}
 
         # Root node
-        root = TCIA.create_node(NT, [0, 0, 0, 0], nothing)
+        root = TCIA.create_node(NT, [0, 0, 0, 0])
 
         ptt = TCIA.project(tt, TCIA.Projector([[0, 0], [0, 0], [0, 0], [0, 0]], sitedims))
         TCIA.add_node!(root, ptt)
