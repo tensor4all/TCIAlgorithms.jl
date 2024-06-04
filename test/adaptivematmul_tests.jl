@@ -5,7 +5,7 @@ using TensorCrossInterpolation
 import TensorCrossInterpolation as TCI
 import TCIAlgorithms as TCIA
 
-import TCIAlgorithms: create_node, add_node!, find_node, all_nodes, delete!, ProjTensorTrain, Projector, project, ProjTTContainer, adaptivematmul
+import TCIAlgorithms: create_node, add!, find_node, all_nodes, delete!, ProjTensorTrain, Projector, project, ProjTTContainer, adaptivematmul
 
 @testset "adaptivematmul" begin
     @testset "adpativematmul" begin

@@ -204,6 +204,6 @@ function createpath(proj::Projector, po::PatchOrdering)::Vector{Int}
     end
 end
 
-function add_node!(root::TreeNode{V}, obj::ProjectableEvaluator{T}, po::PatchOrdering) where {V,T}
-    add_node!(root, createpath(obj.projector, po), obj)
+function add!(root::TreeNode{V}, obj::ProjectableEvaluator{T}, po::PatchOrdering) where {V,T}
+    add_value!(root, createpath(obj.projector, po), obj)
 end

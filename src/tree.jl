@@ -19,8 +19,8 @@ function create_node(::Type{V}, path::Vector{Int}) where V
     TreeNode{V}(deepcopy(path), V[], Dict{Vector{Int}, TreeNode{V}}())
 end
 
-# Function to add a node to the tree
-function add_node!(node::TreeNode{V}, path::Vector{Int}, value::V) where V
+# Function to add a value to the tree
+function add_value!(node::TreeNode{V}, path::Vector{Int}, value::V) where V
     _isvalidpath(path) || throw(ArgumentError("Invalid path $path"))
 
     path[1:length(node.path)] == node.path || error("path $path does not match node path $(node.path)")
@@ -41,7 +41,10 @@ function add_node!(node::TreeNode{V}, path::Vector{Int}, value::V) where V
     push!(current.value, value)
 end
 
-function delete!(root::TreeNode{V}, path::Vector{Int}, value::V)::Vector{V} where V
+"""
+Remove a value at a given path
+"""
+function delete_value!(root::TreeNode{V}, path::Vector{Int}, value::V)::Vector{V} where V
     node = find_node(root, path)
     if node === nothing
         error("Not found $path")
@@ -54,6 +57,17 @@ function delete!(root::TreeNode{V}, path::Vector{Int}, value::V)::Vector{V} wher
     else
         return deleteat!(node.value, matches[1])
     end
+end
+
+"""
+Remove a value at a given path
+"""
+function delete_node!(root::TreeNode{V}, path::Vector{Int}) where V
+    parentnode = find_node(root, path[1:end-1])
+    if parentnode === nothing
+        error("Not found parent node for $path")
+    end
+    Base.delete!(parentnode.children, path)
 end
 
 # Function to print the tree

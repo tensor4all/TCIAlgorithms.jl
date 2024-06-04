@@ -229,11 +229,27 @@ function add(
     tolerance=1e-12,
     kwargs...,
 )::ProjTensorTrain{T} where {T}
+    a_MPS = MPS(a.data)
+    b_MPS = MPS(a.data; sites=siteinds(a_MPS))
+    ab_MPS = +(a_MPS, b_MPS; maxdim=maxbonddim, cutoff=tolerance^2)
+    ab = reshape(
+        ProjTensorTrain(TensorTrain{T,3}(MPO([x for x in ab_MPS]))),
+        a.sitedims)
+    return project(ab, a.projector | b.projector)
+#==
+    The following code seems to have a bug. Any error in TCI.sum?
+    Relative error may be must be used
     ab = ProjTensorTrain(
         TCI.add(a.data, b.data; maxbonddim=maxbonddim, tolerance=tolerance)
     )
     ab = reshape(ab, a.sitedims)
-    return project(ab, a.projector | b.projector)
+    maximum(TCI.linkdims(ab.data)) <= maxbonddim || error("maxbonddim is too large!")
+    r = project(ab, a.projector | b.projector)
+    @show r.projector.data[1:2]
+    @show a.projector.data[1:2]
+    @show b.projector.data[1:2]
+    return r
+    ==#
 end
 
 """
