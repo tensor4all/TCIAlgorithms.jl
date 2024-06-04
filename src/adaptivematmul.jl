@@ -57,7 +57,6 @@ function _performmul!(
                 else
                     @assert delete_value!(node, node.path, v) !== nothing
                     for proj in makechildproj(v.projector, pordering)
-                        #println("")
                         v_ = project(v, proj)
                         add_value!(node, createpath(proj, pordering), v_)
                     end
@@ -79,6 +78,8 @@ end
 function _mergesmallpatches(
     node::TreeNode{ProjTensorTrain{T}}; tolerance=1e-14, maxbonddim=typemax(Int)
 )::Vector{ProjTensorTrain{T}} where {T}
+    # The following implementation is based on
+    # recursive merging of patches, which is not efficient for paralellization.
     tt_child::Vector{ProjTensorTrain{T}} = reduce(
         append!,
         (_mergesmallpatches(c; tolerance, maxbonddim) for c in values(node.children));
@@ -96,14 +97,13 @@ function _mergesmallpatches(
         return all_values
     end
 
-    sum_value = deepcopy(all_values[1])
-    for n in 2:length(all_values)
-        sum_value = add(sum_value, all_values[n]; tolerance, maxbonddim)
-    end
+    sum_value = reduce((x, y) -> add(x, y; tolerance, maxbonddim), all_values)
 
     if maximum(TCI.linkdims(sum_value.data)) == maxbonddim
+        # Unsafe to merge
         return all_values
     else
+        # Safe to merge
         return [sum_value]
     end
 end
