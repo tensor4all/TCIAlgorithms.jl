@@ -11,6 +11,15 @@ end
 
 Base.length(po::PatchOrdering) = length(po.ordering)
 
+function Base.iterate(p::PatchOrdering, state=1)
+    if state > length(p.odering)
+        return nothing
+    end
+    return (p.odering[state], state + 1)
+end
+
+Base.getindex(p::PatchOrdering, index::Int) = p.ordering[index]
+
 """
 n is the length of the prefix.
 """
@@ -157,4 +166,18 @@ function ProjTensorTrain(
 
     fulltt = TensorTrain{T,3}(sitetensors)
     return ProjTensorTrain{T}(fulltt, prj)
+end
+
+function _fuse(sitedims, p)
+    all(p .> 0) ? _lineari(sitedims, p) : 0
+end
+
+# Create a path for a tree
+function createpath(proj::Projector, po::PatchOrdering)::Vector{Int}
+    _fuse = (sitedims, p) -> all(p .> 0) ? _lineari(sitedims, p) : 0
+    return [_fuse(proj.sitedims[po[n]], proj[po[n]]) for n in 1:length(proj)]
+end
+
+function add_node!(root::TreeNode{V}, obj::ProjectableEvaluator{T}, po::PatchOrdering) where {V,T}
+    add_node!(root, createpath(obj.projector, po), obj)
 end
