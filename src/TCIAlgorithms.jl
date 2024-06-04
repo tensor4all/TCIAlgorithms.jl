@@ -33,6 +33,7 @@ include("distribute.jl")
 include("tree.jl")
 include("patching.jl")
 include("crossinterpolate.jl")
+include("adaptivematmul.jl")
 
 #include("util.jl")
 #include("tensor.jl")

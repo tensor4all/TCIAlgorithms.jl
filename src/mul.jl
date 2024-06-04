@@ -46,10 +46,9 @@ function project(
     projector_b_new = Projector(
         [[x[1], y[2]] for (x, y) in zip(obj.b.projector, prj)], obj.b.sitedims
     )
-    obj.a = project(obj.a, projector_a_new; kwargs...)
-    obj.b = project(obj.b, projector_b_new; kwargs...)
-    # TO BE FIXED: Cache is thrown away
-    return LazyMatrixMul{T}(obj.a, obj.b; coeff=obj.coeff)
+    newa = project(obj.a, projector_a_new; kwargs...)
+    newb = project(obj.b, projector_b_new; kwargs...)
+    return LazyMatrixMul{T}(newa, newb; coeff=obj.coeff)
 end
 
 function lazymatmul(

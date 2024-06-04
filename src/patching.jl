@@ -111,6 +111,26 @@ function makeproj(
     return Projector(data, sitedims)
 end
 
+function makechildproj(
+    proj::Projector, po::PatchOrdering
+)::Vector{Projector}
+    path = createpath(proj, po)
+    result = Projector[]
+
+    if length(path) == length(proj)
+        return result
+    end
+
+    nextprojsite = po.ordering[length(path) + 1]
+    for (li, mi) in enumerate(CartesianIndices(Tuple(proj.sitedims[nextprojsite])))
+        proj_ = deepcopy(proj)
+        proj_[nextprojsite] .= collect(Tuple(mi))
+        push!(result, proj_)
+    end
+
+    return result
+end
+
 
 """
 `tt` is a TensorTrain{T,3} and `prj` is a Projector.
@@ -175,7 +195,13 @@ end
 # Create a path for a tree
 function createpath(proj::Projector, po::PatchOrdering)::Vector{Int}
     _fuse = (sitedims, p) -> all(p .> 0) ? _lineari(sitedims, p) : 0
-    return [_fuse(proj.sitedims[po[n]], proj[po[n]]) for n in 1:length(proj)]
+    key = [_fuse(proj.sitedims[po[n]], proj[po[n]]) for n in 1:length(proj)]
+    firstzero = findfirst(x->x==0, key)
+    if firstzero === nothing
+        return key
+    else
+        return key[1:firstzero-1]
+    end
 end
 
 function add_node!(root::TreeNode{V}, obj::ProjectableEvaluator{T}, po::PatchOrdering) where {V,T}

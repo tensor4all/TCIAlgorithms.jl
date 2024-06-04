@@ -40,6 +40,10 @@ mutable struct ProjTensorTrain{T} <: ProjectableEvaluator{T}
     end
 end
 
+#function linkdims(obj::ProjTensorTrain)
+    #TCI.linkdims(obj.data)
+#end
+
 function _check_projector_compatibility(
     projector::Projector, tts::TensorTrain{T,3}
 ) where {T}
@@ -148,13 +152,13 @@ function project(
     tolerance::Float64=1e-12,
     maxbonddim::Int=typemax(Int),
 )::ProjTensorTrain{T} where {T}
-    prj <= obj.projector || error("Projector $prj is not compatible with $obj.projector")
     prj.sitedims == obj.sitedims ||
         error("sitedims mismatch $(prj.sitedims) and $(obj.sitedims)")
 
     if obj.projector <= prj && _check_projector_compatibility(prj, obj.data)
+        #@show "No projection", objectid(obj.projector.data)
         # No need to project
-        return obj
+        return ProjTensorTrain{T}(obj.data, deepcopy(obj.projector))
     end
 
     # Make a copy
@@ -169,6 +173,8 @@ function project(
     end
 
     return ProjTensorTrain{T}(data, projector)
+    #@show objectid(obj.projector.data), objectid(r.projector.data)
+    #return r
 end
 
 function _project_tt!(tt::TensorTrain{T,3}, projector::Projector) where {T}
