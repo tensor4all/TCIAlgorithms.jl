@@ -108,8 +108,6 @@ function _mergesmallpatches(
     end
 end
 
-
-
 """
 Perform matrix multiplication of two tensor trains and project the result to a block structure.
 """

@@ -19,7 +19,6 @@ end
 
 Base.length(bs::BlockStructure) = length(bs.blocks)
 
-
 function Base.iterate(p::BlockStructure, state=1)
     if state > length(p.blocks)
         return nothing
