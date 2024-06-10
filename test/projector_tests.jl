@@ -13,6 +13,12 @@ import TCIAlgorithms: Projector
     @testset "comparison" begin
         sitedims = [[3], [3], [3]]
         @test (
+            TCIA.hasoverlap(Projector([[1], [2], [3]], sitedims), Projector([[0], [2], [3]], sitedims))
+        ) == true
+        @test (
+            TCIA.hasoverlap(Projector([[1], [2], [3]], sitedims), Projector([[0], [3], [0]], sitedims))
+        ) == false
+        @test (
             Projector([[1], [2], [3]], sitedims) <= Projector([[0], [2], [3]], sitedims)
         ) == true
         @test (
@@ -27,7 +33,7 @@ import TCIAlgorithms: Projector
         @test (
             Projector([[1], [2], [3]], sitedims) == Projector([[1], [2], [3]], sitedims)
         ) == true
-        @test ([[1], [2], [3]] <= Projector([[0], [2], [3]], sitedims)) == true
+        @test ([[0], [2], [3]] <= Projector([[1], [2], [3]], sitedims)) == false
     end
 
     @testset "logical operation" begin
@@ -37,8 +43,13 @@ import TCIAlgorithms: Projector
 
         sitedims = [[3, 3], [3]]
         @test Projector([[1, 0], [2]], sitedims) &
-              TCIA.Projector([[0, 3], [0]], sitedims) ==
+              TCIA.Projector([[0, 3], [2]], sitedims) ==
             TCIA.Projector([[1, 3], [2]], sitedims)
+
+        sitedims = [[3, 3],[3, 3]]
+        @test Projector([[1, 0], [2, 1]], sitedims) |
+            TCIA.Projector([[1, 3], [2,3]], sitedims) ==
+            TCIA.Projector([[1, 0], [2,0]], sitedims)
     end
 
     @testset "reshape" begin
