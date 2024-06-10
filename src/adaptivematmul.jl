@@ -107,3 +107,32 @@ function _mergesmallpatches(
         return [sum_value]
     end
 end
+
+
+
+"""
+Perform matrix multiplication of two tensor trains and project the result to a block structure.
+"""
+function matmul(
+    a::ProjTTContainer{T},
+    b::ProjTTContainer{T},
+    bs::BlockStructure;
+    tolerance=1e-14,
+    maxbonddim=typemax(Int),
+) where {T}
+    tts = [zeroprojtt(T, prj) for prj in bs]
+    for x in a, y in b # FIXME: Naive loop over O(N^2) pairs
+        xy = lazymatmul(x, y)
+        if xy === nothing
+            continue
+        end
+        for (ib, p) in enumerate(bs.blocks)
+            if hasoverlap(xy.projector, p)
+                tt_ = approxtt(project(xy, p); maxbonddim=maxbonddim, tolerance=tolerance)
+                tts[ib] = add(tts[ib], tt_; tolerance, maxbonddim)
+            end
+        end
+    end
+
+    return ProjTTContainer(tts)
+end

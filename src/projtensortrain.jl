@@ -208,7 +208,7 @@ function makeprojectable(tt::TensorTrain{T,N}) where {T,N}
 end
 
 function approxtt(
-    obj::ProjTensorTrain{T}; maxbonddim=typemax(Int), tolerance=1e-12, kwargs...
+    obj::ProjTensorTrain{T}; maxbonddim=typemax(Int), tolerance=1e-14, kwargs...
 )::ProjTensorTrain{T} where {T}
     return project(
         ProjTensorTrain(
@@ -226,7 +226,7 @@ function add(
     a::ProjTensorTrain{T},
     b::ProjTensorTrain{T};
     maxbonddim=typemax(Int),
-    tolerance=1e-12,
+    tolerance=1e-14,
     kwargs...,
 )::ProjTensorTrain{T} where {T}
     # HS: TCI.add does not use a relative tolerance.
@@ -354,4 +354,10 @@ function fulltensor(
         returnsize = collect(Iterators.flatten(sitedims))
     end
     return reshape(result, returnsize...)
+end
+
+function zeroprojtt(::Type{T}, projector::Projector)::ProjTensorTrain{T} where {T}
+    tt = TensorTrain([zeros(T, 1, d, 1) for d in prod.(projector.sitedims)])
+    ptt = ProjTensorTrain(tt, projector.sitedims)
+    return project(ptt, projector)
 end

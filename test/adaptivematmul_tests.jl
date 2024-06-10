@@ -15,7 +15,9 @@ import TCIAlgorithms:
     Projector,
     project,
     ProjTTContainer,
-    adaptivematmul
+    adaptivematmul,
+    BlockStructure,
+    matmul
 
 @testset "adaptivematmul" begin
     @testset "adpativematmul" begin
@@ -113,5 +115,32 @@ import TCIAlgorithms:
         reconst = TCIA.fulltensor(TCIA.ProjTTContainer(results))
 
         @test ref ≈ reconst
+    end
+
+    @testset "matmul with blocks" begin
+        T = Float64
+        sitedims = [[2, 2], [2, 2], [2, 2]]
+        N = length(sitedims)
+        bonddims = [1, 3, 3, 1]
+
+        _random_tt() = TCI.TensorTrain([
+            rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N
+        ])
+        _random_tt(bs::BlockStructure) =
+            [project(ProjTensorTrain(_random_tt()), p) for p in bs]
+
+        bs = TCIA.BlockStructure(
+            vec([TCIA.Projector([[i, j], [0, 0], [0, 0]], sitedims) for i in 1:2, j in 1:2])
+        )
+
+        a = ProjTTContainer(_random_tt(bs))
+        b = ProjTTContainer(_random_tt(bs))
+        ab = TCIA.matmul(a, b, bs)
+
+        ab_ref = TCI.contract_naive(
+            TCI.TensorTrain{T,4}(TCIA.approxtt(a).data, sitedims),
+            TCI.TensorTrain{T,4}(TCIA.approxtt(b).data, sitedims),
+        )
+        @test TCIA.fulltensor(TCIA.approxtt(ab)) ≈ TCIA.fulltensor(ProjTensorTrain(ab_ref))
     end
 end

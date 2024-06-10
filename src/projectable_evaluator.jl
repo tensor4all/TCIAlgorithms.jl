@@ -43,7 +43,7 @@ The computation should be quick because the result will be used as initial guess
 Override this function
  """
 function approxtt(
-    obj::ProjectableEvaluator{T}; maxbonddim=typemax(Int), tolerance=1e-12, kwargs...
+    obj::ProjectableEvaluator{T}; maxbonddim=typemax(Int), tolerance=1e-14, kwargs...
 )::ProjTensorTrain{T} where {T}
     return error("Must be implemented for $(typeof(obj))!")
 end

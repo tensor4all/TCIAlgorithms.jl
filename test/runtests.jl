@@ -16,6 +16,7 @@ include("_util.jl")
 
 include("util_tests.jl")
 include("projector_tests.jl")
+include("blockstructure_tests.jl")
 include("projectable_evaluator_tests.jl")
 include("projtensortrain_tests.jl")
 include("container_tests.jl")

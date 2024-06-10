@@ -45,7 +45,7 @@ function Base.reshape(
 end
 
 function approxtt(
-    obj::ProjContainer{T,V}; maxbonddim=typemax(Int), tolerance=1e-12, kwargs...
+    obj::ProjContainer{T,V}; maxbonddim=typemax(Int), tolerance=1e-14, kwargs...
 )::ProjTensorTrain{T} where {T,V}
     return reduce(
         (x, y) -> add(x, y; maxbonddim=maxbonddim, tolerance=tolerance, kwargs...),
