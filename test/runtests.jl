@@ -2,6 +2,7 @@ using Distributed
 
 using TCIAlgorithms
 import TCIAlgorithms as TCIA
+using Random
 using Test
 
 @everywhere gaussian(x, y) = exp(-0.5 * (x^2 + y^2))
@@ -26,5 +27,7 @@ include("patching_tests.jl")
 include("crossinterpolate_tests.jl")
 include("tree_tests.jl")
 include("adaptivematmul_tests.jl")
+
+include("itensor_tests.jl")
 
 #include("crossinterpolate_lazyeval_tests.jl")

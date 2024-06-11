@@ -17,7 +17,6 @@ import TensorCrossInterpolation:
 using TCIITensorConversion
 import LinearAlgebra as LA
 
-using ITensors # TO BE REMOVED
 import FastMPOContractions as FMPOC
 
 const MMultiIndex = Vector{Vector{Int}}

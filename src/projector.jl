@@ -34,6 +34,7 @@ end
 
 Base.length(p::Projector) = length(p.data)
 Base.getindex(p::Projector, index::Int) = p.data[index]
+Base.lastindex(p::Projector) = Base.lastindex(p.data)
 
 function (p::Projector)(isite::Int, ilegg::Int)
     return p.data[isite][ilegg]
