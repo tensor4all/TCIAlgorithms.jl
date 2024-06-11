@@ -12,7 +12,6 @@ using ITensors
         sitesx = [Index(2, "x=$n") for n in 1:N]
         sitesy = [Index(2, "y=$n") for n in 1:N]
         sites = collect(collect.(zip(sitesx, sitesy)))
-        @show sites
         Ψ = _random_mpo(sites)
         prjΨ = TCIA.ProjMPO(Ψ, sites)
 

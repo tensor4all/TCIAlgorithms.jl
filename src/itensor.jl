@@ -119,17 +119,27 @@ function _check_projector_compatibility(
     push!(
         sitetensors,
         reshape(
-            Array(Ψ[1], [sites[1]..., links[1]]), vcat(1, sitedims[1], dim(links[1]))...
+            Array(Ψ[1], [sites[1]..., links[1]]), [1, prod(sitedims[1]), dim(links[1])]...
         ),
     )
     for n in 2:(length(Ψ) - 1)
-        push!(sitetensors, Array(Ψ[n], [links[n - 1], sites[n]..., links[n]]))
+        push!(
+            sitetensors,
+            reshape(
+                Array(Ψ[n], [links[n - 1], sites[n]..., links[n]]),
+                dim(links[n - 1]),
+                prod(sitedims[n]),
+                dim(links[n]),
+            ),
+        )
     end
     push!(
         sitetensors,
         reshape(
             Array(Ψ[end], [links[end], sites[end]...]),
-            vcat(dim(links[end]), sitedims[end], 1)...,
+            dim(links[end]),
+            prod(sitedims[end]),
+            1,
         ),
     )
 

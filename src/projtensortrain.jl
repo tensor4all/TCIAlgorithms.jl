@@ -58,7 +58,7 @@ function _check_projector_compatibility(
 end
 
 function _check_projector_compatibility(
-    projector::Vector{Int}, sitedims::Vector{Int}, tensor::AbstractArray{T,4}
+    projector::Vector{Int}, sitedims::Vector{Int}, tensor::AbstractArray{T,3}
 ) where {T}
     if all(projector .== 0)
         return true
@@ -67,8 +67,6 @@ function _check_projector_compatibility(
         projector[s] == 0 ? Colon() : Not(projector[s], sitedims[s]) for
         s in 1:length(sitedims)
     )
-    @show size(tensor)
-    @show size(tensor)[1], sitedims..., size(tensor)[end]
     sitetensor = reshape(tensor, size(tensor)[1], sitedims..., size(tensor)[end])
     return all(sitetensor[:, mask..., :] .== 0.0)
 end
