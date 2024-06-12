@@ -47,13 +47,54 @@ ITensors.MPO(projΨ::ProjMPO) = projΨ.data
 
 # Conversion from ProjMPO to ProjTensorTrain
 function ProjTensorTrain{T}(projΨ::ProjMPO) where {T}
-    return ProjTensorTrain{T}(asTT3(T, projΨ.data, sites; permdims=false), projΨ.projector)
+    return ProjTensorTrain{T}(
+        asTT3(T, projΨ.data, projΨ.sites; permdims=false), projΨ.projector
+    )
 end
 
 # Conversion from ProjTensorTrain to ProjMPO
-function ProjMPO(projtt::ProjTensorTrain{T}) where {T}
+function ProjMPO(::Type{T}, projtt::ProjTensorTrain{T}, sites) where {T}
     # To be implemented
+    links = [Index(ld, "Link,l=$l") for (l, ld) in enumerate(TCI.linkdims(projtt.data))]
+
+    tensors = ITensor[]
+    sitedims = [collect(dim.(s)) for s in sites]
+    linkdims = dim.(links)
+
+    push!(
+        tensors,
+        ITensor(
+            reshape(projtt.data[1], 1, prod(sitedims[1]), linkdims[1]),
+            sites[1]...,
+            links[1],
+        ),
+    )
+
+    for n in 2:(length(projtt.data) - 1)
+        push!(
+            tensors,
+            ITensor(
+                reshape(projtt.data[n], linkdims[n - 1], prod(sitedims[n]), linkdims[n]),
+                links[n - 1],
+                sites[n]...,
+                links[n],
+            ),
+        )
+    end
+
+    push!(
+        tensors,
+        ITensor(
+            reshape(projtt.data[end], linkdims[end], prod(sitedims[end])),
+            links[end],
+            sites[end]...,
+        ),
+    )
+
+    return ProjMPO(MPO(tensors), sites, projtt.projector)
 end
+
+Base.isapprox(x::ProjMPO, y::ProjMPO; kwargs...) = Base.isapprox(x.data, y.data, kwargs...)
 
 function project(tensor::ITensor, projsiteinds::Dict{K,Int}) where {K}
     slice = Union{Int,Colon}[
@@ -95,19 +136,27 @@ function project(projΨ::ProjMPO, projsiteinds::Dict{Index{T},Int}) where {T}
     )
 end
 
-#==
 function asTT3(::Type{T}, Ψ::MPO, sites; permdims=true)::TensorTrain{T,3} where {T}
     Ψ2 = permdims ? _permdims(Ψ, sites) : Ψ
     tensors = Array{T,3}[]
     links = linkinds(Ψ2)
-    push!(tensors, reshape(Array(Ψ2[1]), 1, :, links[1]))
+    push!(tensors, reshape(Array(Ψ2[1], sites[1]..., links[1]), 1, :, dim(links[1])))
     for n in 2:(length(Ψ2) - 1)
-        push!(tensors, reshape(Array(Ψ2[n]), links[n - 1], :, links[n]))
+        push!(
+            tensors,
+            reshape(
+                Array(Ψ2[n], links[n - 1], sites[n]..., llinks[n]),
+                dim(links[n - 1]),
+                :,
+                dim(links[n]),
+            ),
+        )
     end
-    push!(tensors, reshape(Array(Ψ2[end]), links[end - 1], :, 1))
+    push!(
+        tensors, reshape(Array(Ψ2[end], links[end], sites[end]...), dim(links[end]), :, 1)
+    )
     return TensorTrain{T,3}(tensors)
 end
-==#
 
 function _check_projector_compatibility(
     projector::Projector, Ψ::MPO, sites::AbstractVector{<:AbstractVector}
