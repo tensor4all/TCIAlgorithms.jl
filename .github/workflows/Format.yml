@@ -1,8 +1,11 @@
 name: Format suggestions
 on:
+  push:
+    branches:
+      - '**'
   pull_request:
-    # this argument is not required if you don't use the `suggestion-label` input
-    types: [ opened, reopened, synchronize, labeled, unlabeled ]
+    branches:
+      - main
 jobs:
   code-style:
     runs-on: ubuntu-latest
