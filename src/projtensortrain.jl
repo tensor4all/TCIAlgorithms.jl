@@ -48,20 +48,38 @@ function _check_projector_compatibility(
     projector::Projector, tts::TensorTrain{T,3}
 ) where {T}
     sitedims = projector.sitedims
-    for n in 1:length(tts)
-        if all(projector[n] .== 0)
-            continue
-        end
-        mask = (
-            projector[n][s] == 0 ? Colon() : Not(projector[n][s], sitedims[n][s]) for
-            s in 1:length(sitedims[n])
-        )
-        sitetensor = reshape(tts[n], size(tts[n])[1], sitedims[n]..., size(tts[n])[end])
-        if !(all(sitetensor[:, mask..., :] .== 0.0))
-            return false
-        end
+    return reduce(
+        &,
+        (
+            _check_projector_compatibility(projector[n], sitedims[n], tts[n]) for
+            n in 1:length(tts)
+        ),
+    )
+end
+
+function _check_projector_compatibility(
+    projector::Vector{Int}, sitedims::Vector{Int}, tensor::AbstractArray{T,3}
+) where {T}
+    if all(projector .== 0)
+        return true
     end
-    return true
+    mask = (
+        projector[s] == 0 ? Colon() : Not(projector[s], sitedims[s]) for
+        s in 1:length(sitedims)
+    )
+    sitetensor = reshape(tensor, size(tensor)[1], sitedims..., size(tensor)[end])
+    return all(sitetensor[:, mask..., :] .== 0.0)
+end
+
+function _check_projector_compatibility(projector::Projector, tensors::AbstractArray)
+    sitedims = projector.sitedims
+    return reduce(
+        &,
+        (
+            _check_projector_compatibility(projector[n], sitedims[n], tensors[n]) for
+            n in 1:length(tts)
+        ),
+    )
 end
 
 """
