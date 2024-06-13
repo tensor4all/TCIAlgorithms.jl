@@ -1,6 +1,7 @@
 using Test
 using Random
 
+import QuanticsGrids as QG
 using TensorCrossInterpolation
 import TensorCrossInterpolation as TCI
 import TCIAlgorithms as TCIA
@@ -142,5 +143,121 @@ import TCIAlgorithms:
             TCI.TensorTrain{T,4}(TCIA.approxtt(b).data, sitedims),
         )
         @test TCIA.fulltensor(TCIA.approxtt(ab)) ≈ TCIA.fulltensor(ProjTensorTrain(ab_ref))
+    end
+
+    @testset "2d Gaussians" begin
+        Random.seed!(1234)
+        gaussian(x, y) = exp(-0.5 * (x^2 + y^2))
+        R = 20
+        xmax = 10.0
+        grid = QG.DiscretizedGrid{2}(R, (-xmax, -xmax), (xmax, xmax))
+        grid1 = QG.DiscretizedGrid{1}(R, -xmax, xmax)
+        localdims = fill(4, R)
+        sitedims = [[2, 2] for _ in 1:R]
+        qf = x -> gaussian(QG.quantics_to_origcoord(grid, x)...)
+        pordering = TCIA.PatchOrdering(collect(1:R))
+
+        expttpatches = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf, localdims),
+                pordering;
+                verbosity=0,
+                maxbonddim=30,
+            ),
+            sitedims,
+        )
+
+        product = TCIA.adaptivematmul(expttpatches, expttpatches, pordering; maxbonddim=50)
+
+        nested_quantics(x, y) = [
+            collect(p) for p in
+            zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
+        ]
+
+        points = [(rand() * 10 - 5, rand() * 10 - 5) for i in 1:100]
+        expproduct(x, y) = sqrt(π) * exp(-0.5 * (x^2 + y^2))
+
+        @test isapprox(
+            [expproduct(p...) for p in points],
+            (2xmax / 2^R) .* [product(nested_quantics(p...)) for p in points], #(2xmax/2^R) = Δx, Δy
+            atol=1e-3,
+        )
+    end
+
+    @testset "polynomial integral" begin
+        Random.seed!(1234)
+        # \int_0^1 dz f1(x,z)*f2(z,y)
+        f1(x, y) = x * y
+        f2(x, y) = (x * y)^2
+        R = 20
+        grid = QG.DiscretizedGrid{2}(R, (0, 0), (1, 1))
+        grid1 = QG.DiscretizedGrid{1}(R, 0, 1)
+        localdims = fill(4, R)
+        sitedims = [[2, 2] for _ in 1:R]
+        qf1 = x -> f1(QG.quantics_to_origcoord(grid, x)...)
+        qf2 = x -> f2(QG.quantics_to_origcoord(grid, x)...)
+
+        pordering = TCIA.PatchOrdering(collect(1:R))
+
+        tt_f1 = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf1, localdims), pordering; verbosity=0
+            ),
+            sitedims,
+        )
+
+        tt_f2 = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf2, localdims), pordering; verbosity=0
+            ),
+            sitedims,
+        )
+
+        tt_f1_patches = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf1, localdims),
+                pordering;
+                verbosity=0,
+                maxbonddim=8,
+            ),
+            sitedims,
+        )
+
+        tt_f2_patches = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf2, localdims),
+                pordering;
+                verbosity=0,
+                maxbonddim=8,
+            ),
+            sitedims,
+        )
+
+        product_without_patches = TCIA.adaptivematmul(tt_f1, tt_f2, pordering)
+        product = TCIA.adaptivematmul(
+            tt_f1_patches, tt_f2_patches, pordering; maxbonddim=20
+        )
+
+        nested_quantics(x, y) = [
+            collect(p) for p in
+            zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
+        ]
+
+        points = [(rand(), rand()) for i in 1:100]
+        exact_product(x, y) = x * y^2 / 4 #integrated (xy)*(yz)^2 dz from 0 to 1
+
+        #test without patches
+        @test isapprox(
+            [exact_product(p...) for p in points],
+            (1 / 2^R) .* [product_without_patches(nested_quantics(p...)) for p in points],
+            atol=1e-4,
+        )
+
+        #test with patches
+        @test isapprox(
+            [exact_product(p...) for p in points],
+            (1 / 2^R) .* [product(nested_quantics(p...)) for p in points],
+            atol=1e-4,
+        )
     end
 end
