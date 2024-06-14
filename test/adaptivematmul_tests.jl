@@ -321,13 +321,10 @@ import TCIAlgorithms:
             zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
         ]
 
-        A = zeros(2^R, 2^R) .+ 0.0
-        B = zeros(2^R, 2^R) .+ 0.0
+        C = zeros(2^R, 2^R) .+ 0.0
         for i in 0:(2^R - 1)
-            A[i + 1, i + 1] = i^2
-            B[i + 1, i + 1] = i^3
+            C[i + 1, i + 1] = i^5
         end
-        C = A * B
 
         product_matrix = zeros(2^R, 2^R) .+ 0.0
         product_matrix_without_patches = zeros(2^R, 2^R) .+ 0.0
