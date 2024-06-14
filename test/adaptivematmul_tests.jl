@@ -260,4 +260,85 @@ import TCIAlgorithms:
             atol=1e-4,
         )
     end
+
+    @testset "diagonal matrices" begin
+        Random.seed!(1234)
+        f1(x, y) = ==(x, y) * x^2 # diagonal matrix with x^2 in diagonal
+        f2(x, y) = ==(x, y) * (x^3) # diagonal matrix with x^3 in diagonal
+        R = 5
+        grid = QG.InherentDiscreteGrid{2}(R, (0, 0); step=(1, 1)) # from 0 to 2^R-1 = 31
+        grid1 = QG.InherentDiscreteGrid{1}(R, 0; step=1)
+        localdims = fill(4, R)
+        sitedims = [[2, 2] for _ in 1:R]
+        qf1 = x -> f1(QG.quantics_to_origcoord(grid, x)...)
+        qf2 = x -> f2(QG.quantics_to_origcoord(grid, x)...)
+        initialpivots = [QG.origcoord_to_quantics(grid, (2^R - 1, 2^R - 1))] #largest element
+        pordering = TCIA.PatchOrdering(collect(1:R))
+
+        tt_f1 = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf1, localdims),
+                pordering;
+                initialpivots=initialpivots,
+                verbosity=0,
+            ),
+            sitedims,
+        )
+
+        tt_f2 = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf2, localdims),
+                pordering;
+                initialpivots=initialpivots,
+                verbosity=0,
+            ),
+            sitedims,
+        )
+
+        tt_f1_projected = TCIA.ProjTTContainer([
+            TCIA.project(tt_f1[1], p) for p in [
+                TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0], [0, 0]], sitedims),
+                TCIA.Projector([[2, 2], [0, 0], [0, 0], [0, 0], [0, 0]], sitedims),
+            ]
+        ])
+
+        tt_f2_projected = TCIA.ProjTTContainer([
+            TCIA.project(tt_f2[1], p) for p in [
+                TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0], [0, 0]], sitedims),
+                TCIA.Projector([[2, 2], [0, 0], [0, 0], [0, 0], [0, 0]], sitedims),
+            ]
+        ])
+
+        product = TCIA.adaptivematmul(
+            tt_f1_projected, tt_f2_projected, pordering; maxbonddim=5
+        )
+        product_without_patches = TCIA.adaptivematmul(
+            tt_f1_projected, tt_f2_projected, pordering; maxbonddim=10
+        )
+
+        nested_quantics(x, y) = [
+            collect(p) for p in
+            zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
+        ]
+
+        A = zeros(2^R, 2^R) .+ 0.0
+        B = zeros(2^R, 2^R) .+ 0.0
+        for i in 0:(2^R - 1)
+            A[i + 1, i + 1] = i^2
+            B[i + 1, i + 1] = i^3
+        end
+        C = A * B
+
+        product_matrix = zeros(2^R, 2^R) .+ 0.0
+        product_matrix_without_patches = zeros(2^R, 2^R) .+ 0.0
+        for i in 0:(2^R - 1), j in 0:(2^R - 1)
+            product_matrix[i + 1, j + 1] = product(nested_quantics(i, j))
+            product_matrix_without_patches[i + 1, j + 1] = product_without_patches(
+                nested_quantics(i, j)
+            )
+        end
+
+        @test maximum(abs.(product_matrix .- C)) < 1e-5
+        @test maximum(abs.(product_matrix_without_patches .- C)) < 1e-5
+    end
 end
