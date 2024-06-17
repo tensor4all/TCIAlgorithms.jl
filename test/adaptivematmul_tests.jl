@@ -1,6 +1,7 @@
 using Test
 using Random
 
+import QuanticsGrids as QG
 using TensorCrossInterpolation
 import TensorCrossInterpolation as TCI
 import TCIAlgorithms as TCIA
@@ -142,5 +143,199 @@ import TCIAlgorithms:
             TCI.TensorTrain{T,4}(TCIA.approxtt(b).data, sitedims),
         )
         @test TCIA.fulltensor(TCIA.approxtt(ab)) ≈ TCIA.fulltensor(ProjTensorTrain(ab_ref))
+    end
+
+    @testset "2d Gaussians" begin
+        Random.seed!(1234)
+        gaussian(x, y) = exp(-0.5 * (x^2 + y^2))
+        R = 20
+        xmax = 10.0
+        grid = QG.DiscretizedGrid{2}(R, (-xmax, -xmax), (xmax, xmax))
+        grid1 = QG.DiscretizedGrid{1}(R, -xmax, xmax)
+        localdims = fill(4, R)
+        sitedims = [[2, 2] for _ in 1:R]
+        qf = x -> gaussian(QG.quantics_to_origcoord(grid, x)...)
+        pordering = TCIA.PatchOrdering(collect(1:R))
+
+        expttpatches = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf, localdims),
+                pordering;
+                verbosity=0,
+                maxbonddim=30,
+            ),
+            sitedims,
+        )
+
+        product = TCIA.adaptivematmul(expttpatches, expttpatches, pordering; maxbonddim=50)
+
+        nested_quantics(x, y) = [
+            collect(p) for p in
+            zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
+        ]
+
+        points = [(rand() * 10 - 5, rand() * 10 - 5) for i in 1:100]
+        expproduct(x, y) = sqrt(π) * exp(-0.5 * (x^2 + y^2))
+
+        @test isapprox(
+            [expproduct(p...) for p in points],
+            (2xmax / 2^R) .* [product(nested_quantics(p...)) for p in points], #(2xmax/2^R) = Δx, Δy
+            atol=1e-3,
+        )
+    end
+
+    @testset "polynomial integral" begin
+        Random.seed!(1234)
+        # \int_0^1 dz f1(x,z)*f2(z,y)
+        f1(x, y) = x * y
+        f2(x, y) = (x * y)^2
+        R = 20
+        grid = QG.DiscretizedGrid{2}(R, (0, 0), (1, 1))
+        grid1 = QG.DiscretizedGrid{1}(R, 0, 1)
+        localdims = fill(4, R)
+        sitedims = [[2, 2] for _ in 1:R]
+        qf1 = x -> f1(QG.quantics_to_origcoord(grid, x)...)
+        qf2 = x -> f2(QG.quantics_to_origcoord(grid, x)...)
+
+        pordering = TCIA.PatchOrdering(collect(1:R))
+
+        tt_f1 = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf1, localdims), pordering; verbosity=0
+            ),
+            sitedims,
+        )
+
+        tt_f2 = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf2, localdims), pordering; verbosity=0
+            ),
+            sitedims,
+        )
+
+        tt_f1_patches = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf1, localdims),
+                pordering;
+                verbosity=0,
+                maxbonddim=8,
+            ),
+            sitedims,
+        )
+
+        tt_f2_patches = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf2, localdims),
+                pordering;
+                verbosity=0,
+                maxbonddim=8,
+            ),
+            sitedims,
+        )
+
+        product_without_patches = TCIA.adaptivematmul(tt_f1, tt_f2, pordering)
+        product = TCIA.adaptivematmul(
+            tt_f1_patches, tt_f2_patches, pordering; maxbonddim=20
+        )
+
+        nested_quantics(x, y) = [
+            collect(p) for p in
+            zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
+        ]
+
+        points = [(rand(), rand()) for i in 1:100]
+        exact_product(x, y) = x * y^2 / 4 #integrated (xy)*(yz)^2 dz from 0 to 1
+
+        #test without patches
+        @test isapprox(
+            [exact_product(p...) for p in points],
+            (1 / 2^R) .* [product_without_patches(nested_quantics(p...)) for p in points],
+            atol=1e-4,
+        )
+
+        #test with patches
+        @test isapprox(
+            [exact_product(p...) for p in points],
+            (1 / 2^R) .* [product(nested_quantics(p...)) for p in points],
+            atol=1e-4,
+        )
+    end
+
+    @testset "diagonal matrices" begin
+        Random.seed!(1234)
+        f1(x, y) = ==(x, y) * x^2 # diagonal matrix with x^2 in diagonal
+        f2(x, y) = ==(x, y) * (x^3) # diagonal matrix with x^3 in diagonal
+        R = 5
+        grid = QG.InherentDiscreteGrid{2}(R, (0, 0); step=(1, 1)) # from 0 to 2^R-1 = 31
+        grid1 = QG.InherentDiscreteGrid{1}(R, 0; step=1)
+        localdims = fill(4, R)
+        sitedims = [[2, 2] for _ in 1:R]
+        qf1 = x -> f1(QG.quantics_to_origcoord(grid, x)...)
+        qf2 = x -> f2(QG.quantics_to_origcoord(grid, x)...)
+        initialpivots = [QG.origcoord_to_quantics(grid, (2^R - 1, 2^R - 1))] #largest element
+        pordering = TCIA.PatchOrdering(collect(1:R))
+
+        tt_f1 = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf1, localdims),
+                pordering;
+                initialpivots=initialpivots,
+                verbosity=0,
+            ),
+            sitedims,
+        )
+
+        tt_f2 = reshape(
+            TCIA.adaptiveinterpolate(
+                TCIA.makeprojectable(Float64, qf2, localdims),
+                pordering;
+                initialpivots=initialpivots,
+                verbosity=0,
+            ),
+            sitedims,
+        )
+
+        tt_f1_projected = TCIA.ProjTTContainer([
+            TCIA.project(tt_f1[1], p) for p in [
+                TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0], [0, 0]], sitedims),
+                TCIA.Projector([[2, 2], [0, 0], [0, 0], [0, 0], [0, 0]], sitedims),
+            ]
+        ])
+
+        tt_f2_projected = TCIA.ProjTTContainer([
+            TCIA.project(tt_f2[1], p) for p in [
+                TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0], [0, 0]], sitedims),
+                TCIA.Projector([[2, 2], [0, 0], [0, 0], [0, 0], [0, 0]], sitedims),
+            ]
+        ])
+
+        product = TCIA.adaptivematmul(
+            tt_f1_projected, tt_f2_projected, pordering; maxbonddim=5
+        )
+        product_without_patches = TCIA.adaptivematmul(
+            tt_f1_projected, tt_f2_projected, pordering; maxbonddim=10
+        )
+
+        nested_quantics(x, y) = [
+            collect(p) for p in
+            zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
+        ]
+
+        C = zeros(2^R, 2^R) .+ 0.0
+        for i in 0:(2^R - 1)
+            C[i + 1, i + 1] = i^5
+        end
+
+        product_matrix = zeros(2^R, 2^R) .+ 0.0
+        product_matrix_without_patches = zeros(2^R, 2^R) .+ 0.0
+        for i in 0:(2^R - 1), j in 0:(2^R - 1)
+            product_matrix[i + 1, j + 1] = product(nested_quantics(i, j))
+            product_matrix_without_patches[i + 1, j + 1] = product_without_patches(
+                nested_quantics(i, j)
+            )
+        end
+
+        @test maximum(abs.(product_matrix .- C)) < 1e-5
+        @test maximum(abs.(product_matrix_without_patches .- C)) < 1e-5
     end
 end
