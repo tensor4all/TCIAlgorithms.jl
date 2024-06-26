@@ -4,7 +4,7 @@ function allequal(collection)
         return true
     end
     c = first(collection)
-    return all(collection .== c)
+    return all([x == c for x in collection])
 end
 
 function Not(index::Int, length::Int)
@@ -90,6 +90,7 @@ function _contract(
     )
 end
 
+# Is this really a shallow copy? It works like a deep copy - Gianluca 
 function shallowcopy(original)
     fieldnames = Base.fieldnames(typeof(original))
     new_fields = [Base.copy(getfield(original, name)) for name in fieldnames]

@@ -2,10 +2,16 @@ using Test
 import TensorCrossInterpolation as TCI
 import TCIAlgorithms as TCIA
 
+
+@testset "allequal" begin
+    @test TCIA.allequal([[2,2],[2,2]]) == true
+    @test TCIA.allequal([]) == true
+end
+
 @testset "indexset" begin
-    multii = [[[1, 1]], [[2, 1]]]
-    lineari = [[1], [2]]
-    sitedims = [[2, 2]]
+    multii = [[[1, 1]], [[2, 1]], [[0,0]]]
+    lineari = [[1], [2], [0]]
+    sitedims = [[2, 2]] 
     for (mi, li) in zip(multii, lineari)
         @test TCIA.lineari(sitedims, mi) == li
         @test TCIA.multii(sitedims, li) == mi
@@ -16,6 +22,15 @@ end
     A = [1, 2, 3]
     @test A[collect(TCIA.Not(1, 3))] == A[2:3]
     @test A[collect(TCIA.Not(2, 3))] == [A[1], A[3]]
+end
+
+@testset "Iterator" begin
+    sitedims = [2, 2]
+    A = Array{Tuple{Int, Int}, 2}(undef, Tuple(sitedims))
+    for i in CartesianIndices(Tuple(sitedims))
+        A[i] = Tuple(i)
+    end
+    @test A == collect(TCIA.typesafe_iterators_product(Val(2), sitedims)) 
 end
 
 @testset "findinitialpivots" begin
@@ -35,4 +50,9 @@ end
     @test vec(
         reshape(permutedims(a, (2, 1, 3)), 3, :) * reshape(permutedims(b, (1, 3, 2)), :, 5)
     ) ≈ vec(ab)
+end
+
+@testset "shallowcopy" begin
+    prj = TCIA.Projector([[1],[2],[0],[0]],[[2],[2],[2],[2]])
+    @test TCIA.shallowcopy(prj).data == prj.data
 end
