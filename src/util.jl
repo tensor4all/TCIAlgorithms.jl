@@ -90,7 +90,7 @@ function _contract(
     )
 end
 
-# Is this really a shallow copy? It works like a deep copy - Gianluca 
+# QUESTION: Is this really a shallow copy? It works like a deep copy - Gianluca 
 function shallowcopy(original)
     fieldnames = Base.fieldnames(typeof(original))
     new_fields = [Base.copy(getfield(original, name)) for name in fieldnames]

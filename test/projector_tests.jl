@@ -10,6 +10,17 @@ import TCIAlgorithms: Projector
         @test all(Projector([[1], [2], [3]], sitedims).data .== [[1], [2], [3]])
     end
 
+    @testset "copy" begin
+        sitedims = [[3], [3], [3]]
+        prj = TCIA.Projector([[2],[1],[0]], sitedims)
+        @test copy(prj) == prj
+    end
+
+    @testset "indexaccess" begin
+        sitedims = [[2,2], [2,2], [2,2]]
+        prj = TCIA.Projector([[2,1],[1,1],[0,0]], sitedims) 
+        @test prj(lastindex(prj), 1) == 0
+    end
     @testset "comparison" begin
         sitedims = [[3], [3], [3]]
         @test (
@@ -28,7 +39,7 @@ import TCIAlgorithms: Projector
             Projector([[1], [2], [3]], sitedims) <= Projector([[1], [2], [3]], sitedims)
         ) == true
         @test (
-            Projector([[1], [0], [0]], sitedims) <= Projector([[2], [0], [0]], sitedims)
+            Projector([[2], [0], [0]], sitedims) >= Projector([[1], [0], [0]], sitedims)
         ) == false
         @test (
             Projector([[1], [2], [3]], sitedims) == Projector([[1], [2], [3]], sitedims)
@@ -69,7 +80,7 @@ import TCIAlgorithms: Projector
         @test TCIA.projectedshape(p, 1, 3) == [4, 1, 4]
 
         p = TCIA.Projector([[0, 0], [1, 0], [0, 0]], sitedims)
-        @test TCIA.projectedshape(p, 1, 3) == [4, 2, 4]
+        @test TCIA.projectedshape(p, 1, 2) == [4, 2]
     end
 
     @testset "fullindices" begin
