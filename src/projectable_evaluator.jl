@@ -143,7 +143,7 @@ function _lineari(obj::ProjectableEvaluator, leftmmultiidxset, rightmmultiidxset
     return leftmmultiidxset_, rightmmultiidxset_
 end
 
-# Signe-site-index version
+# Single-site-index version
 function batchevaluateprj(
     obj::ProjectableEvaluator{T},
     leftmultiidxset::AbstractVector{MultiIndex},
@@ -193,11 +193,13 @@ struct ProjectableEvaluatorAdapter{T} <: ProjectableEvaluator{T}
     function ProjectableEvaluatorAdapter{T}(
         f::TCI.BatchEvaluator{T}, sitedims::Vector{Vector{Int}}, projector::Projector
     ) where {T}
-        return new{T}(f, sitedims, projector)
+        length(vcat(sitedims...)) == length(sitedims) || error("No sitedims grouping allowed")
+        return new{T}(f, sitedims, reshape(projector, sitedims))
     end
     function ProjectableEvaluatorAdapter{T}(
         f::TCI.BatchEvaluator{T}, sitedims::Vector{Vector{Int}}
     ) where {T}
+        length(vcat(sitedims...)) == length(sitedims) || error("No sitedims grouping allowed")
         return new{T}(f, sitedims, Projector([[0] for _ in sitedims], sitedims))
     end
 end
@@ -264,6 +266,7 @@ end
 function project(
     obj::ProjectableEvaluatorAdapter{T}, prj::Projector
 )::ProjectableEvaluator{T} where {T}
+    prj <= obj.projector || error("Projection incompatible with $(obj.projector.data)")
     return ProjectableEvaluatorAdapter{T}(obj.f, obj.sitedims, deepcopy(prj))
 end
 
