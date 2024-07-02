@@ -177,7 +177,7 @@ Returns: MMultiIndex, multi indices on all indices
 
 All site indices on each site must be all projected or all unprojected.
 """
-# QUESTION: What if they are not all projected or unprojected? - Gianluca
+# QUESTION: What if they are not all projected or all unprojected? - Gianluca
 function fullindices(projector, indexset::MMultiIndex)::MMultiIndex
     sum([prod(projector.data[i]) == 0 for i in eachindex(projector.data)]) == length(indexset) || error("Length mismatch")
     fullidx = Vector{Vector{Int}}(undef, length(projector))

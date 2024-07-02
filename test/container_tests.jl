@@ -30,6 +30,8 @@ import TCIAlgorithms: Projector
         ptts = [TCIA.project(tt, p) for p in vec(projs)]
         pttc = TCIA.ProjTTContainer(ptts)
 
+        @test TCIA.isapproxttavailable(pttc) == true
+
         for i in 1:2, j in 1:2
             @test pttc(vcat([[i, j]], [[1, 1] for _ in 1:(N - 1)])) ≈ tt(vcat([[i, j]], [[1, 1] for _ in 1:(N - 1)]))
         end
