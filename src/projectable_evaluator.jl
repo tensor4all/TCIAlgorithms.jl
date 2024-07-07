@@ -100,9 +100,19 @@ function (obj::ProjectableEvaluator{T})(
         x -> x == 0 ? Colon() : x,
         Iterators.flatten(obj.projector[n] for n in (NL + 1):(L - NR)),
     )
-    results_multii[:, slice..., :] .= batchevaluateprj(
-        obj, leftmmultiidxset, rightmmultiidxset, Val(M)
-    )
+
+    # QUESTION: I fixed the problem of batchevaluate for Containers like this, let me know if 
+    # it is okay - Gianluca
+    mask = vcat(obj.projector[(NL + 1):(L - NR)]...) .== 0
+    sliced_sitedims = vcat(obj.sitedims[(NL + 1):(L - NR)]...)[mask]
+
+    results_multii[:, slice..., :] .= reshape(
+        batchevaluateprj(obj, leftmmultiidxset, rightmmultiidxset, Val(M)), 
+        length(leftmmultiidxset), 
+        sliced_sitedims..., 
+        length(rightmmultiidxset)
+        )
+
     return reshape(
         results_multii,
         length(leftmmultiidxset),

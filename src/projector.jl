@@ -33,7 +33,7 @@ function Base.iterate(p::Projector, state=1)
 end
 
 Base.length(p::Projector) = length(p.data)
-Base.getindex(p::Projector, index::Int) = p.data[index]
+Base.getindex(p::Projector, i::Union{Int, AbstractRange{Int}, Colon}) = p.data[i]
 Base.lastindex(p::Projector) = Base.lastindex(p.data)
 
 function (p::Projector)(isite::Int, ilegg::Int)
