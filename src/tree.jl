@@ -72,13 +72,13 @@ function delete_node!(root::TreeNode{V}, path::Vector{Int}) where {V}
 end
 
 # Function to print the tree
-function print_tree(node::TreeNode{V}, indent::Int=0) where {V}
+function print_tree(io::IO, node::TreeNode{V}, indent::Int=0) where {V}
     value_str = length(node.value) == 0 ? "nothing" : string(node.value)
-    println(
+    println(io,
         repeat(" ", indent * 2) * "Path: " * string(node.path) * ", Value: " * value_str
     )
     for child in values(node.children)
-        print_tree(child, indent + 1)
+        print_tree(io, child, indent + 1)
     end
 end
 
