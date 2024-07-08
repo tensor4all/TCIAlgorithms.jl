@@ -186,7 +186,6 @@ end
 
 # Create a path for a tree
 function createpath(proj::Projector, po::PatchOrdering)::Vector{Int}
-    _fuse = (sitedims, p) -> all(p .> 0) ? _lineari(sitedims, p) : 0
     key = [_fuse(proj.sitedims[po[n]], proj[po[n]]) for n in 1:length(proj)]
     firstzero = findfirst(x -> x == 0, key)
     if firstzero === nothing

@@ -153,7 +153,7 @@ function TCI2PatchCreator(
     maxbonddim::Int=100,
     verbosity::Int=0,
     tcikwargs=Dict(),
-    ntry=10,
+    ntry=10, # QUESTION: what is this for? - Gianluca
     ninitialpivot=5,
     checkbatchevaluatable=false,
     loginterval=10,
