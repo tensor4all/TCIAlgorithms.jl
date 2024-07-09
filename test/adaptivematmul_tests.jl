@@ -65,7 +65,7 @@ import TCIAlgorithms:
         bmat = reshape(permutedims(TCIA.fulltensor(pb), (1, 3, 5, 2, 4, 6)), 2^3, 3^3)
 
         abmat = reshape(permutedims(TCIA.fulltensor(ab), (1, 3, 5, 2, 4, 6)), 2^3, 3^3)
-        abmat ≈ amat * bmat
+        @test abmat ≈ amat * bmat
     end
 
     @testset "mergesmalpacthes" begin

@@ -57,12 +57,14 @@ function lazymatmul(
     if !hasoverlap((x[2] for x in a.projector), (x[1] for x in b.projector))
         return nothing
     end
-    return LazyMatrixMul{T}(a, b; coeff=coeff)
+    return LazyMatrixMul(a, b; coeff=coeff)
 end
 
-function LazyMatrixMul(a::ProjTensorTrain, b::ProjTensorTrain)
+#TODO: Implement function LazyMatrixMul(contr::TCI.Contraction{T})
+
+#= function LazyMatrixMul(a::ProjTensorTrain, b::ProjTensorTrain)
     return LazyMatrixMul(TCI.Contraction(a, b))
-end
+end =#
 
 # multi-site-index evaluation
 function (obj::LazyMatrixMul{T})(indexset::MMultiIndex)::T where {T}

@@ -66,7 +66,7 @@ import TCIAlgorithms: Projector
             reduce(+, (TCIA.fulltensor(x) for x in ptts))
     end
 
-    @testset "batchevaluateprj" begin
+    @testset "batchevaluate" begin
         N = 4
         χ = 2
         bonddims = [1, χ, χ, χ, 1] 
