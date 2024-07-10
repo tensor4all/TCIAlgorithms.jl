@@ -8,7 +8,7 @@ using ITensors
 
 @testset "itensor" begin
     @testset "ProjMPS" begin
-        N = 2
+        N = 3
         sitesx = [Index(2, "x=$n") for n in 1:N]
         sitesy = [Index(2, "y=$n") for n in 1:N]
         sites = collect(collect.(zip(sitesx, sitesy)))
