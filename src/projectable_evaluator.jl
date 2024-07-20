@@ -107,11 +107,11 @@ function (obj::ProjectableEvaluator{T})(
     sliced_sitedims = vcat(obj.sitedims[(NL + 1):(L - NR)]...)[mask]
 
     results_multii[:, slice..., :] .= reshape(
-        batchevaluateprj(obj, leftmmultiidxset, rightmmultiidxset, Val(M)), 
-        length(leftmmultiidxset), 
-        sliced_sitedims..., 
-        length(rightmmultiidxset)
-        )
+        batchevaluateprj(obj, leftmmultiidxset, rightmmultiidxset, Val(M)),
+        length(leftmmultiidxset),
+        sliced_sitedims...,
+        length(rightmmultiidxset),
+    )
 
     return reshape(
         results_multii,
@@ -203,13 +203,15 @@ struct ProjectableEvaluatorAdapter{T} <: ProjectableEvaluator{T}
     function ProjectableEvaluatorAdapter{T}(
         f::TCI.BatchEvaluator{T}, sitedims::Vector{Vector{Int}}, projector::Projector
     ) where {T}
-        length(vcat(sitedims...)) == length(sitedims) || error("No sitedims grouping allowed")
+        length(vcat(sitedims...)) == length(sitedims) ||
+            error("No sitedims grouping allowed")
         return new{T}(f, sitedims, reshape(projector, sitedims))
     end
     function ProjectableEvaluatorAdapter{T}(
         f::TCI.BatchEvaluator{T}, sitedims::Vector{Vector{Int}}
     ) where {T}
-        length(vcat(sitedims...)) == length(sitedims) || error("No sitedims grouping allowed")
+        length(vcat(sitedims...)) == length(sitedims) ||
+            error("No sitedims grouping allowed")
         return new{T}(f, sitedims, Projector([[0] for _ in sitedims], sitedims))
     end
 end

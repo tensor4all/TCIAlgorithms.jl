@@ -8,7 +8,7 @@ import TCIAlgorithms: Projector
     @testset "ProjTTContainer" begin
         N = 4
         χ = 2
-        bonddims = [1, χ, χ, χ, 1] 
+        bonddims = [1, χ, χ, χ, 1]
         @assert length(bonddims) == N + 1
 
         localdims1 = [2, 2, 2, 2]
@@ -69,7 +69,7 @@ import TCIAlgorithms: Projector
     @testset "batchevaluate" begin
         N = 4
         χ = 2
-        bonddims = [1, χ, χ, χ, 1] 
+        bonddims = [1, χ, χ, χ, 1]
         @assert length(bonddims) == N + 1
 
         localdims1 = [2, 2, 2, 2]
@@ -85,20 +85,18 @@ import TCIAlgorithms: Projector
         )
 
         projs = [
-            TCIA.Projector(vcat([[0,0]], [[i, j]], [[0, 0] for _ in 1:(N - 2)]), sitedims) for
-            i in 1:2, j in 1:2
+            TCIA.Projector(vcat([[0, 0]], [[i, j]], [[0, 0] for _ in 1:(N - 2)]), sitedims)
+            for i in 1:2, j in 1:2
         ]
         ptts = [TCIA.project(tt, p) for p in vec(projs)]
         pttc = TCIA.ProjTTContainer(ptts)
-    
+
         leftmmultiidxset = [[[1, 1]]]
         rightmmultiidxset = [[[1, 1]]]
 
         batchprj = TCIA.batchevaluateprj(pttc, leftmmultiidxset, rightmmultiidxset, Val(2))
-    
+
         @assert size(batchprj) == (1, 4, 4, 1)
         @test batchprj[1, 4, 1, 1] ≈ pttc([1, 4, 1, 1])
-
-
     end
 end

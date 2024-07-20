@@ -33,7 +33,7 @@ function Base.iterate(p::Projector, state=1)
 end
 
 Base.length(p::Projector) = length(p.data)
-Base.getindex(p::Projector, i::Union{Int, AbstractRange{Int}, Colon}) = p.data[i]
+Base.getindex(p::Projector, i::Union{Int,AbstractRange{Int},Colon}) = p.data[i]
 Base.lastindex(p::Projector) = Base.lastindex(p.data)
 
 function (p::Projector)(isite::Int, ilegg::Int)
@@ -179,7 +179,8 @@ All site indices on each site must be all projected or all unprojected.
 """
 # QUESTION: What if they are not all projected or all unprojected? - Gianluca
 function fullindices(projector, indexset::MMultiIndex)::MMultiIndex
-    sum([prod(projector.data[i]) == 0 for i in eachindex(projector.data)]) == length(indexset) || error("Length mismatch")
+    sum([prod(projector.data[i]) == 0 for i in eachindex(projector.data)]) == length(indexset) ||
+        error("Length mismatch")
     fullidx = Vector{Vector{Int}}(undef, length(projector))
     nsubi = 1
     for n in 1:length(projector)

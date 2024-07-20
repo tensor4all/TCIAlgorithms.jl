@@ -74,8 +74,8 @@ end
 # Function to print the tree
 function print_tree(io::IO, node::TreeNode{V}, indent::Int=0) where {V}
     value_str = length(node.value) == 0 ? "nothing" : string(node.value)
-    println(io,
-        repeat(" ", indent * 2) * "Path: " * string(node.path) * ", Value: " * value_str
+    println(
+        io, repeat(" ", indent * 2) * "Path: " * string(node.path) * ", Value: " * value_str
     )
     for child in values(node.children)
         print_tree(io, child, indent + 1)

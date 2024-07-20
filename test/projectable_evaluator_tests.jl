@@ -9,9 +9,8 @@ import QuanticsGrids as QG
 
 @testset "ProjEvaluator" begin
     @testset "makeprojectableMulti" begin
-
         R = 5
-        localdims = fill(4,R)
+        localdims = fill(4, R)
         sitedims = [[x] for x in localdims]
 
         qf = TCI.makebatchevaluatable(Float64, x -> sum(x), localdims)
@@ -19,15 +18,14 @@ import QuanticsGrids as QG
 
         leftindexset_ = [[[4], [1], [2]]]
         rightindexset_ = [[[1]]]
-        leftindexset = [[4,1,2]]
+        leftindexset = [[4, 1, 2]]
         rightindexset = [[1]]
 
         @test leftindexset == TCIA._lineari(pqf, leftindexset_, rightindexset_)[1]
         @test rightindexset == TCIA._lineari(pqf, leftindexset_, rightindexset_)[2]
-    
-        @test vec(pqf(leftindexset, rightindexset, Val(R - 4)))  ≈
-            vec([qf([l..., i, r...]) for l in leftindexset, i in 1:4, r in rightindexset]) 
 
+        @test vec(pqf(leftindexset, rightindexset, Val(R - 4))) ≈
+            vec([qf([l..., i, r...]) for l in leftindexset, i in 1:4, r in rightindexset])
     end
 
     @testset "makeprojectableMMulti" begin
@@ -49,7 +47,8 @@ import QuanticsGrids as QG
         leftindexset_ = [[[x] for x in y] for y in leftindexset]
         rightmmultiidxset_ = [[[x] for x in y] for y in rightmmultiidxset]
 
-        @test vec(pqf(leftindexset_, rightmmultiidxset_, Val(R - 3))) ≈
-            vec([qf([l..., i, r...]) for l in leftindexset, i in 1:4, r in rightmmultiidxset])
+        @test vec(pqf(leftindexset_, rightmmultiidxset_, Val(R - 3))) ≈ vec([
+            qf([l..., i, r...]) for l in leftindexset, i in 1:4, r in rightmmultiidxset
+        ])
     end
 end

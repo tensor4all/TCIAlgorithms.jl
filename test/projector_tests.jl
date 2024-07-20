@@ -12,23 +12,23 @@ import TCIAlgorithms: Projector
 
     @testset "copy" begin
         sitedims = [[3], [3], [3]]
-        prj = TCIA.Projector([[2],[1],[0]], sitedims)
+        prj = TCIA.Projector([[2], [1], [0]], sitedims)
         @test copy(prj) == prj
     end
 
     @testset "indexaccess" begin
-        sitedims = [[2,2], [2,2], [2,2]]
-        prj = TCIA.Projector([[2,1],[1,1],[0,0]], sitedims) 
+        sitedims = [[2, 2], [2, 2], [2, 2]]
+        prj = TCIA.Projector([[2, 1], [1, 1], [0, 0]], sitedims)
         @test prj(lastindex(prj), 1) == 0
     end
     @testset "comparison" begin
         sitedims = [[3], [3], [3]]
-        @test (
-            TCIA.hasoverlap(Projector([[1], [2], [3]], sitedims), Projector([[0], [2], [3]], sitedims))
-        ) == true
-        @test (
-            TCIA.hasoverlap(Projector([[1], [2], [3]], sitedims), Projector([[0], [3], [0]], sitedims))
-        ) == false
+        @test (TCIA.hasoverlap(
+            Projector([[1], [2], [3]], sitedims), Projector([[0], [2], [3]], sitedims)
+        )) == true
+        @test (TCIA.hasoverlap(
+            Projector([[1], [2], [3]], sitedims), Projector([[0], [3], [0]], sitedims)
+        )) == false
         @test (
             Projector([[1], [2], [3]], sitedims) <= Projector([[0], [2], [3]], sitedims)
         ) == true
@@ -57,10 +57,10 @@ import TCIAlgorithms: Projector
               TCIA.Projector([[0, 3], [2]], sitedims) ==
             TCIA.Projector([[1, 3], [2]], sitedims)
 
-        sitedims = [[3, 3],[3, 3]]
+        sitedims = [[3, 3], [3, 3]]
         @test Projector([[1, 0], [2, 1]], sitedims) |
-            TCIA.Projector([[1, 3], [2,3]], sitedims) ==
-            TCIA.Projector([[1, 0], [2,0]], sitedims)
+              TCIA.Projector([[1, 3], [2, 3]], sitedims) ==
+            TCIA.Projector([[1, 0], [2, 0]], sitedims)
     end
 
     @testset "reshape" begin

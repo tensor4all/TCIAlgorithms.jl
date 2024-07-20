@@ -61,7 +61,9 @@ import TCIAlgorithms: Projector
         bonddims = [1, 4, 4, 4, 1]
         @assert length(bonddims) == N + 1
 
-        tt = TCI.TensorTrain([rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N])
+        tt = TCI.TensorTrain([
+            rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N
+        ])
 
         p = TCIA.Projector([[0, 0], [2, 2], [0, 0], [0, 0]], sitedims)
 
@@ -86,12 +88,16 @@ import TCIAlgorithms: Projector
         projb = TCIA.Projector([[1, 1], [0, 0], [0, 0], [0, 0]], sitedims)
 
         a = begin
-            tt = TCI.TensorTrain([rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N])
+            tt = TCI.TensorTrain([
+                rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N
+            ])
             TCIA.project(TCIA.ProjTensorTrain(tt), proja; compression=false)
         end
 
         b = begin
-            tt = TCI.TensorTrain([rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N])
+            tt = TCI.TensorTrain([
+                rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N
+            ])
             TCIA.project(TCIA.ProjTensorTrain(tt), projb; compression=false)
         end
 
