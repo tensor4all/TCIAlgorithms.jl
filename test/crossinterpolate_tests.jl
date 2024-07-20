@@ -121,4 +121,27 @@ using Random
         qidx = fill(1, R)
         @test obj([[q] for q in qidx]) == 0.0
     end
+
+    @testset "approxtt" begin
+        N = 6
+        sitedims = [[4] for _ in 1:N]
+        bonddims = [1, fill(10, N - 1)..., 1]
+
+        localdims = fill(4, N)
+
+        tol = 1e-7
+
+        tt = TCI.TensorTrain([
+            rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N
+        ])
+
+        p = TCIA.Projector([[0], [0], [0], [0], [0], [0]], sitedims)
+        pordering = TCIA.PatchOrdering(collect(1:N))
+
+        ptt = TCIA.project(TCIA.ProjTensorTrain(tt), p)
+
+        obj = TCIA.adaptiveinterpolate(ptt; verbosity=1, maxbonddim=5)
+
+        @test vec(TCIA.fulltensor(obj)) ≈ vec(TCIA.fulltensor(ptt))
+    end
 end

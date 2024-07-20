@@ -78,4 +78,14 @@ import TCIAlgorithms as TCIA
             ]
         end
     end
+
+    @testset "makeproj" begin
+        sitedims = [[2, 2], [2, 2], [2, 2], [2, 2]]
+
+        po = TCIA.PatchOrdering([1, 3, 2, 4])
+        prefix = [[1, 2], [1, 1]]
+
+        TCIA.makeproj(po, prefix, sitedims) ==
+        TCIA.Projector([[1, 2], [0, 0], [1, 1], [0, 0]], sitedims)
+    end
 end

@@ -100,9 +100,19 @@ function (obj::ProjectableEvaluator{T})(
         x -> x == 0 ? Colon() : x,
         Iterators.flatten(obj.projector[n] for n in (NL + 1):(L - NR)),
     )
-    results_multii[:, slice..., :] .= batchevaluateprj(
-        obj, leftmmultiidxset, rightmmultiidxset, Val(M)
+
+    # QUESTION: I fixed the problem of batchevaluate for Containers like this, let me know if 
+    # it is okay - Gianluca
+    mask = vcat(obj.projector[(NL + 1):(L - NR)]...) .== 0
+    sliced_sitedims = vcat(obj.sitedims[(NL + 1):(L - NR)]...)[mask]
+
+    results_multii[:, slice..., :] .= reshape(
+        batchevaluateprj(obj, leftmmultiidxset, rightmmultiidxset, Val(M)),
+        length(leftmmultiidxset),
+        sliced_sitedims...,
+        length(rightmmultiidxset),
     )
+
     return reshape(
         results_multii,
         length(leftmmultiidxset),
@@ -143,7 +153,7 @@ function _lineari(obj::ProjectableEvaluator, leftmmultiidxset, rightmmultiidxset
     return leftmmultiidxset_, rightmmultiidxset_
 end
 
-# Signe-site-index version
+# Single-site-index version
 function batchevaluateprj(
     obj::ProjectableEvaluator{T},
     leftmultiidxset::AbstractVector{MultiIndex},
@@ -193,11 +203,15 @@ struct ProjectableEvaluatorAdapter{T} <: ProjectableEvaluator{T}
     function ProjectableEvaluatorAdapter{T}(
         f::TCI.BatchEvaluator{T}, sitedims::Vector{Vector{Int}}, projector::Projector
     ) where {T}
-        return new{T}(f, sitedims, projector)
+        length(vcat(sitedims...)) == length(sitedims) ||
+            error("No sitedims grouping allowed")
+        return new{T}(f, sitedims, reshape(projector, sitedims))
     end
     function ProjectableEvaluatorAdapter{T}(
         f::TCI.BatchEvaluator{T}, sitedims::Vector{Vector{Int}}
     ) where {T}
+        length(vcat(sitedims...)) == length(sitedims) ||
+            error("No sitedims grouping allowed")
         return new{T}(f, sitedims, Projector([[0] for _ in sitedims], sitedims))
     end
 end
@@ -264,6 +278,7 @@ end
 function project(
     obj::ProjectableEvaluatorAdapter{T}, prj::Projector
 )::ProjectableEvaluator{T} where {T}
+    prj <= obj.projector || error("Projection incompatible with $(obj.projector.data)")
     return ProjectableEvaluatorAdapter{T}(obj.f, obj.sitedims, deepcopy(prj))
 end
 

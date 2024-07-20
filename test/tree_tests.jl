@@ -5,7 +5,7 @@ using TensorCrossInterpolation
 import TensorCrossInterpolation as TCI
 import TCIAlgorithms as TCIA
 import TCIAlgorithms:
-    create_node, add_value!, find_node, all_nodes, delete_value!, delete_node!
+    create_node, add_value!, find_node, all_nodes, delete_value!, delete_node!, isleaf
 
 @testset "tree" begin
     @testset " add! and find_node" begin
@@ -13,7 +13,7 @@ import TCIAlgorithms:
 
         add_value!(root, Int[1], "child1")
         add_value!(root, [1, 2, 1], "grandchild1")
-        add_value!(root, Int[2, 3], "child3")
+        add_value!(root, Int[2, 3], "child2")
 
         # Check root node
         @test root.path == Int[]
@@ -27,6 +27,7 @@ import TCIAlgorithms:
         node = find_node(root, [1, 2, 1])
         @test node !== nothing
         @test node.value == ["grandchild1"]
+        @test isleaf(node) == true
     end
 
     @testset "delete_value! and delete_node!" begin
@@ -34,11 +35,11 @@ import TCIAlgorithms:
 
         add_value!(root, Int[1], "child1")
         add_value!(root, [1, 2, 1], "grandchild1")
-        add_value!(root, [2, 3], "child3")
+        add_value!(root, [2, 3], "child2")
 
-        @test "child3" ∈ find_node(root, [2, 3]).value
-        delete_value!(root, [2, 3], "child3")
-        @test !("child3" ∈ find_node(root, [2, 3]).value)
+        @test "child2" ∈ find_node(root, [2, 3]).value
+        delete_value!(root, [2, 3], "child2")
+        @test !("child2" ∈ find_node(root, [2, 3]).value)
 
         delete_node!(root, [1, 2, 1])
 

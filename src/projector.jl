@@ -22,7 +22,7 @@ function Base.reverse(obj::Projector)
 end
 
 function Base.copy(obj::Projector)
-    return Projector(deepcopy(obj.data))
+    return Projector(deepcopy(obj.data), deepcopy(obj.sitedims))
 end
 
 function Base.iterate(p::Projector, state=1)
@@ -33,7 +33,7 @@ function Base.iterate(p::Projector, state=1)
 end
 
 Base.length(p::Projector) = length(p.data)
-Base.getindex(p::Projector, index::Int) = p.data[index]
+Base.getindex(p::Projector, i::Union{Int,AbstractRange{Int},Colon}) = p.data[i]
 Base.lastindex(p::Projector) = Base.lastindex(p.data)
 
 function (p::Projector)(isite::Int, ilegg::Int)
@@ -142,6 +142,7 @@ function isrightmmultiidx_contained(p::Projector, rightmmultiidxset::MMultiIndex
     return isleftmmultiidx_contained(reverse(p), reverse(rightmmultiidxset))
 end
 
+# QUESTION: How do we reshape in the case of projector with e.g. [2,0]?
 function Base.reshape(
     projector::Projector, dims::AbstractVector{<:AbstractVector{Int}}
 )::Projector
@@ -176,7 +177,10 @@ Returns: MMultiIndex, multi indices on all indices
 
 All site indices on each site must be all projected or all unprojected.
 """
+# QUESTION: What if they are not all projected or all unprojected? - Gianluca
 function fullindices(projector, indexset::MMultiIndex)::MMultiIndex
+    sum([prod(projector.data[i]) == 0 for i in eachindex(projector.data)]) == length(indexset) ||
+        error("Length mismatch")
     fullidx = Vector{Vector{Int}}(undef, length(projector))
     nsubi = 1
     for n in 1:length(projector)

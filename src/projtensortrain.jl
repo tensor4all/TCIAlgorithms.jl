@@ -71,17 +71,6 @@ function _check_projector_compatibility(
     return all(sitetensor[:, mask..., :] .== 0.0)
 end
 
-function _check_projector_compatibility(projector::Projector, tensors::AbstractArray)
-    sitedims = projector.sitedims
-    return reduce(
-        &,
-        (
-            _check_projector_compatibility(projector[n], sitedims[n], tensors[n]) for
-            n in 1:length(tts)
-        ),
-    )
-end
-
 """
 The user must make sure that the data is compatible with the given projector.
 We do not recommend to use this function directly.
@@ -294,6 +283,8 @@ function project_on_subsetsiteinds(obj::ProjTensorTrain{T}) where {T}
     while count(to_be_merged) > 0
         tensor_merged, to_be_merged = _merge_projected(tensor_merged, to_be_merged)
     end
+
+    !any(to_be_merged) == true || error("Merging of projected tensors failed")
 
     return TensorTrain{T,3}(tensor_merged)
 end
