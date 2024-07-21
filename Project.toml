@@ -19,6 +19,7 @@ TCIITensorConversion = "9f0aa9f4-9415-4e6a-8795-331ebf40aa04"
 TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 
 [compat]
+CoverageTools = "1"
 EllipsisNotation = "1"
 FastMPOContractions = "0.2.2"
 ITensors = "0.6"
