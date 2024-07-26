@@ -5,6 +5,8 @@ import QuanticsGrids as QG
 using TensorCrossInterpolation
 import TensorCrossInterpolation as TCI
 import TCIAlgorithms as TCIA
+using HubbardAtoms
+using SparseIR
 
 import TCIAlgorithms:
     create_node,
@@ -337,5 +339,101 @@ import TCIAlgorithms:
 
         @test maximum(abs.(product_matrix .- C)) < 1e-5
         @test maximum(abs.(product_matrix_without_patches .- C)) < 1e-5
+    end
+
+    @testset "Bethe-Salpeter equation" begin
+        U = 1.6
+        beta = 2.3
+        model = HubbardAtom(U, beta)
+        ch_d = DensityChannel()
+        ch_m = MagneticChannel()
+        ch_t = TripletChannel()
+        ch_s = SingletChannel()
+        m = BosonicFreq(10)
+
+        R = 7
+        maxbonddim = 50
+        N = 2^R
+        halfN = 2^(R - 1)
+        grid = QG.InherentDiscreteGrid{2}(
+            R, (-halfN, -halfN); step=(1, 1), unfoldingscheme=:fused
+        )
+        localdims = fill(4, R)
+        sitedims = [[2, 2] for _ in 1:R]
+        pordering = TCIA.PatchOrdering(collect(1:R))
+
+        for ch in CHANNELS
+
+            ######################### quantics functions ############################
+            # absorb 1/β^2 into chi0 function!!!!!
+            function fq_chi0(x, y)
+                return 1 / beta^2 *
+                       chi0(ch, model, (FermionicFreq(2x + 1), FermionicFreq(2y + 1), m))
+            end
+            fI_chi0 = QG.quanticsfunction(ComplexF64, grid, fq_chi0)
+
+            function fq_full(x, y)
+                return full_vertex(
+                    ch, model, (FermionicFreq(2x + 1), FermionicFreq(2y + 1), m)
+                )
+            end
+            fI_full = QG.quanticsfunction(ComplexF64, grid, fq_full)
+
+            function fq_gamma(x, y)
+                return gamma(ch, model, (FermionicFreq(2x + 1), FermionicFreq(2y + 1), m))
+            end
+            fI_gamma = QG.quanticsfunction(ComplexF64, grid, fq_gamma)
+            #########################################################################
+
+            initialpivots = [QG.origcoord_to_quantics(grid, (0, 0))] # approx center of grid
+
+            chi0_patches = reshape(
+                TCIA.adaptiveinterpolate(
+                    TCIA.makeprojectable(Float64, fI_chi0, localdims),
+                    pordering;
+                    verbosity=0,
+                    maxbonddim,
+                    initialpivots,
+                ),
+                sitedims,
+            )
+            full_patches = reshape(
+                TCIA.adaptiveinterpolate(
+                    TCIA.makeprojectable(Float64, fI_full, localdims),
+                    pordering;
+                    verbosity=0,
+                    maxbonddim,
+                    initialpivots,
+                ),
+                sitedims,
+            )
+            gamma_patches = reshape(
+                TCIA.adaptiveinterpolate(
+                    TCIA.makeprojectable(Float64, fI_gamma, localdims),
+                    pordering;
+                    verbosity=0,
+                    maxbonddim,
+                    initialpivots,
+                ),
+                sitedims,
+            )
+
+            # multiplication Φ = Γ X₀ F
+            chi0_full = TCIA.adaptivematmul(
+                chi0_patches, full_patches, pordering; maxbonddim
+            )
+            phi_bse = TCIA.adaptivematmul(gamma_patches, chi0_full, pordering; maxbonddim)
+
+            # normal multiplication for comparison
+            box = [(x, y) for x in (-halfN):(halfN - 1), y in (-halfN):(halfN - 1)]
+            chi0_exact = map(splat(fq_chi0), box)
+            full_exact = map(splat(fq_full), box)
+            gamma_exact = map(splat(fq_gamma), box)
+            phi_normalmul = gamma_exact * chi0_exact * full_exact
+
+            phi_adaptivemul = [phi_bse(QG.origcoord_to_quantics(grid, p)) for p in box]
+
+            @test isapprox(phi_normalmul, phi_adaptivemul; rtol=1e-5)
+        end
     end
 end

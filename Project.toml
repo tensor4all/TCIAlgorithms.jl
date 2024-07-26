@@ -21,6 +21,7 @@ TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 [compat]
 EllipsisNotation = "1"
 FastMPOContractions = "0.2.2"
+HubbardAtoms = "0.1.0"
 ITensors = "0.6"
 OrderedCollections = "1"
 QuanticsGrids = "0.3.1"
@@ -29,9 +30,11 @@ TensorCrossInterpolation = "0.9.7"
 julia = "1.6"
 
 [extras]
+HubbardAtoms = "4f3da25b-ea28-4d4f-a81f-380d3f5e56a6"
 QuanticsGrids = "634c7f73-3e90-4749-a1bd-001b8efc642d"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SparseIR = "4fe2279e-80f0-4adb-8463-ee114ff56b7d"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Random", "QuanticsGrids"]
+test = ["Test", "Random", "QuanticsGrids", "SparseIR", "HubbardAtoms"]
