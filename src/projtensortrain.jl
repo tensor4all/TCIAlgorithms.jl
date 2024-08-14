@@ -68,7 +68,13 @@ function _check_projector_compatibility(
         s in 1:length(sitedims)
     )
     sitetensor = reshape(tensor, size(tensor)[1], sitedims..., size(tensor)[end])
-    return all(sitetensor[:, mask..., :] .== 0.0)
+    if all(sitetensor[:, mask..., :] .== 0.0)
+        return true
+    else
+        badinds = findall(!iszero, sitetensor[:, mask..., :])
+        @show badinds sitetensor[:, mask..., :][badinds]
+        return false
+    end
 end
 
 """
