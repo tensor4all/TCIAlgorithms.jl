@@ -40,4 +40,28 @@ using ITensors
 
         @test prjΨ1 ≈ prjΨ1_reconst
     end
+
+    @testset "rearrange_siteinds" begin
+        N = 3
+        sitesx = [Index(2, "x=$n") for n in 1:N]
+        sitesy = [Index(2, "y=$n") for n in 1:N]
+        sitesz = [Index(2, "z=$n") for n in 1:N]
+        sites = collect(collect.(zip(sitesx, sitesy, sitesz)))
+
+        Ψ = MPS(collect(_random_mpo(sites)))
+
+        prjΨ = TCIA.ProjMPS(Ψ, sites)
+        prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
+
+        sitesxy = collect(collect.(zip(sitesx, sitesy)))
+        sites_rearranged = Vector{Index{Int}}[]
+        for i in 1:N
+            push!(sites_rearranged, sitesxy[i])
+            push!(sites_rearranged, [sitesz[i]])
+        end
+        prjΨ1_rearranged = TCIA.rearrange_siteinds(prjΨ1, sites_rearranged)
+
+        @test reduce(*, MPS(prjΨ1)) ≈ reduce(*, MPS(prjΨ1_rearranged))
+        @test prjΨ1_rearranged.sites == sites_rearranged
+    end
 end

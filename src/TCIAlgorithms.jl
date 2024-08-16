@@ -6,6 +6,7 @@ import TensorCrossInterpolation:
 
 using TCIITensorConversion
 using ITensors
+using Quantics
 
 using OrderedCollections: OrderedDict, OrderedSet
 using Distributed

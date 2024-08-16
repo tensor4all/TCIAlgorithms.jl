@@ -219,6 +219,20 @@ struct ProjMPSContainer
     end
 end
 
+function rearrange_siteinds(projmps::ProjMPS, sites)
+    mps_rearranged = Quantics.rearrange_siteinds(projmps.data, sites)
+    projmps_rearranged = ProjMPS(mps_rearranged, sites)
+    prjsiteinds = Dict{Index{Int},Int}()
+    for (p, s) in zip(projmps.projector, projmps.sites)
+        for (p_, s_) in zip(p, s)
+            if p_ != 0
+                prjsiteinds[s_] = p_
+            end
+        end
+    end
+    return project(projmps_rearranged, prjsiteinds)
+end
+
 #==
 function _random_mpo(
     rng::AbstractRNG, sites::AbstractVector{<:AbstractVector{Index{T}}}; m::Int=1
