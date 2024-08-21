@@ -219,6 +219,7 @@ struct ProjMPSContainer
     end
 end
 
+# TODO: do we want to extend Quantics.rearrange_siteinds here?
 function rearrange_siteinds(projmps::ProjMPS, sites)
     mps_rearranged = Quantics.rearrange_siteinds(projmps.data, sites)
     projmps_rearranged = ProjMPS(mps_rearranged, sites)
@@ -231,6 +232,59 @@ function rearrange_siteinds(projmps::ProjMPS, sites)
         end
     end
     return project(projmps_rearranged, prjsiteinds)
+end
+
+function rearrange_siteinds(projmpss::ProjMPSContainer, sites)
+    return ProjMPSContainer([
+        rearrange_siteinds(projmps, sites) for projmps in projmpss.data
+    ])
+end
+
+function Quantics.makesitediagonal(projmps::ProjMPS, site::Index)
+    mps_diagonal = Quantics.makesitediagonal(projmps.data, site)
+    sites_diagonal = [
+        filter(i -> !hastags(i, "Link"), collect(inds(t))) for t in mps_diagonal
+    ]
+    projmps_diagonal = ProjMPS(mps_diagonal, sites_diagonal)
+
+    prjsiteinds = Dict{Index{Int},Int}()
+    for (p, s) in zip(projmps.projector, projmps.sites)
+        for (p_, s_) in zip(p, s)
+            iszero(p_) && continue
+            prjsiteinds[s_] = p_
+            if s_ == site
+                prjsiteinds[s_'] = p_
+            end
+        end
+    end
+
+    return project(projmps_diagonal, prjsiteinds)
+end
+
+function makesitediagonal(projmps::ProjMPS, tag::String)
+    mps_diagonal = Quantics.makesitediagonal(projmps.data, tag)
+    sites_diagonal = [
+        filter(i -> !hastags(i, "Link"), collect(inds(t))) for t in mps_diagonal
+    ]
+    projmps_diagonal = ProjMPS(mps_diagonal, sites_diagonal)
+    target_positions = Quantics.findallsiteinds_by_tag(siteinds(projmps.data); tag=tag)
+
+    prjsiteinds = Dict{Index{Int},Int}()
+    for (p, s) in zip(projmps.projector, projmps.sites)
+        for (p_, s_) in zip(p, s)
+            iszero(p_) && continue
+            prjsiteinds[s_] = p_
+            if s_ ∈ target_positions
+                prjsiteinds[s_'] = p_
+            end
+        end
+    end
+
+    return project(projmps_diagonal, prjsiteinds)
+end
+
+function makesitediagonal(projmpss::ProjMPSContainer, sites)
+    return ProjMPSContainer([makesitediagonal(projmps, sites) for projmps in projmpss.data])
 end
 
 #==

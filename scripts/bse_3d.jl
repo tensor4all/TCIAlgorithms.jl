@@ -4,7 +4,7 @@ import TensorCrossInterpolation as TCI
 import TCIAlgorithms as TCIA
 using HubbardAtoms
 using SparseIR
-import Quantics: rearrange_siteinds
+# import Quantics: rearrange_siteinds, makesitediagonal, findallsiteinds_by_tag
 using ITensors
 
 import TCIAlgorithms:
@@ -121,34 +121,9 @@ sitesxy_vec = [[x, y] for (x, y) in zip(sitesx, sitesy)]
 sitesz_vec = [[z] for z in sitesz]
 sites_separatez = [x for pair in zip(sitesxy_vec, sitesz_vec) for x in pair]
 
-function rearrange_siteinds(projmps::TCIA.ProjMPS, sites)
-    mps_rearranged = rearrange_siteinds(projmps.data, sites)
-    proj = projmps.projector
-    sitedims_new = [dim.(s) for s in sites]
+full_xy_z = TCIA.rearrange_siteinds(full_mps, sites_separatez)
 
-    flat_proj = reduce(vcat, proj)
-    lengths_new = map(length, sites)
-
-    proj_new_raw = Vector{Vector{Int}}(undef, length(lengths_new))
-    start_idx = 1
-    for (i, len) in enumerate(lengths_new)
-        end_idx = start_idx + len - 1
-        proj_new_raw[i] = flat_proj[start_idx:end_idx]
-        start_idx = end_idx + 1
-    end
-    proj_new = TCIA.Projector(proj_new_raw, sitedims_new)
-    return TCIA.ProjMPS(mps_rearranged, sites, proj_new)
-end
-
-function rearrange_siteinds(projmpss::TCIA.ProjMPSContainer, sites)
-    return TCIA.ProjMPSContainer([
-        rearrange_siteinds(projmps, sites) for projmps in projmpss.data
-    ])
-end
-
-full_xy_z = rearrange_siteinds(full_mps, sites_separatez)
-
-full_xy_z.data
+TCIA.makesitediagonal(full_xy_z, "z")
 
 ##
 
