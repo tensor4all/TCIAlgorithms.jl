@@ -242,3 +242,89 @@ end
 # Wrappers for
 # matmul()
 # adaptivematmul()
+#
+#function combinesites(M::MPO, site1::Index, site2::Index)
+#end
+#function preprocess(mul::Quantics.MatrixMultiplier{T}, M1::ProjMPSContainer, M2::ProjMPSContainer) where {T}
+    #for (site_row, site_shared, site_col) in zip(mul.sites_row, mul.sites_shared,
+        #mul.sites_col)
+        #M1, M2 = combinesites(M1, site_row, site_shared), combinesites(M2, site_col, site_shared)
+    #end
+    #return M1, M2
+#end
+
+function automul_preprocess(sites_rows, sites_shared, sites_cols, M1::ProjMPSContainer, M2::ProjMPSContainer)
+    #for (site_row, site_shared, site_col) in zip(sites_rows, sites_shared, sites_cols)
+        #M1, M2 = combinesites(M1, site_row, site_shared), combinesites(M2, site_col, site_shared)
+    #end
+    #return M1, M2
+end
+
+"""
+Equivalent to `Quantics.automul`
+"""
+function automul(M1::ProjMPSContainer, M2::ProjMPSContainer; tag_row::String="", tag_shared::String="",
+    tag_col::String="", alg="naive", kwargs...)
+    if in(:maxbonddim, keys(kwargs))
+        error("Illegal keyward parameter: maxbonddim. Use maxdim instead!")
+    end
+    length.(M1.sites) .== 1 || error("automul only supports MPSs with one site index per site")
+    length.(M2.sites) .== 1 || error("automul only supports MPSs with one site index per site")
+
+    sites_row = Quantics.findallsiteinds_by_tag(siteinds(M1[1]); tag=tag_row)
+    sites_shared = Quantics.findallsiteinds_by_tag(siteinds(M1[1]); tag=tag_shared)
+    sites_col = Quantics.findallsiteinds_by_tag(siteinds(M2[1]); tag=tag_col)
+    sites_matmul = Set(Iterators.flatten([sites_row, sites_shared, sites_col]))
+
+    if sites_shared != Quantics.findallsiteinds_by_tag(siteinds(M2[1]); tag=tag_shared)
+        error("Invalid shared sites for MatrixMultiplier")
+    end
+
+    #matmul = Quantics.MatrixMultiplier(sites_row, sites_shared, sites_col)
+    #ewmul = Quantics.ElementwiseMultiplier([s for s in siteinds(M1) if s ∉ sites_matmul])
+
+    #M1_tensors = [Quantics.preprocess(matmul, Quantics.asMPO(x)) for x in M1]
+    #M1_ = Quantics.asMPO(M1)
+    #M2_ = Quantics.asMPO(M2)
+    #M1_, M2_ = preprocess(matmul, M1_, M2_)
+    #M1_, M2_ = preprocess(ewmul, M1_, M2_)
+
+
+    sites1_matmul = Index{Int}[]
+    sites1_org = siteinds(M1[1])
+    while !isempty(sites1_org)
+        s = sites1_org[1]
+        if s ∈ sites_matmul
+            if s ∈ sites_shared
+                push!(sites1_matmul, reverse(sites1_org[1:2]))
+                popfirst!(sites1_org)
+                popfirst!(sites1_org)
+            else
+                push!(sites1_matmul, sites1_org[1:2])
+                popfirst!(sites1_org)
+                popfirst!(sites1_org)
+            end
+        else
+            Quantics.makediagram(s)
+        end
+    end
+
+    matmul = MatrixMultiplier(sites_row, sites_shared, sites_col)
+    ewmul = ElementwiseMultiplier([s for s in siteinds(M1) if s ∉ sites_matmul])
+
+    M1_ = Quantics.asMPO(M1)
+    M2_ = Quantics.asMPO(M2)
+    M1_, M2_ = preprocess(matmul, M1_, M2_)
+    M1_, M2_ = preprocess(ewmul, M1_, M2_)
+
+    M = FastMPOContractions.contract_mpo_mpo(M1_, M2_; alg=alg, kwargs...)
+
+    M = Quantics.postprocess(matmul, M)
+    M = Quantics.postprocess(ewmul, M)
+
+    if in(:maxdim, keys(kwargs))
+        truncate!(M; maxdim=kwargs[:maxdim])
+    end
+
+    return asMPS(M)
+end
