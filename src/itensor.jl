@@ -242,9 +242,7 @@ end
 
 function Quantics.makesitediagonal(projmps::ProjMPS, site::Index)
     mps_diagonal = Quantics.makesitediagonal(projmps.data, site)
-    sites_diagonal = [
-        filter(i -> !hastags(i, "Link"), collect(inds(t))) for t in mps_diagonal
-    ]
+    sites_diagonal = siteinds(all, mps_diagonal)
     projmps_diagonal = ProjMPS(mps_diagonal, sites_diagonal)
 
     prjsiteinds = Dict{Index{Int},Int}()
@@ -263,12 +261,10 @@ end
 
 function makesitediagonal(projmps::ProjMPS, tag::String)
     mps_diagonal = Quantics.makesitediagonal(projmps.data, tag)
-    sites_diagonal = [
-        filter(i -> !hastags(i, "Link"), collect(inds(t))) for t in mps_diagonal
-    ]
+    sites_diagonal = siteinds(all, mps_diagonal)
     projmps_diagonal = ProjMPS(mps_diagonal, sites_diagonal)
-    target_positions = Quantics.findallsiteinds_by_tag(siteinds(projmps.data); tag=tag)
 
+    target_positions = Quantics.findallsiteinds_by_tag(siteinds(projmps.data); tag=tag)
     prjsiteinds = Dict{Index{Int},Int}()
     for (p, s) in zip(projmps.projector, projmps.sites)
         for (p_, s_) in zip(p, s)

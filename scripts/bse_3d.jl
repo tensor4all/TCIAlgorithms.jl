@@ -123,7 +123,8 @@ sites_separatez = [x for pair in zip(sitesxy_vec, sitesz_vec) for x in pair]
 
 full_xy_z = TCIA.rearrange_siteinds(full_mps, sites_separatez)
 
-TCIA.makesitediagonal(full_xy_z, "z")
+full = TCIA.makesitediagonal(full_xy_z, "z")
+full.data[1].data
 
 ##
 
