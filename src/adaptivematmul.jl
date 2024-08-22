@@ -28,6 +28,42 @@ function adaptivematmul(
     return ProjTTContainer{T}(_mergesmallpatches(root_tt; tolerance, maxbonddim))
 end
 
+
+#==
+function matmul(
+    a::ProjTTContainer{T},
+    b::ProjTTContainer{T},
+    bs::BlockStructure;
+    tolerance=1e-14,
+    maxbonddim=typemax(Int),
+)::ProjContainer{T} where {T}
+    result = [Set{ProjTensorTrain{T}}() for _ in 1:length(bs.blocks)]
+    for x in a, y in b # FIXME: Naive loop over O(N^2) pairs
+        xy = lazymatmul(x, y)
+        if xy === nothing
+            continue
+        end
+        for (ib, b) in enumerate(bs)
+            if hasoverlap(xy.projector, b)
+                push!(
+                    result[ib],
+                    approxtt(project(xy, xy.projector & b); maxbonddim=maxbonddim, tolerance=tolerance)
+                )
+            end
+        end
+    end
+
+    ptts = ProjTensorTrain{T}[]
+    for (ib, b) in enumerate(bs)
+        patch = reduce((x, y) -> add(x, y; tolerance, maxbonddim), result[ib])
+        push!(ptts, project(patch, b))
+    end
+
+    return ProjTTContainer{T}(ptts)
+end
+==#
+
+
 """
 Perform matrix multiplication of two tensor trains and if the bond dimension is too large, project the result to a lower bond dimension.
 We repeat this process until the bond dimension is small enough or no way to project more.

@@ -27,3 +27,9 @@ function Base.iterate(p::BlockStructure, state=1)
 end
 
 Base.getindex(p::BlockStructure, index::Int) = p.blocks[index]
+
+function hasoverlap(bs::BlockStructure, p::Projector)::Bool
+    return reduce(|, (hasoverlap(bl, p) for bl in bs.blocks))
+end
+
+hasoverlap(p::Projector, bs::BlockStructure)::Bool = hasoverlap(bs, p)

@@ -240,7 +240,8 @@ function add(
     # For the moment, we need to use ITensors.add instead
     a_MPS = MPS(a.data)
     b_MPS = MPS(b.data; sites=siteinds(a_MPS))
-    ab_MPS = +(a_MPS, b_MPS; maxdim=maxbonddim, cutoff=tolerance^2)
+    ab_MPS = +(a_MPS, b_MPS; alg="directsum")
+    truncate!(ab_MPS; maxdim=maxbonddim, cutoff=tolerance^2)
     ab = reshape(ProjTensorTrain(TensorTrain{T,3}(MPO([x for x in ab_MPS]))), a.sitedims)
     return project(ab, a.projector | b.projector)
     #==
