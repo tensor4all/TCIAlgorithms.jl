@@ -1,6 +1,7 @@
 using Test
 import TensorCrossInterpolation as TCI
 import TCIAlgorithms as TCIA
+using Quantics
 
 import TCIAlgorithms: Projector, project, ProjTensorTrain, LazyMatrixMul, makeprojectable
 
@@ -59,13 +60,13 @@ using ITensors
             push!(sites_rearranged, sitesxy[i])
             push!(sites_rearranged, [sitesz[i]])
         end
-        prjΨ1_rearranged = TCIA.rearrange_siteinds(prjΨ1, sites_rearranged)
+        prjΨ1_rearranged = Quantics.rearrange_siteinds(prjΨ1, sites_rearranged)
 
         @test reduce(*, MPS(prjΨ1)) ≈ reduce(*, MPS(prjΨ1_rearranged))
         @test prjΨ1_rearranged.sites == sites_rearranged
     end
 
-    @testset "makesitediagonal" begin
+    @testset "makesitediagonal and extractdiagonal" begin
         N = 3
         sitesx = [Index(2, "x=$n") for n in 1:N]
         sitesy = [Index(2, "y=$n") for n in 1:N]
@@ -80,11 +81,13 @@ using ITensors
         prjΨ = TCIA.ProjMPS(Ψ, sites)
         prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
 
-        prjΨ1_diagonalz = TCIA.makesitediagonal(prjΨ1, "x")
+        prjΨ1_diagonalz = Quantics.makesitediagonal(prjΨ1, "y")
         sites_diagonalz = Iterators.flatten(prjΨ1_diagonalz.sites)
 
         psi_diag = prod(prjΨ1_diagonalz.data)
         psi = prod(prjΨ1.data)
+
+        @test Quantics.extractdiagonal(prjΨ1_diagonalz, "y") ≈ prjΨ1
 
         for indval in eachindval(sites_diagonalz...)
             ind = first.(indval)
