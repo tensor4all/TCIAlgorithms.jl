@@ -7,6 +7,7 @@ import TensorCrossInterpolation:
 using TCIITensorConversion
 using ITensors
 using Quantics
+import Quantics: MatrixMultiplier, ElementwiseMultiplier, findallsiteinds_by_tag
 
 using OrderedCollections: OrderedDict, OrderedSet
 using Distributed
@@ -19,6 +20,7 @@ using TCIITensorConversion
 import LinearAlgebra as LA
 
 import FastMPOContractions as FMPOC
+
 
 const MMultiIndex = Vector{Vector{Int}}
 const TensorTrainState{T} = TensorTrain{T,3} where {T}
@@ -38,5 +40,6 @@ include("adaptivematmul.jl")
 
 # ITensor interface
 include("itensor.jl")
+include("itensor_mul.jl")
 
 end

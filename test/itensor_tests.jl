@@ -24,6 +24,22 @@ using ITensors
         @test Ψreconst ≈ Ψ
     end
 
+    @testset "permutesitedims (ProjMPS)" begin
+        N = 3
+        sitesx = [Index(2, "x=$n") for n in 1:N]
+        sitesy = [Index(2, "y=$n") for n in 1:N]
+        sites = collect(collect.(zip(sitesx, sitesy)))
+        Ψ = MPS(collect(_random_mpo(sites)))
+        prjΨ = TCIA.ProjMPS(Ψ, sites)
+        prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
+
+        sites_flipped = collect(collect.(zip(sitesy, sitesx)))
+
+        res = TCIA.permutesiteinds(prjΨ1, sites_flipped)
+
+        @test res.projector == Projector([[0, 1], [0, 0], [0, 0]], [[2, 2], [2, 2], [2, 2]])
+    end
+
     @testset "conversion" begin
         N = 2
         sitesx = [Index(2, "x=$n") for n in 1:N]

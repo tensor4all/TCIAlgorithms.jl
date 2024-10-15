@@ -29,11 +29,17 @@ struct ProjMPSContainer
     end
 end
 
+ITensors.siteinds(obj::ProjMPSContainer) = obj.sites
+
 # Constructor Functions
-function ProjMPS(Ψ::MPS, sites::AbstractVector{<:AbstractVector})
+function ProjMPS(Ψ::AbstractMPS, sites::AbstractVector{<:AbstractVector})
     sitedims = [collect(dim.(s)) for s in sites]
     globalprojector = Projector([fill(0, length(s)) for s in sitedims], sitedims)
-    return ProjMPS(Ψ, sites, globalprojector)
+    return ProjMPS(MPS(collect(Ψ)), sites, globalprojector)
+end
+
+function ProjMPS(Ψ::AbstractMPS, sites::AbstractVector{<:AbstractVector}, projsiteinds::Dict{Index{T},Int}) where {T}
+    return project(ProjMPS(Ψ, sites), projsiteinds)
 end
 
 function ProjMPSContainer(::Type{T}, projttcont::ProjTTContainer{T}, sites) where {T}
@@ -43,10 +49,17 @@ end
 # Conversion Functions
 ITensors.MPS(projΨ::ProjMPS) = projΨ.data
 
+ITensors.siteinds(projΨ::ProjMPS) = projΨ.sites
+
+
 function ProjTensorTrain{T}(projΨ::ProjMPS) where {T}
     return ProjTensorTrain{T}(
         asTT3(T, projΨ.data, projΨ.sites; permdims=false), projΨ.projector
     )
+end
+
+function ProjMPS(projtt::ProjTensorTrain{T}, sites) where {T}
+    return ProjMPS(T, projtt, sites)
 end
 
 function ProjMPS(::Type{T}, projtt::ProjTensorTrain{T}, sites) where {T}
@@ -95,6 +108,10 @@ end
 
 # Utility Functions
 function permutesiteinds(Ψ::MPS, sites::AbstractVector{<:AbstractVector})
+    for (s, site) in zip(siteinds(MPO([x for x in Ψ])), sites)
+        Set(s) == Set(site) || error("Sitedims mismatch $s != $site")
+    end
+
     links = linkinds(Ψ)
     tensors = Vector{ITensor}(undef, length(Ψ))
     tensors[1] = permute(Ψ[1], vcat(sites[1], links[1]))
@@ -104,6 +121,24 @@ function permutesiteinds(Ψ::MPS, sites::AbstractVector{<:AbstractVector})
     tensors[end] = permute(Ψ[end], vcat(links[end], sites[end]))
     return MPS(tensors)
 end
+
+
+function permutesiteinds(prjΨ::ProjMPS, sites::AbstractVector{<:AbstractVector})
+    for (s, site) in zip(prjΨ.sites, sites)
+        Set(s) == Set(site) || error("Sitedims mismatch $s != $site")
+    end
+
+    Ψ_perm = permutesiteinds(prjΨ.data, sites)
+
+    _perm_rule(newsites, oldsites) = [findfirst(x -> x == y, oldsites) for y in newsites]
+    perm_rule = _perm_rule.(sites, prjΨ.sites)
+    projector = Projector(
+        [prjΨ.projector.data[i][perm_rule[i]] for i in eachindex(perm_rule)],
+        [prjΨ.projector.sitedims[i][perm_rule[i]] for i in eachindex(perm_rule)],
+    )
+    return ProjMPS(Ψ_perm, sites, projector)
+end
+
 
 function project(tensor::ITensor, projsiteinds::Dict{K,Int}) where {K}
     slice = Union{Int,Colon}[
