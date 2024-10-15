@@ -1,3 +1,7 @@
+"""
+A projector represents a projection of a tensor from a set of its indices to integers.
+Each index is projected to a positive integer.
+"""
 struct Projector{IndsT}
     data::Dict{IndsT,Int} # values must be positive.
 
