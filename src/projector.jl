@@ -50,10 +50,10 @@ Base.:(>)(a::Projector, b::Projector)::Bool = (b < a)
 """
 `a & b` represents the intersection of the indices that `a` and `b` are projected at.
 """
-function Base.:&(a::Projector{IndsT}, b::Projector{IndsT})::Projector{IndsT} where {IndsT}
+function Base.:&(a::Projector{IndsT}, b::Projector{IndsT})::Union{Nothing,Projector{IndsT}} where {IndsT}
     for k in intersect(keys(a.data), keys(b.data))
         if a[k] != b[k]
-            error("There is no overlap at $(k).")
+            return nothing
         end
     end
     return Projector{IndsT}(merge(a.data, b.data))
@@ -78,15 +78,7 @@ Base.:<=(a::Projector, b::Projector)::Bool = (a < b) || (a == b)
 Base.:>=(a::Projector, b::Projector) = (b <= a)
 
 function hasoverlap(p1, p2)::Bool
-    length(p1) == length(p2) || error("Length mismatch")
-    for (a, b) in zip(Iterators.flatten(p1), Iterators.flatten(p2))
-        if a != 0 && b != 0
-            if a != b
-                return false
-            end
-        end
-    end
-    return true
+    return p1 & p2 !== nothing
 end
 
 function isprojectedat(p::Projector{IndsT}, ind::IndsT)::Bool where {IndsT}
