@@ -27,19 +27,19 @@ const TensorTrainState{T} = TensorTrain{T,3} where {T}
 
 include("util.jl")
 include("projector.jl")
-include("blockstructure.jl")
-include("projectable_evaluator.jl")
-include("projtensortrain.jl")
-include("container.jl")
-include("mul.jl")
-include("distribute.jl")
-include("tree.jl")
-include("patching.jl")
-include("crossinterpolate.jl")
-include("adaptivematmul.jl")
+#include("blockstructure.jl")
+#include("projectable_evaluator.jl")
+#include("projtensortrain.jl")
+#include("container.jl")
+#include("mul.jl")
+#include("distribute.jl")
+#include("tree.jl")
+#include("patching.jl")
+#include("crossinterpolate.jl")
+#include("adaptivematmul.jl")
 
 # ITensor interface
-include("itensor.jl")
-include("itensor_mul.jl")
+#include("itensor.jl")
+#include("itensor_mul.jl")
 
 end
