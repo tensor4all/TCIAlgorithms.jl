@@ -27,6 +27,43 @@ import TCIAlgorithms: Projector
         @test (p3 < p1) == true
     end
 
-    @testset "logical operation" begin end
+    @testset "intersection" begin
+        inds = [Index(2, "n=$n") for n in 1:10]
 
+        let
+            p1 = Projector(Dict(inds[1] => 1, inds[2] => 1))
+            p2 = Projector(Dict(inds[1] => 2))
+            @test_throws ErrorException p1 & p2
+        end
+
+        let
+            p1 = Projector(Dict(inds[2] => 1))
+            p2 = Projector(Dict(inds[1] => 2))
+            @test p1 & p2 == Projector(Dict(inds[1] => 2, inds[2] => 1))
+        end
+
+        let
+            p1 = Projector(Dict(inds[2] => 1))
+            p2 = Projector(Dict(inds[1] => 2))
+            @test p1 & p2 == Projector(Dict(inds[1] => 2, inds[2] => 1))
+        end
+
+        let
+            p1 = Projector(Dict(inds[2] => 1, inds[3] => 1))
+            p2 = Projector(Dict(inds[1] => 2, inds[3] => 1))
+            @test p1 & p2 == Projector(Dict(inds[1] => 2, inds[2] => 1, inds[3] => 1))
+        end
+    end
+
+    @testset "union" begin
+        inds = [Index(2, "n=$n") for n in 1:10]
+
+        p1 = Projector(Dict(inds[1] => 1, inds[3] => 1))
+        p2 = Projector(Dict(inds[1] => 2, inds[3] => 1))
+        @test p1 | p2 == Projector(Dict(inds[3] => 1))
+
+        p1 = Projector()
+        p2 = Projector()
+        @test p1 | p2 == Projector()
+    end
 end

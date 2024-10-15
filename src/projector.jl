@@ -1,7 +1,7 @@
 struct Projector{IndsT}
     data::Dict{IndsT,Int} # values must be positive.
 
-    function Projector(data::Dict{IndsT,Int}) where IndsT
+    function Projector{IndsT}(data::Dict{IndsT,Int}) where IndsT
         for (k, v) in data
             if v <= 0
                 error("Value at $(k) must be positive.")
@@ -9,6 +9,18 @@ struct Projector{IndsT}
         end
         return new{IndsT}(data)
     end
+end
+
+function Projector(data::Dict{IndsT,Int}) where {IndsT}
+    return Projector{IndsT}(data)
+end
+
+function Projector() 
+    return Projector{Index{Int}}(Dict{Index{Int},Int}())
+end
+
+function Projector{Inds}() where {Inds}
+    return Projector{Inds}(Dict{Inds,Int}())
 end
 
 Base.getindex(p::Projector, inds) = p.data[inds]
@@ -32,13 +44,30 @@ end
 Base.:(>)(a::Projector, b::Projector)::Bool = (b < a)
 
 """
-`a & b` is the logical AND of the two projectors.
+`a & b` represents the intersection of the indices that `a` and `b` are projected at.
 """
 function Base.:&(a::Projector{IndsT}, b::Projector{IndsT})::Projector{IndsT} where {IndsT}
-
+    for k in intersect(keys(a.data), keys(b.data))
+        if a[k] != b[k]
+            error("There is no overlap at $(k).")
+        end
+    end
+    return Projector{IndsT}(merge(a.data, b.data))
 end
 
-function Base.:|(a::Projector, b::Projector)::Projector
+"""
+`a | b` represents the union of the indices that `a` and `b` are projected at.
+
+If `a` is projected at `inds=1` and `b` is not projected for the same `inds`, then `a | b` is not projected for `inds`.
+"""
+function Base.:|(a::Projector{IndsT}, b::Projector{IndsT})::Projector{IndsT} where {IndsT}
+    data = Dict{IndsT,Int}()
+    for k in intersect(keys(a.data), keys(b.data))
+        if a[k] == b[k]
+            data[k] = a[k]
+        end
+    end
+    return Projector{IndsT}(data)
 end
 
 Base.:<=(a::Projector, b::Projector)::Bool = (a < b) || (a == b)
