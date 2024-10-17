@@ -1,8 +1,26 @@
-# Bethe-Salpeter equation in QTCI representation with patches (TODO: Title OK?, QTCI or QTT?)
+---
+title: "Adaptive distribution of quantics tensor trains contraction into subdomains with controlled bond dimension"
+author: "Samuel Badr"
+date: "2024-10-17"
+reference-section-title: "References"
+bibliography: refs.bib
+csl: american-physics-society.csl
+link-citations: true
+supervisor: "Prof. Anna Kauch"
+university: "TU Wien"
+
+---
+
+# Introduction and Motivation
+
+This work arose out of the need to compute the Bethe-Salpeter equation (BSE) in the context of the input vertex functions being represented by quantics tensor trains (QTTs).
+Existing implementations, for example in `ITensors.jl`, struggle with high bond dimensions $D$, with the important contraction operation becoming inefficient at around $D \gtrsim 150$.
+To adress this and simultaneously enable parallelization, we introduce adaptive patching, replacing the monolithic tensor train by a composite made up of a collection of tensor trains, each with a smaller bond dimension and covering a subdomain.
+Because the Bethe-Salpeter equation from a computational point of view consists of a series of matrix multiplications (which are equivalent to tensor train contractions), the work done here has a broad field of potential applications.
 
 ## Bethe-Salpeter equation
 
-Our objective in this work is computing the Bethe-Salpeter equation (BSE), which relates the full vertex $F^r$, the bare susceptibility ${X^0}^r$ and the channel-irreducible vertex $\Gamma^r$
+An essential formalism in many-body physics, the Bethe-Salpeter equation (BSE) relates the full vertex $F^r$, the bare susceptibility ${X^0}^r$ and the channel-irreducible vertex $\Gamma^r$
 $$
     F^r_{\nu\nu'\omega} = \Gamma^r_{\nu\nu'\omega} + \frac{1}{\beta^2}\sum_{\nu''\nu'''} F^r_{\nu\nu''\omega} {X^0}^r_{\nu''\nu'''\omega} \Gamma^r_{\nu'''\nu'\omega}.
 $$
@@ -10,12 +28,12 @@ The sum term is equal to the channel-reducible vertex $\Phi^r \equiv F^r_{\nu\nu
 Here, $r$ denotes one of four (density $r=d$, magnetic $r=m$, singlet $r=s$, triplet $r=t$) channels, $\nu$ (and its primed variants) a fermionic Matsubara frequency (of the form $(2n+1)\pi/\beta$ for some integer $n$) and $\omega$ a bosonic Matsubara frequency (of the form $2m\pi/\beta$ for some integer $m$).
 The sums are performed over all fermionic frequencies and $\beta = 1/T$ is inverse temperature.
 
-If we chose to straightforwardly represent our quantities by sampling them in a box centered on the origin, the BSE would be easy to implement: For each bosonic frequency, two matrix-matrix multiplications would suffice.
-But as this strategy sooner rather than later hits a wall in terms of computing power and memory requirements when approaching lower temperatures, where a larger frequency box is required to yield the same accuracy target in the BSE, people have been looking for alternative solutions for some time. (TODO: sources)
+If we chose to straightforwardly represent our quantities by sampling them in a box centered on the origin, the BSE would be easy to implement: For each bosonic frequency, two matrix-matrix multiplications ($X^0$ is diagonal in $\nu$ and $\nu´$, so in practice only one matrix-matrix multiplication and one elementwise multiplication are performed; but the point here is that there are matrix-matrix multiplications to do) would suffice.
+But as this strategy sooner rather than later hits a wall in terms of computing power and memory requirements when approaching lower temperatures, where a larger frequency box is required to yield the same accuracy target in the BSE, people have been looking for alternative solutions for some time, resulting e.g. in the development of the sparse intermediate representation [@shinaoka2017compressing; @Li:2020eu; @Wallerberger2023].
 
 ## Quantics tensor trains
 
-In the present work, we utilize a quantics tensor train (QTT) representation [@Shinaoka2023].
+We utilize a quantics tensor train (QTT) representation [@Shinaoka2023].
 A function of a single Matsubara frequency $f_\nu$ can be approximately represented by its values on a $2^R$-frequency mesh $\nu \in \{\pi/\beta, 3\pi/\beta, \ldots, (2^{R+1} - 1)\pi/\beta\}$ (in practice, the frequency box is usually centered on the origin) where $R \in \mathbb{N}$ controls the accuracy of the representation.
 Each such $\nu$ can be written as
 $$
@@ -26,18 +44,20 @@ Thus $f$ can be viewed as an order-$R$ tensor,
 $$
     f_\nu = f_{\nu_1\nu_2\ldots\nu_R}
 $$
-which then allows us to perform SVD and convert it into a tensor train (also known as multi-particle state or MPS)
+which then allows us to perform SVD and convert it into a tensor train (also known as matrix-product state or MPS)
 $$
     f_{\nu_1\nu_2\ldots\nu_R} \approx \sum_{\alpha_1=1}^{D_1} \cdots \sum_{\alpha_{R-1}=1}^{D_{R-1}} f^{(1)}_{\nu_1,1\alpha_1} f^{(2)}_{\nu_2,\alpha_1\alpha_2} \cdots f^{(R)}_{\nu_R,\alpha_{R-1}1}. 
 $$
 Here, $f^{(r)}_{\nu_r,\alpha_{r-1}\alpha_{r}}$ is a $2 \times D_{r-1} \times D_r$ tensor and $D_r$ is the bond dimension between two neighboring tensors.
 We call $\alpha_r$ the bond (or internal) indices, $\nu_r$ the local (or external) indices and $D = \max_r D_r$ the tensor train's bond dimension.
 If it is high enough, $D \sim 2^R$, the tensor is represented exactly, but to compress the original function, we can truncate the tensor and throw away unimportant information.
-We will not go into the details of how to find the tensor train representation here, but suffice it to say we employ Tensor cross interpolation (TCI) [@Ritter2024].
+We will not go into the details of how to find the tensor train representation here, but suffice it to say we employ Tensor cross interpolation (TCI) [@Ritter2024] here.
+This detail however is not essential, we could very well replace TCI by a different method (e.g. SVD);
+a specific feature of TCI that should be mentioned is that it uses the maximum norm to adjust the truncation to a given (requested) tolerance level.
 
-### Multi-particle operators
+### Matrix-product operators
 
-A very similar concept is that of an multi-particle operator (MPO), which consists of order 4 tensors and has two external indices per tensor.
+A very similar concept is that of an matrix-product operator (MPO), which consists of order 4 tensors and has two external indices per tensor.
 As the name implies, an MPO can be multiplied onto an MPS (or another MPO), being analogous to a matrix if MPSs are viewed as analogous to vectors:
 $$
 \begin{aligned}
@@ -94,21 +114,27 @@ The idea here is that in this way, we resolve more finely regions of the domain 
 Of course, on the other hand, now multiplication becomes more involved.
 Although they live on the same domain, multiplier and multiplicand are in general going to consist of different patches, so when multiplying we iterate over both sets of patches and test for overlapping patches which can then be multiplied as usual.
 
-## Demonstration
+# Demonstration
 
 We would now like to demonstrate the discussed techniques.
-To this end, we choose the Hubbard Atom (############## TODO: intro Hubbard model?), where exact expressions for all quantities are known [@Thunstroem:PRB18] and implemented in the package `HubbardAtoms.jl`.
+To this end, we choose the Hubbard Atom [@Hubbard1963], where exact expressions for all quantities are known [@Thunstroem:PRB18] and implemented in the package `HubbardAtoms.jl`.
 
 A host of Julia packages is necessary:
 
 
 ```julia
-import QuanticsGrids as QG     # utilities for handling quantics representations
-import TCIAlgorithms as TCIA   # implementation of patching
-using HubbardAtoms             # exact results for the Hubbard atom
-using SparseIR                 # provides the MatsubaraFreq types used in the HubbardAtoms package
-using Quantics                 # high-level API for performing operations in QTT
-using ITensors                 # efficient tensor computations and tensor network calculations
+import QuanticsGrids as QG     
+# utilities for handling quantics representations
+import TCIAlgorithms as TCIA   
+# implementation of patching
+using HubbardAtoms             
+# exact results for the Hubbard atom
+using SparseIR                 
+# provides the MatsubaraFreq types used in the HubbardAtoms package
+using Quantics                 
+# high-level API for performing operations in QTT
+using ITensors                 
+# efficient tensor computations and tensor network calculations
 ```
 
 We can now use `QuanticsGrids.jl` to create a grid in the shape of a $R \times R \times R$ cube almost centered on the origin of "fermionic × fermionic × bosonic" Matsubara frequency space.
@@ -123,7 +149,8 @@ Later, interoperation between `TCIAlgorithms.jl` and `ITensors.jl` will be neces
 ```julia
 function setup(R=4)
     N = 2^R
-    grid = QG.InherentDiscreteGrid{3}(R, (-N + 1, -N + 1, -N); step=2, unfoldingscheme=:fused)
+    grid = QG.InherentDiscreteGrid{3}(R, (-N + 1, -N + 1, -N);
+        step=2, unfoldingscheme=:fused)
 
     sitesv = [Index(2, "v=$r") for r in 1:R]
     sitesv´ = [Index(2, "v´=$r") for r in 1:R]
@@ -143,9 +170,12 @@ Here, we also absorb the factor of $1 / \beta^2$ that appears in the BSE into th
 function makeverts(U, beta, ch, grid)
     model = HubbardAtom(U, beta)
 
-    fq_full(v, v´, w) = real(full_vertex(ch, model, (FermionicFreq(v), FermionicFreq(v´), BosonicFreq(w))))
-    fq_chi0(v, v´, w) = 1 / beta^2 * real(chi0(ch, model, (FermionicFreq(v), FermionicFreq(v´), BosonicFreq(w))))
-    fq_gamma(v, v´, w) = real(gamma(ch, model, (FermionicFreq(v), FermionicFreq(v´), BosonicFreq(w))))
+    matsubara(v, v´, w) = (FermionicFreq(v), FermionicFreq(v´), BosonicFreq(w))
+
+    fq_full(v, v´, w) = real(full_vertex(ch, model, matsubara(v, v´, w)))
+    fq_chi0(v, v´, w) = 1 / beta^2 * real(chi0(ch, model, matsubara(v, v´, w)))
+    fq_gamma(v, v´, w) = real(gamma(ch, model, matsubara(v, v´, w)))
+    
     plainfuncs = (; fq_full, fq_chi0, fq_gamma)
 
     fI_full = QG.quanticsfunction(Float64, grid, fq_full)
@@ -163,32 +193,31 @@ For this purpose, it contains a `Projector` which can be thought of as restricti
 A worked example will clarify this idea. For illustration, let's assume quantics, i.e. the tensors represent functions:
 
 ```julia
-localdims = [2, 2, 2]                                   # We work in one dimension with R = 3,
-                                                        # i.e. a sequence of 2^R = 8 points on a line.
-                                                        # Thinking of the interval [0.0, 1.0], the
-                                                        # point 0.0 would be represented by [1, 1, 1];
-                                                        # 0.25 would be [1, 2, 1] and 0.875 [2, 2, 2].
+localdims = [2, 2, 2]
+#= We work in one dimension with R = 3, i.e. a sequence of 2^R = 8 points on a
+   line. Thinking of the interval [0.0, 1.0], the point 0.0 would be represented
+   by [1, 1, 1]; 0.25 would be [1, 2, 1] and 0.875 [2, 2, 2]. =#
 sitedims = [[x] for x in localdims]
-projector = TCIA.Projector([[1], [0], [0]], sitedims)   # This projector restricts the function's domain
-                                                        # to the first half of the interval, i.e. [0.0, 0.5).
-                                                        # If we had used e.g. [[1], [2], [0]], only the
-                                                        # second quarter of points would give nonzero
-                                                        # results on evaluation. So a 0 means no restriction.
+projector = TCIA.Projector([[1], [0], [0]], sitedims)
+#= This projector restricts the function's domain to the first half of the
+   interval, i.e. [0.0, 0.5). If we had used e.g. [[1], [2], [0]], only the
+   second quarter of points would give nonzero results on evaluation. So a 0
+   means no restriction. =#
 
-simple_evaluator(x) = sum(x)
-projectable_evaluator = TCIA.makeprojectable(Float64, simple_evaluator, localdims)
-projected_evaluator = TCIA.project(projectable_evaluator, projector)
+simpleevaluator(x) = sum(x)
+projectableevaluator = TCIA.makeprojectable(Float64, simpleevaluator, localdims)
+projectedevaluator = TCIA.project(projectableevaluator, projector)
 
-@show projected_evaluator([1, 1, 1])                    # Evaluate on [1, 1, 1] = 0.0
-@show projected_evaluator([2, 1, 1])                    # Evaluate on [2, 1, 1] = 0.5
-@show projected_evaluator([2, 2, 1])                    # Evaluate on [2, 2, 1] = 0.75
+@show projectedevaluator([1, 1, 1])   # Evaluate on [1, 1, 1] = 0.0
+@show projectedevaluator([2, 1, 1])   # Evaluate on [2, 1, 1] = 0.5
+@show projectedevaluator([2, 2, 1])   # Evaluate on [2, 2, 1] = 0.75
 ```
 
 Result:
 ```julia
-projected_evaluator([1, 1, 1]) = 3.0
-projected_evaluator([2, 1, 1]) = 0.0
-projected_evaluator([2, 2, 1]) = 0.0
+projectedevaluator([1, 1, 1]) = 3.0
+projectedevaluator([2, 1, 1]) = 0.0
+projectedevaluator([2, 2, 1]) = 0.0
 ```
 Note: As the name implies, `makeprojectable`'s result is projectable, but not yet projected.
 
@@ -199,17 +228,20 @@ Principally this contains an array of `ProjTensorTrain`s -- each of which repres
 ```julia
 function interpolateverts(quanticsfuncs, grid, maxbonddim, sites)
     (; fI_full, fI_chi0, fI_gamma) = quanticsfuncs
-    
+
     localdims = dim.(sites.sitesfused)
     projectable_full = TCIA.makeprojectable(Float64, fI_full, localdims)
     projectable_chi0 = TCIA.makeprojectable(Float64, fI_chi0, localdims)
     projectable_gamma = TCIA.makeprojectable(Float64, fI_gamma, localdims)
-    
-    initialpivots = [QG.origcoord_to_quantics(grid, 0)] # approximate center of grid
-    full_patches = TCIA.adaptiveinterpolate(projectable_full; maxbonddim, initialpivots)
-    chi0_patches = TCIA.adaptiveinterpolate(projectable_chi0; maxbonddim, initialpivots)
-    gamma_patches = TCIA.adaptiveinterpolate(projectable_gamma; maxbonddim, initialpivots)
-    
+
+    initialpivots = [QG.origcoord_to_quantics(grid, 0)] # approximate center
+    full_patches = TCIA.adaptiveinterpolate(projectable_full;
+                                            maxbonddim, initialpivots)
+    chi0_patches = TCIA.adaptiveinterpolate(projectable_chi0;
+                                            maxbonddim, initialpivots)
+    gamma_patches = TCIA.adaptiveinterpolate(projectable_gamma;
+                                            maxbonddim, initialpivots)
+
     sitedims = [dim.(s) for s in sites.sitesfused]
     full_patches = reshape(full_patches, sitedims)
     chi0_patches = reshape(chi0_patches, sitedims)
@@ -226,7 +258,10 @@ For technical reasons, This requires a couple of steps:
 1. Convert `ProjContainer{ProjTensorTrain}` into `ProjMPSContainer`, essentially a `Vector{ProjMPS}`. `ProjMPS` is backed by `ITensors.MPS` which supports tensors of heterogeneous order within a single tensor train. The following steps are performed for each tensor train/patch.
 2. Separate off the $\omega$ indices into their own tensors:
     $$
-        F_{\nu\nu'\omega} = \sum_{\alpha_1,\ldots,\alpha_{R-1}} F^{(1)}_{(\nu_1,\nu_1',\omega_1),1\alpha_1} \cdots F^{(R)}_{(\nu_R,\nu_R',\omega_R),\alpha_{R-1}1} \longrightarrow \sum_{\alpha_1,\ldots,\alpha_{2R-1}} F^{(1)}_{(\nu_1,\nu_1'),1\alpha_1} F^{(2)}_{\omega_1,\alpha_1\alpha_2} \cdots F^{(2R-1)}_{(\nu_R,\nu_R'),\alpha_{2R-2}\alpha_{2R-1}} F^{(2R)}_{\omega_R,\alpha_{2R-1}1}
+    \begin{aligned}
+        F_{\nu\nu'\omega} =& \sum_{\alpha_1,\ldots,\alpha_{R-1}} F^{(1)}_{(\nu_1,\nu_1',\omega_1),1\alpha_1} \cdots F^{(R)}_{(\nu_R,\nu_R',\omega_R),\alpha_{R-1}1} \\
+        \longrightarrow& \sum_{\alpha_1,\ldots,\alpha_{2R-1}} F^{(1)}_{(\nu_1,\nu_1'),1\alpha_1} F^{(2)}_{\omega_1,\alpha_1\alpha_2} \cdots F^{(2R-1)}_{(\nu_R,\nu_R'),\alpha_{2R-2}\alpha_{2R-1}} F^{(2R)}_{\omega_R,\alpha_{2R-1}1}
+    \end{aligned}
     $$
 3. Make the new "$\omega$-tensors" diagonal by adding an additional $\omega'$ index, i.e.
    $$
@@ -292,12 +327,16 @@ function calculatebse(pttfuncs, diagonal_sites, maxbonddim, sites)
     (; full_ptt, chi0_ptt, gamma_ptt) = pttfuncs
     pordering = TCIA.PatchOrdering(collect(eachindex(diagonal_sites)))
 
-    chi0_gamma_ptt = TCIA.adaptivematmul(chi0_ptt, gamma_ptt, pordering; maxbonddim)
-    phi_bse_diagonal = TCIA.adaptivematmul(full_ptt, chi0_gamma_ptt, pordering; maxbonddim)
+    chi0_gamma_ptt = TCIA.adaptivematmul(chi0_ptt, gamma_ptt, pordering;
+                                         maxbonddim)
+    phi_bse_diagonal = TCIA.adaptivematmul(full_ptt, chi0_gamma_ptt, pordering;
+                                           maxbonddim)
 
-    phi_bse_diagonal_projmps = TCIA.ProjMPSContainer(Float64, phi_bse_diagonal, diagonal_sites)
+    phi_bse_diagonal_projmps = TCIA.ProjMPSContainer(Float64, phi_bse_diagonal,
+                                                     diagonal_sites)
     phi_bse_projmps_vv´_w = Quantics.extractdiagonal(phi_bse_diagonal_projmps, "w")
-    phi_bse_projmps_vv´w = Quantics.rearrange_siteinds(phi_bse_projmps_vv´_w, sites.sitesfused)
+    phi_bse_projmps_vv´w = Quantics.rearrange_siteinds(phi_bse_projmps_vv´_w,
+                                                       sites.sitesfused)
     phi_bse = TCIA.ProjTTContainer{Float64}(phi_bse_projmps_vv´w)
 
     return phi_bse
@@ -321,7 +360,10 @@ function comparereference(phi_bse, plainfuncs, grid)
     box = [(v, v´, w) for v in vv, v´ in v´v´, w in ww]
 
     (; fq_full, fq_chi0, fq_gamma) = plainfuncs
-    phi_normalmul = [sum(fq_full(v, v´´, w) * fq_chi0(v´´, v´´´, w) * fq_gamma(v´´´, v´, w) for v´´ in vv, v´´´ in vv) for (v, v´, w) in box]
+    bse_formula(v, v´, w) = sum(fq_full(v, v´´, w) *
+                                fq_chi0(v´´, v´´´, w) *
+                                fq_gamma(v´´´, v´, w) for v´´ in vv, v´´´ in vv)
+    phi_normalmul = map(splat(bse_formula), box)
 
     phi_adaptivemul = [phi_bse(QG.origcoord_to_quantics(grid, p)) for p in box]
 
@@ -343,7 +385,7 @@ function main(U, beta, ch, R, maxbonddim)
 end;
 ```
 
-We perform the comparison in all four frequency channels at $U = 3$, $\beta = 10$ with $R = 4$ (so $(2^4)^3 = 4096$ frequency points) and $D_\mathrm{max} = 40$.
+We perform the comparison in all four spin-frequency channels at $U = 3$, $\beta = 10$ with $R = 4$ (so $(2^4)^3 = 4096$ frequency points) and $D_\mathrm{max} = 40$.
 
 
 ```julia
@@ -361,15 +403,15 @@ end
 ```
 
     Channel			Error
-    DensityChannel()	3.665197053316107e-14
-    MagneticChannel()	1.0741499112381893e-14
-    SingletChannel()	2.3858289908619767e-14
+    DensityChannel()	2.9723290663545913e-14
+    MagneticChannel()	1.1061414268852963e-14
+    SingletChannel()	2.3590018282960624e-14
     TripletChannel()	2.384282932831692e-15
 
 
 Results from our implementation are up to floating point accuracy identical to the reference.
 
-## Scaling analysis
+# Scaling analysis
 
 To see how the number of patches we create depends on $R$ and on $D_\mathrm{max}$, we set $U=1$ and $\beta = 1.3$ and `adaptiveinterpolate` the full vertex in the density channel $F^{\mathrm{d}}$.
 
@@ -380,7 +422,7 @@ using CairoMakie          # plotting library
 
 
 ```julia
-function numpatches(R, maxbonddim)
+function numpatches(R, maxbonddim, tolerance=1e-8)
     grid, sites = setup(R)
 
     U = 1.0
@@ -389,10 +431,12 @@ function numpatches(R, maxbonddim)
     _, quanticsfuncs = makeverts(U, beta, ch, grid)
 
     localdims = dim.(sites.sitesfused)
-    projectable_full = TCIA.makeprojectable(Float64, quanticsfuncs.fI_full, localdims)
+    projectable_full = TCIA.makeprojectable(Float64, quanticsfuncs.fI_full,
+                                            localdims)
 
     initialpivots = [QG.origcoord_to_quantics(grid, 0)]
-    full_patches = TCIA.adaptiveinterpolate(projectable_full; maxbonddim, initialpivots)
+    full_patches = TCIA.adaptiveinterpolate(projectable_full;
+                                            maxbonddim, initialpivots, tolerance)
 
     sitedims = [dim.(s) for s in sites.sitesfused]
     full_patches = reshape(full_patches, sitedims)
@@ -404,7 +448,7 @@ First, we fix $D_\mathrm{max} = 30$ and vary $R$ from $2$ to $8$.
 
 
 ```julia
-Rs = 2:8
+Rs = 2:10
 R_npatches = numpatches.(Rs, 30);
 ```
 
@@ -412,20 +456,62 @@ R_npatches = numpatches.(Rs, 30);
 ```julia
 xlabel = L"Meshsize $R$"
 ylabel = L"Number of patches in $F^{\mathrm{d}}$"
-scatter(Rs, R_npatches, axis=(; xlabel, ylabel, yscale=log10))
+scatter(Rs, R_npatches,
+        axis=(;
+            xlabel, ylabel, yscale=log10,
+            title=L"Tolerance = $10^{-8}$"))
 ```
 
 
-<img width=600 height=450 style='object-fit: contain; height: auto;'  src="imgs/image_Kz3QL01W.png">/>
+```{=latex}
+\begin{center}
+```
+
+![](/tmp/jl_BQBwD8boRs){ height=40% } 
+
+```{=latex}
+\end{center}
+```
 
 
-The number of patches created seems to go roughly exponentially with $R$.
-
-Next, we fix $R = 6$ and vary $D_\mathrm{max}$ from $10$ to $80$.
+The number of patches created seems to go roughly exponentially with $R$ at the start and level off at higher values.
+To try and see if it saturates eventually, we increase the tolerance used in interpolating the vertex from the default value $10^{-8}$ to $10^{-4}$, enabling us to compute higher $R$ values in a reasonable time.
 
 
 ```julia
-maxbonddims = 10:2:80
+R_hightols = 2:18
+R_hightol_npatches = numpatches.(R_hightols, 30, 1e-4);
+```
+
+
+```julia
+xlabel = L"Meshsize $R$"
+ylabel = L"Number of patches in $F^{\mathrm{d}}$"
+scatter(R_hightols, R_hightol_npatches,
+        axis=(; 
+            xlabel, ylabel, yscale=log10,
+            title=L"Tolerance = $10^{-4}$"))
+```
+
+
+```{=latex}
+\begin{center}
+```
+
+![](/tmp/jl_JUvQFYJC7O){ height=40% } 
+
+```{=latex}
+\end{center}
+```
+
+
+While not completely saturating, the growth rate of the number of patches continues to slow.
+
+Next, we fix $R = 6$ and vary $D_\mathrm{max}$ from $10$ to $120$.
+
+
+```julia
+maxbonddims = 10:2:120
 maxbonddim_npatches = numpatches.(6, maxbonddims);
 ```
 
@@ -433,147 +519,119 @@ maxbonddim_npatches = numpatches.(6, maxbonddims);
 ```julia
 xlabel = L"Max Bond Dimension $D_\mathrm{max}$"
 ylabel = L"Number of patches in $F^{\mathrm{d}}$"
-scatter(maxbonddims, maxbonddim_npatches, axis=(; xlabel, ylabel))
+scatter(maxbonddims, maxbonddim_npatches,
+        axis=(; xlabel, ylabel))
 ```
 
 
-<img width=600 height=450 style='object-fit: contain; height: auto;'  src="imgs/image_DSdxPLgK.png">/>
+```{=latex}
+\begin{center}
+```
+
+![](/tmp/jl_3EBcJkxmVk){ height=40% } 
+
+```{=latex}
+\end{center}
+```
 
 
-The number of patches decreases linearly with increasing bond dimension $D_\mathrm{max}$ before reaching and staying at 8 around $D_\mathrm{max} = 66$.
+The number of patches decreases linearly with increasing bond dimension $D_\mathrm{max}$ before reaching 8 at $D_\mathrm{max} = 65$.
+The bond dimension necessary to cover the entire box with a single tensor train at the requested accuracy of $10^{-8}$ is $D = 267$, so:
+
+
+```julia
+@show numpatches(6, 266)
+@show numpatches(6, 267);
+```
+
+    numpatches(6, 266) = 8
+    numpatches(6, 267) = 1
+
+
+# Conclusion
+
+The presented technology is but one piece in the puzzle that is a larger effort of pushing the envelope in solving the Parquet equations.
+There remains much to be done, including things currently being worked on: For example, the Parquet equation itself requires an efficient way of applying frequency shifts to vertices in QTT form.
+Once all these pieces are available, we are confident hitherto unthinkable parameter regimes will become accessible.
 
 <!--
 
 
 ```julia
-# automatic document conversion to markdown and then to word
-# first convert the ipython notebook paper.ipynb to markdown
+# automatic document conversion to markdown and then to pdf
 
 run(`jupyter nbconvert --to markdown bse_3d.ipynb`)
 
-# using Base64
+using Base64
 
-# function extract_images(markdown_file::String, output_dir::String)
-#     content = read(markdown_file, String)
-
-#     # Create output directory if it doesn't exist
-#     mkpath(output_dir)
-
-#     function replace_image(match)
-#         img_attrs = match.captures[1]
-#         base64_data = match.captures[2]
-
-#         image_data = base64decode(strip(split(base64_data, ',', limit=2)[2]))
-        
-#         # Determine file extension based on the base64 data
-#         ext = if startswith(base64_data, "data:image/png")
-#             ".png"
-#         elseif startswith(base64_data, "data:image/jpeg")
-#             ".jpg"
-#         else
-#             ".bin"  # fallback extension
-#         end
-        
-#         filename = "image_$(randstring(8))$ext"
-#         filepath = joinpath(output_dir, filename)
-        
-#         write(filepath, image_data)
-        
-#         # Preserve original attributes, but update src
-#         return "<img $img_attrs src=\"$filepath\">"
-#     end
-
-#     # Replace base64 images with file references
-#     pattern = r"<img\s([^>]*)src=\"(data:image/[^;]+;base64,[^\"]+)\""
-#     new_content = replace(content, pattern => replace_image)
-
-#     # Write the updated content back to the file
-#     #write(markdown_file, new_content)
-
-#     # println("Images extracted to $output_dir")
-# end
-
-function extract_images(markdown_file::String, output_dir::String)
+function extract_images(markdown_file::String)
     content = read(markdown_file, String)
-
-    # Create output directory if it doesn't exist
-    mkpath(output_dir)
+    pattern = r"<img\s[^>]*src=\"data:image/[^;]+;base64,[^\"]+\"/>"
 
     function replace_image(sstring::SubString{String})
-        # Parse the match string to extract img_attrs and base64_data
         m = match(r"<img\s([^>]*)src=\"(data:image/[^;]+;base64,[^\"]+)\"", sstring)
-        if m === nothing
-            @warn "Failed to parse image tag: $sstring"
-            return sstring  # Return the original match if parsing fails
-        end
-        
-        img_attrs, base64_data = m.captures
-        
-        # Split the base64 data string
+        _, base64_data = m.captures
+
         parts = split(base64_data, ',', limit=2)
-        if length(parts) < 2
-            @warn "Unexpected base64 data format: $base64_data"
-            return sstring  # Return the original match if we can't process it
-        end
-        
-        image_data = try
-            base64decode(strip(parts[2]))
-        catch e
-            @warn "Failed to decode base64 data: $e"
-            return sstring  # Return the original match if decoding fails
-        end
-        
-        # Determine file extension based on the base64 data
-        ext = if occursin("image/png", parts[1])
-            ".png"
-        elseif occursin("image/jpeg", parts[1])
-            ".jpg"
-        else
-            ".bin"  # fallback extension
-        end
-        
-        filename = "image_$(randstring(8))$ext"
-        filepath = joinpath(output_dir, filename)
-        
-        try
-            write(filepath, image_data)
-        catch e
-            @warn "Failed to write image file $filepath: $e"
-            return sstring  # Return the original match if file writing fails
-        end
-        
-        # Preserve original attributes, but update src
-        return "<img $img_attrs src=\"$filepath\">"
+        image_data = base64decode(strip(parts[2]))
+
+        filepath = tempname()
+        write(filepath, image_data)
+
+        return """```{=latex}
+            \\begin{center}
+            ```
+
+            ![]($filepath){ height=40% } 
+
+            ```{=latex}
+            \\end{center}
+            ```"""
     end
 
-    # Replace base64 images with file references
-    pattern = r"<img\s[^>]*src=\"data:image/[^;]+;base64,[^\"]+\""
     new_content = replace(content, pattern => replace_image)
 
-    # Write the updated content back to the file
     write(markdown_file, new_content)
-
-    println("Images extracted to $output_dir")
 end
 
-# Usage
-extract_images("bse_3d.md", "imgs")
-# next convert markdown to pdf
-run(`pandoc -s bse_3d.md -t pdf -o bse_3d.pdf --citeproc --bibliography="refs.bib" --csl="american-physics-society.csl" --standalone --extract-media=imgs/`)
+extract_images("bse_3d.md")
+
+function addheader(markdown_file::String)
+    content = read(markdown_file, String)
+    header = """
+---
+title: "Adaptive distribution of quantics tensor trains contraction into subdomains with controlled bond dimension"
+author: "Samuel Badr"
+date: "2024-10-17"
+reference-section-title: "References"
+bibliography: refs.bib
+csl: american-physics-society.csl
+link-citations: true
+supervisor: "Prof. Anna Kauch"
+university: "TU Wien"
+
+---
+
+"""
+    content = header * content
+    write(markdown_file, content)
+end
+
+addheader("bse_3d.md")
+
+run(`pandoc -s bse_3d.md -t pdf -o bse_3d.pdf --citeproc --bibliography="refs.bib" --csl="american-physics-society.csl" --standalone -V geometry:margin=1.25in`)
 ```
+
+    [NbConvertApp] Converting notebook bse_3d.ipynb to markdown
+    [NbConvertApp] Support files will be in bse_3d_files/
+    [NbConvertApp] Making directory bse_3d_files
+    [NbConvertApp] Making directory bse_3d_files
+    [NbConvertApp] Making directory bse_3d_files
+    [NbConvertApp] Writing 175070 bytes to bse_3d.md
+
+
+
+    Process(`[4mpandoc[24m [4m-s[24m [4mbse_3d.md[24m [4m-t[24m [4mpdf[24m [4m-o[24m [4mbse_3d.pdf[24m [4m--citeproc[24m [4m--bibliography=refs.bib[24m [4m--csl=american-physics-society.csl[24m [4m--standalone[24m [4m-V[24m [4mgeometry:margin=1.25in[24m`, ProcessExited(0))
+
 
 -->
-
-
-```julia
-replace("abcdefghi", r"(b)(.)(.)" => (x -> x[3]^4))
-```
-
-
-    "addddefghi"
-
-
-
-```julia
-
-```
