@@ -1,19 +1,13 @@
 ---
-title: "Adaptive distribution of quantics tensor trains contraction into subdomains with controlled bond dimension"
-author: "Samuel Badr"
-date: "2024-10-17"
 reference-section-title: "References"
 bibliography: refs.bib
 csl: american-physics-society.csl
 link-citations: true
-supervisor: "Prof. Anna Kauch"
-university: "TU Wien"
-
+papersize: a4
 ---
-
 # Introduction and Motivation
 
-This work arose out of the need to compute the Bethe-Salpeter equation (BSE) in the context of the input vertex functions being represented by quantics tensor trains (QTTs).
+This work arose out of the need to compute the Bethe-Salpeter equation (BSE) for input vertex functions represented by quantics tensor trains (QTTs).
 Existing implementations, for example in `ITensors.jl`, struggle with high bond dimensions $D$, with the important contraction operation becoming inefficient at around $D \gtrsim 150$.
 To adress this and simultaneously enable parallelization, we introduce adaptive patching, replacing the monolithic tensor train by a composite made up of a collection of tensor trains, each with a smaller bond dimension and covering a subdomain.
 Because the Bethe-Salpeter equation from a computational point of view consists of a series of matrix multiplications (which are equivalent to tensor train contractions), the work done here has a broad field of potential applications.
@@ -25,11 +19,12 @@ $$
     F^r_{\nu\nu'\omega} = \Gamma^r_{\nu\nu'\omega} + \frac{1}{\beta^2}\sum_{\nu''\nu'''} F^r_{\nu\nu''\omega} {X^0}^r_{\nu''\nu'''\omega} \Gamma^r_{\nu'''\nu'\omega}.
 $$
 The sum term is equal to the channel-reducible vertex $\Phi^r \equiv F^r_{\nu\nu'\omega} - \Gamma^r_{\nu\nu'\omega}$.
-Here, $r$ denotes one of four (density $r=d$, magnetic $r=m$, singlet $r=s$, triplet $r=t$) channels, $\nu$ (and its primed variants) a fermionic Matsubara frequency (of the form $(2n+1)\pi/\beta$ for some integer $n$) and $\omega$ a bosonic Matsubara frequency (of the form $2m\pi/\beta$ for some integer $m$).
+Here, $r$ denotes one of four (density $r=d$, magnetic $r=m$, singlet $r=s$, triplet $r=t$) channels, $\nu$ and $\nu'$ fermionic Matsubara frequencies (i.e. $\nu = (2n+1)\pi/\beta$ for some integer $n$) and $\omega$ a bosonic Matsubara frequency ($\omega = 2m\pi/\beta$ for some integer $m$).
 The sums are performed over all fermionic frequencies and $\beta = 1/T$ is inverse temperature.
 
-If we chose to straightforwardly represent our quantities by sampling them in a box centered on the origin, the BSE would be easy to implement: For each bosonic frequency, two matrix-matrix multiplications ($X^0$ is diagonal in $\nu$ and $\nu´$, so in practice only one matrix-matrix multiplication and one elementwise multiplication are performed; but the point here is that there are matrix-matrix multiplications to do) would suffice.
-But as this strategy sooner rather than later hits a wall in terms of computing power and memory requirements when approaching lower temperatures, where a larger frequency box is required to yield the same accuracy target in the BSE, people have been looking for alternative solutions for some time, resulting e.g. in the development of the sparse intermediate representation [@shinaoka2017compressing; @Li:2020eu; @Wallerberger2023].
+If we chose to straightforwardly represent our quantities by sampling them in a box centered at the origin, the BSE would be easy to implement: For each bosonic frequency, two matrix-matrix multiplications would suffice ($X^0$ is diagonal in $\nu''$ and $\nu'''$, so in practice only one matrix-matrix multiplication and one elementwise multiplication are performed; but the point here is that there are matrix-matrix multiplications to do).
+But, this strategy sooner rather than later hits a wall in terms of computing power and memory requirements when approaching lower temperatures, where a larger frequency box is required to yield the same accuracy target in the BSE.
+Hence, people have been looking for alternative solutions for some time, resulting e.g. in the development of the sparse intermediate representation [@shinaoka2017compressing; @Li:2020eu; @Wallerberger2023].
 
 ## Quantics tensor trains
 
@@ -37,7 +32,7 @@ We utilize a quantics tensor train (QTT) representation [@Shinaoka2023].
 A function of a single Matsubara frequency $f_\nu$ can be approximately represented by its values on a $2^R$-frequency mesh $\nu \in \{\pi/\beta, 3\pi/\beta, \ldots, (2^{R+1} - 1)\pi/\beta\}$ (in practice, the frequency box is usually centered on the origin) where $R \in \mathbb{N}$ controls the accuracy of the representation.
 Each such $\nu$ can be written as
 $$
-    \nu = \left(\nu_1 2^R + \nu_2 2^{R-1} + \ldots + \nu_R + 1\right)\pi/\beta
+    \nu = \left(\nu_1 2^R + \nu_2 2^{R-1} + \ldots + \nu_R + 1\right)\pi/\beta \equiv (\nu_1\nu_2\ldots\nu_R)_2
 $$
 where the $\nu_r \in \{0, 1\}$ are binary variables.
 Thus $f$ can be viewed as an order-$R$ tensor,
@@ -51,13 +46,17 @@ $$
 Here, $f^{(r)}_{\nu_r,\alpha_{r-1}\alpha_{r}}$ is a $2 \times D_{r-1} \times D_r$ tensor and $D_r$ is the bond dimension between two neighboring tensors.
 We call $\alpha_r$ the bond (or internal) indices, $\nu_r$ the local (or external) indices and $D = \max_r D_r$ the tensor train's bond dimension.
 If it is high enough, $D \sim 2^R$, the tensor is represented exactly, but to compress the original function, we can truncate the tensor and throw away unimportant information.
-We will not go into the details of how to find the tensor train representation here, but suffice it to say we employ Tensor cross interpolation (TCI) [@Ritter2024] here.
+We will not go into the details of how to find the tensor train representation here, but it suffices to say we employ tensor cross interpolation (TCI) [@Ritter2024] here.
 This detail however is not essential, we could very well replace TCI by a different method (e.g. SVD);
 a specific feature of TCI that should be mentioned is that it uses the maximum norm to adjust the truncation to a given (requested) tolerance level.
 
 ### Matrix-product operators
 
-A very similar concept is that of an matrix-product operator (MPO), which consists of order 4 tensors and has two external indices per tensor.
+A very similar concept is that of an matrix-product operator (MPO)
+$$
+    A_\nu^{\nu'} = \sum_{\alpha_{A,1},\ldots,\alpha_{A,R}} A^{(1),\nu_1'}_{\nu_1,1\alpha_{A,1}} A^{(2),\nu_2'}_{\nu_2,\alpha_{A,1}\alpha_{A,2}}  \cdots A^{(R),\nu_R'}_{\nu_R,\alpha_{A,R}1}.
+$$
+Whereas an MPS consists of order 3 tensors (one external and two internal indices), an MPO comprises order 4 tensors (two external and two internal indices).
 As the name implies, an MPO can be multiplied onto an MPS (or another MPO), being analogous to a matrix if MPSs are viewed as analogous to vectors:
 $$
 \begin{aligned}
@@ -68,7 +67,7 @@ $$
 
 ### Multiple variables
 
-To form the MPS of a multivariate function $f_{\nu\nu'}$, we have two choices:
+To form the MPS of a multivariate function $f_{\nu\nu'}$, we have two choices (with $\nu = (\nu_1\nu_2\ldots\nu_R)_2$ and $\nu' = (\nu'_1\nu'_2\ldots\nu'_R)_2$):
 
 - Interleaved representation: $2R$ tensors of dimension $2 \times D_{r-1} \times D_r$.
     $$
@@ -84,11 +83,12 @@ In the following, we will work in the fused representation.
 ### Multiplication (contraction) of MPSs
 
 For clarity, we will use $i$, $j$ and $k$ in this section instead of $\nu$, $\nu'$ and $\nu''$.
+Given MPSs $f_{ik}$ and $g_{kj}$, contracting them yields a new MPS $h_{ij}$.
 To compute
 $$
     h_{ij} = \sum_k f_{ik} g_{kj},
 $$
-we introduce an auxiliary MPO $\hat{f}$ such that
+we introduce an auxiliary MPO $\hat{f}$ (called that rather than $A$ for its connection to $f$) such that
 $$
     h_{ij} = \sum_{kl} \hat{f}^{kl}_{ij} g_{kl}
 $$
@@ -104,7 +104,7 @@ This enables us to use efficient MPO-MPS multiplication implementations.
 
 ### Adaptive patching
 
-To more efficiently compress the information we handle, we choose a strategy of adaptive patching by setting an upper bound $D_\mathrm{max}$ to the bond dimension $D$.
+To compress the information we handle more efficiently, we choose a strategy of adaptive patching by setting an upper bound $D_\mathrm{max}$ to the bond dimension $D$.
 For illustration, picture a function $f(x, y)$ on a square domain $[0, 1]^2$.
 We generate via TCI an MPS approximating $f$ on a $R \times R$ mesh with a certain measure of precision, discarding rows/columns of its tensors such that the result is equal to $f$ to within a given tolerance.
 Now, if the MPS's bond dimension exceeds $D_\mathrm{max}$, we divide the domain into 4 smaller squares (or "patches") and construct an MPS on each with $R' \times R'$ where $R' = R - 1$, reusing the exact same interpolation points as the original domain.
@@ -112,12 +112,12 @@ We repeat this process, recursively subdividing our domain until the bond dimens
 
 The idea here is that in this way, we resolve more finely regions of the domain where $f$'s complexity is higher and are able to limit the bond dimension in areas of lower complexity, saving memory.
 Of course, on the other hand, now multiplication becomes more involved.
-Although they live on the same domain, multiplier and multiplicand are in general going to consist of different patches, so when multiplying we iterate over both sets of patches and test for overlapping patches which can then be multiplied as usual.
+Although they live on the same domain, multiplier and multiplicand are in general going to consist of different patches, so when multiplying we go over both sets of patches and search for overlapping ones which can then be multiplied as usual.
 
 # Demonstration
 
 We would now like to demonstrate the discussed techniques.
-To this end, we choose the Hubbard Atom [@Hubbard1963], where exact expressions for all quantities are known [@Thunstroem:PRB18] and implemented in the package `HubbardAtoms.jl`.
+To this end, we choose the Hubbard atom [@Hubbard1963], where exact expressions for all quantities are known [@Thunstroem:PRB18] and implemented in the package `HubbardAtoms.jl`.
 
 A host of Julia packages is necessary:
 
@@ -137,13 +137,36 @@ using ITensors
 # efficient tensor computations and tensor network calculations
 ```
 
-We can now use `QuanticsGrids.jl` to create a grid in the shape of a $R \times R \times R$ cube almost centered on the origin of "fermionic × fermionic × bosonic" Matsubara frequency space.
+## Outline
+
+The `main` function will serve to outline our approach:
+- Set up the grid
+- Set up the atomic vertex functions
+- Interpolate the vertices into a patched QTT representation
+- Add indices to prepare the MPSs for contraction
+- Compute BSE
+- Compare result with simple multiplication
+
+
+```julia
+function main(U, beta, ch, R, maxbonddim)
+    grid, sites = setup(R)
+    plainfuncs, quanticsfuncs = makeverts(U, beta, ch, grid)
+    patchesfuncs = interpolateverts(quanticsfuncs, grid, maxbonddim, sites)
+    pttfuncs, diagonal_sites = makevertsdiagonal(patchesfuncs, sites)
+    phi_bse = calculatebse(pttfuncs, diagonal_sites, maxbonddim, sites)
+    error = comparereference(phi_bse, plainfuncs, grid)
+    return error
+end;
+```
+
+In the function `setup` use `QuanticsGrids.jl` to create a grid in the shape of a $R \times R \times R$ cube almost centered on the origin of "fermionic × fermionic × bosonic" Matsubara frequency space.
 "Almost", because by construction the grid consists of an even number of points ($2^R$) in each direction and bosonic Matsubara frequencies are even, so a grid centered on the origin would include an odd number of frequencies.
 This is something that will not affect our calculations in this example however, because we never sum over the bosonic axis.
 If we wanted to do that -- e.g. in implementing the Schwinger-Dyson equation -- special care would need to be taken.
 
 Later, interoperation between `TCIAlgorithms.jl` and `ITensors.jl` will be necessary, so we prepare the relevant `ITensors.Index` objects.
-`zip`ing the indiviual axes' indices together corresponds to creating the indices in the fused representation introduce above.
+Zipping the axes' indices together corresponds to creating the indices in the fused representation introduced above.
 
 
 ```julia
@@ -162,7 +185,7 @@ function setup(R=4)
 end;
 ```
 
-Next, we use `HubbardAtoms.jl` to introduce the exact vertex functions $F$, $X^0$ and $\Gamma$ and wrap them with `QuanticsGrids.quanticsfunction` to take a list of binary indices as input instead of the plain Matsubara frequencies.
+We define `makeverts`, which uses `HubbardAtoms.jl` to introduce the exact vertex functions $F$, $X^0$ and $\Gamma$ and wrap them with `QuanticsGrids.quanticsfunction` to take a list of binary indices as input instead of the plain Matsubara frequencies.
 Here, we also absorb the factor of $1 / \beta^2$ that appears in the BSE into the bare susceptibility for later convenience.
 
 
@@ -187,10 +210,10 @@ function makeverts(U, beta, ch, grid)
 end;
 ```
 
-Because we work in 3 dimensions in the fused representation, the local index' dimension is $2^3 = 8$ for each tensor in the MPS, i.e. `localdims == fill(8, R) == [8, 8, …, 8]`.
-The function `makeprojectable` creates a `ProjectableEvaluatorAdapter`, which represents an object that can be projected on a subset of indices.
+Because we work in 3 frequency dimensions in the fused representation, the local index' dimension is $2^3 = 8$ for each tensor in the MPS, i.e. `localdims == fill(8, R) == [8, 8, …, 8]`.
+Used in the function `interpolateverts`, `makeprojectable` creates a `ProjectableEvaluatorAdapter`, which represents an object that can be projected on a subset of indices.
 For this purpose, it contains a `Projector` which can be thought of as restricting the function's support to a subset of its domain, giving zero elsewhere.
-A worked example will clarify this idea. For illustration, let's assume quantics, i.e. the tensors represent functions:
+A worked example will clarify this idea. For illustration, let us assume quantics, i.e. the tensors represent functions:
 
 ```julia
 localdims = [2, 2, 2]
@@ -253,7 +276,7 @@ function interpolateverts(quanticsfuncs, grid, maxbonddim, sites)
 end;
 ```
 
-As discussed above, to contract two MPSs, we turn the first one into an MPO.
+As discussed above, to contract two MPSs, the function `makevertsdiagonal` turns the first one into an MPO.
 For technical reasons, This requires a couple of steps:
 1. Convert `ProjContainer{ProjTensorTrain}` into `ProjMPSContainer`, essentially a `Vector{ProjMPS}`. `ProjMPS` is backed by `ITensors.MPS` which supports tensors of heterogeneous order within a single tensor train. The following steps are performed for each tensor train/patch.
 2. Separate off the $\omega$ indices into their own tensors:
@@ -316,7 +339,7 @@ Finally, we are now ready to compute the BSE
 $$
     \Phi_{\nu\omega}^{\nu'''\omega'''} = \sum_{\nu'\omega'} F_{\nu\omega}^{\nu'\omega'} \left(\sum_{\nu''\omega''} {X^0}_{\nu'\omega'}^{\nu''\omega''} \Gamma_{\nu''\omega''}^{\nu'''\omega'''} \right)
 $$
-by two applications of `adaptivematmul`, which — like `adaptiveinterpolate` — creates patches as necessary to ensure no bond dimension exceeds $D_\mathrm{max}$.
+in the function `calculatebse` by two applications of `adaptivematmul`, which — like `adaptiveinterpolate` — creates patches as necessary to ensure no bond dimension exceeds $D_\mathrm{max}$.
 To remove the superfluous $\omega'''$ index, we again go through `ProjMPSContainer`.
 First, the diagonals are extracted from the $\omega\omega'$-tensors, and then merged into the $\nu\nu'$-tensors.
 The result is then converted back to `ProjContainer{ProjTensorTrain}`.
@@ -344,7 +367,7 @@ end;
 ```
 
 ### Test
-To test our implementation, we compare it against straightforward summation.
+To test our implementation, the function `comparereference` compares it against straightforward summation.
 As error measure, we choose the relative maximum norm over the frequency box
 $$
     \mathrm{Error} = \frac{\lVert\Phi_{\nu\nu'\omega} - \Phi^{\mathrm{ref}}_{\nu\nu'\omega} \rVert_\infty}{\lVert \Phi^{\mathrm{ref}}_{\nu\nu'\omega}\rVert_\infty}.
@@ -368,19 +391,6 @@ function comparereference(phi_bse, plainfuncs, grid)
     phi_adaptivemul = [phi_bse(QG.origcoord_to_quantics(grid, p)) for p in box]
 
     error = norm(phi_normalmul - phi_adaptivemul, Inf) / norm(phi_normalmul, Inf)
-    return error
-end;
-```
-
-
-```julia
-function main(U, beta, ch, R, maxbonddim)
-    grid, sites = setup(R)
-    plainfuncs, quanticsfuncs = makeverts(U, beta, ch, grid)
-    patchesfuncs = interpolateverts(quanticsfuncs, grid, maxbonddim, sites)
-    pttfuncs, diagonal_sites = makevertsdiagonal(patchesfuncs, sites)
-    phi_bse = calculatebse(pttfuncs, diagonal_sites, maxbonddim, sites)
-    error = comparereference(phi_bse, plainfuncs, grid)
     return error
 end;
 ```
@@ -444,22 +454,25 @@ function numpatches(R, maxbonddim, tolerance=1e-8)
 end;
 ```
 
-First, we fix $D_\mathrm{max} = 30$ and vary $R$ from $2$ to $8$.
+First, we fix $D_\mathrm{max} = 30$ and vary $R$ from $2$ to $10$.
+
+<!--
 
 
 ```julia
 Rs = 2:10
-R_npatches = numpatches.(Rs, 30);
+R_npatches = numpatches.(Rs, 30)
+xlabel = L"Meshsize $R$"
+ylabel = L"Number of patches in $F^{\mathrm{d}}$"
+title = L"Tolerance = $10^{-8}$"
+axis=(; xlabel, ylabel, yscale=log10, title)
 ```
+
+-->
 
 
 ```julia
-xlabel = L"Meshsize $R$"
-ylabel = L"Number of patches in $F^{\mathrm{d}}$"
-scatter(Rs, R_npatches,
-        axis=(;
-            xlabel, ylabel, yscale=log10,
-            title=L"Tolerance = $10^{-8}$"))
+scatter(Rs, R_npatches; axis)
 ```
 
 
@@ -467,7 +480,7 @@ scatter(Rs, R_npatches,
 \begin{center}
 ```
 
-![](/tmp/jl_BQBwD8boRs){ height=40% } 
+![](/tmp/jl_HsvQfCds1E){ height=40% } 
 
 ```{=latex}
 \end{center}
@@ -477,20 +490,23 @@ scatter(Rs, R_npatches,
 The number of patches created seems to go roughly exponentially with $R$ at the start and level off at higher values.
 To try and see if it saturates eventually, we increase the tolerance used in interpolating the vertex from the default value $10^{-8}$ to $10^{-4}$, enabling us to compute higher $R$ values in a reasonable time.
 
+<!--
+
 
 ```julia
 R_hightols = 2:18
 R_hightol_npatches = numpatches.(R_hightols, 30, 1e-4);
+xlabel = L"Meshsize $R$"
+ylabel = L"Number of patches in $F^{\mathrm{d}}$"
+title = L"Tolerance = $10^{-4}$"
+axis=(; xlabel, ylabel, yscale=log10, title)
 ```
+
+-->
 
 
 ```julia
-xlabel = L"Meshsize $R$"
-ylabel = L"Number of patches in $F^{\mathrm{d}}$"
-scatter(R_hightols, R_hightol_npatches,
-        axis=(; 
-            xlabel, ylabel, yscale=log10,
-            title=L"Tolerance = $10^{-4}$"))
+scatter(R_hightols, R_hightol_npatches; axis)
 ```
 
 
@@ -498,7 +514,7 @@ scatter(R_hightols, R_hightol_npatches,
 \begin{center}
 ```
 
-![](/tmp/jl_JUvQFYJC7O){ height=40% } 
+![](/tmp/jl_tYdOdo3CdA){ height=40% } 
 
 ```{=latex}
 \end{center}
@@ -509,18 +525,22 @@ While not completely saturating, the growth rate of the number of patches contin
 
 Next, we fix $R = 6$ and vary $D_\mathrm{max}$ from $10$ to $120$.
 
+<!--
+
 
 ```julia
 maxbonddims = 10:2:120
 maxbonddim_npatches = numpatches.(6, maxbonddims);
+xlabel = L"Max Bond Dimension $D_\mathrm{max}$"
+ylabel = L"Number of patches in $F^{\mathrm{d}}$"
+axis=(; xlabel, ylabel)
 ```
+
+-->
 
 
 ```julia
-xlabel = L"Max Bond Dimension $D_\mathrm{max}$"
-ylabel = L"Number of patches in $F^{\mathrm{d}}$"
-scatter(maxbonddims, maxbonddim_npatches,
-        axis=(; xlabel, ylabel))
+scatter(maxbonddims, maxbonddim_npatches; axis)
 ```
 
 
@@ -528,7 +548,7 @@ scatter(maxbonddims, maxbonddim_npatches,
 \begin{center}
 ```
 
-![](/tmp/jl_3EBcJkxmVk){ height=40% } 
+![](/tmp/jl_l2p0X81sNU){ height=40% } 
 
 ```{=latex}
 \end{center}
@@ -540,18 +560,20 @@ The bond dimension necessary to cover the entire box with a single tensor train 
 
 
 ```julia
-@show numpatches(6, 266)
-@show numpatches(6, 267);
+@show numpatches(6, 266) numpatches(6, 267);
 ```
 
     numpatches(6, 266) = 8
     numpatches(6, 267) = 1
 
 
-# Conclusion
+# Summary and outlook
 
-The presented technology is but one piece in the puzzle that is a larger effort of pushing the envelope in solving the Parquet equations.
-There remains much to be done, including things currently being worked on: For example, the Parquet equation itself requires an efficient way of applying frequency shifts to vertices in QTT form.
+A confluence of many technological and technical developments has allowed us to create an implementation of highly efficient quantics tensor train contraction.
+Crucially, to bypass problems with exceedingly large bond dimensions the QTTs are composed of multiple patches defined on subdomains.
+
+The presented technology is but one piece in the puzzle that is a larger effort of pushing the envelope in solving the parquet equations.
+There remains much to be done, including things currently being worked on: For example, the parquet equation itself requires an efficient way of applying frequency shifts to vertices in QTT form.
 Once all these pieces are available, we are confident hitherto unthinkable parameter regimes will become accessible.
 
 <!--
@@ -600,18 +622,12 @@ function addheader(markdown_file::String)
     content = read(markdown_file, String)
     header = """
 ---
-title: "Adaptive distribution of quantics tensor trains contraction into subdomains with controlled bond dimension"
-author: "Samuel Badr"
-date: "2024-10-17"
 reference-section-title: "References"
 bibliography: refs.bib
 csl: american-physics-society.csl
 link-citations: true
-supervisor: "Prof. Anna Kauch"
-university: "TU Wien"
-
+papersize: a4
 ---
-
 """
     content = header * content
     write(markdown_file, content)
@@ -620,6 +636,7 @@ end
 addheader("bse_3d.md")
 
 run(`pandoc -s bse_3d.md -t pdf -o bse_3d.pdf --citeproc --bibliography="refs.bib" --csl="american-physics-society.csl" --standalone -V geometry:margin=1.25in`)
+run(`pdfunite titlepage.pdf bse_3d.pdf bse_3d_full.pdf`)
 ```
 
     [NbConvertApp] Converting notebook bse_3d.ipynb to markdown
@@ -627,11 +644,11 @@ run(`pandoc -s bse_3d.md -t pdf -o bse_3d.pdf --citeproc --bibliography="refs.bi
     [NbConvertApp] Making directory bse_3d_files
     [NbConvertApp] Making directory bse_3d_files
     [NbConvertApp] Making directory bse_3d_files
-    [NbConvertApp] Writing 175070 bytes to bse_3d.md
+    [NbConvertApp] Writing 175989 bytes to bse_3d.md
 
 
 
-    Process(`[4mpandoc[24m [4m-s[24m [4mbse_3d.md[24m [4m-t[24m [4mpdf[24m [4m-o[24m [4mbse_3d.pdf[24m [4m--citeproc[24m [4m--bibliography=refs.bib[24m [4m--csl=american-physics-society.csl[24m [4m--standalone[24m [4m-V[24m [4mgeometry:margin=1.25in[24m`, ProcessExited(0))
+    Process(`[4mpdfunite[24m [4mtitlepage.pdf[24m [4mbse_3d.pdf[24m [4mbse_3d_full.pdf[24m`, ProcessExited(0))
 
 
 -->
