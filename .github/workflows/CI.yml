@@ -1,11 +1,9 @@
 name: CI
 on:
   push:
-    branches:
-      - '**'
+    branches: [master]
+    tags: ["*"]
   pull_request:
-    branches:
-      - main
 concurrency:
   # Skip intermediate builds: always.
   # Cancel intermediate builds: only if it is a pull request build.
@@ -15,11 +13,14 @@ jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
+    permissions: # needed to allow julia-actions/cache to proactively delete old caches that it has created
+      actions: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         version:
-          - '1.9'
+          - 'lts'
           - '1'
         os:
           - ubuntu-latest
@@ -45,7 +46,7 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         continue-on-error: ${{ matrix.version == 'nightly' }}
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
   docs:
     name: Documentation
     runs-on: ubuntu-latest
