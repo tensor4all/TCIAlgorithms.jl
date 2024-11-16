@@ -4,43 +4,39 @@ authors = ["Hiroshi Shinaoka <h.shinaoka@gmail.com> and contributors"]
 version = "0.4.7"
 
 [deps]
-Coverage = "a2441757-f6aa-5fb2-8edb-039e3f45d037"
-CoverageTools = "c36e975a-824b-4404-a568-ef97ca766997"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 EllipsisNotation = "da5c29d0-fa7d-589e-88eb-ea29b0a81949"
 FastMPOContractions = "f6e391d2-8ffa-4d7a-98cd-7e70024481ca"
 ITensors = "9136182c-28ba-11e9-034c-db9fb085ebd5"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-LocalCoverage = "5f6e1e16-694c-5876-87ef-16b5274f298e"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 Quantics = "87f76fb3-a40a-40c9-a63c-29fcfe7b7547"
-QuanticsGrids = "634c7f73-3e90-4749-a1bd-001b8efc642d"
-SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 TCIITensorConversion = "9f0aa9f4-9415-4e6a-8795-331ebf40aa04"
 TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 
 [compat]
-Coverage = "1"
-CoverageTools = "1"
+Aqua = "0.8.9"
 EllipsisNotation = "1"
 FastMPOContractions = "0.2.2"
 HubbardAtoms = "0.1.0"
 ITensors = "0.6"
-LocalCoverage = "0.8"
+JET = "0.9.12"
 OrderedCollections = "1"
 Quantics = "0.3"
-QuanticsGrids = "0.3.1"
-SpecialFunctions = "2"
+QuanticsGrids = "0.3.2"
+SparseIR = "1.0.19"
 TCIITensorConversion = "0.1"
 TensorCrossInterpolation = "0.9.7"
-julia = "1.6"
+julia = "1.10"
 
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 HubbardAtoms = "4f3da25b-ea28-4d4f-a81f-380d3f5e56a6"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 QuanticsGrids = "634c7f73-3e90-4749-a1bd-001b8efc642d"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SparseIR = "4fe2279e-80f0-4adb-8463-ee114ff56b7d"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Random", "QuanticsGrids", "SparseIR", "HubbardAtoms"]
+test = ["Aqua", "JET", "Test", "Random", "QuanticsGrids", "SparseIR", "HubbardAtoms"]
