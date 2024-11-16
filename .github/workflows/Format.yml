@@ -1,11 +1,9 @@
 name: Format suggestions
 on:
   push:
-    branches:
-      - '**'
+    branches: [master]
+    tags: ["*"]
   pull_request:
-    branches:
-      - main
 jobs:
   code-style:
     runs-on: ubuntu-latest
