@@ -211,7 +211,7 @@ end
 # Quantics Functions
 function Quantics.makesitediagonal(projmps::ProjMPS, site::Index)
     mps_diagonal = Quantics.makesitediagonal(MPS(projmps), site)
-    sites_diagonal = siteinds(all, mps_diagonal)
+    sites_diagonal = ITensors.SiteTypes.siteinds(all, mps_diagonal)
     projmps_diagonal = ProjMPS(mps_diagonal, sites_diagonal)
 
     prjsiteinds = Dict{Index{Int},Int}()
@@ -230,7 +230,7 @@ end
 
 function Quantics.makesitediagonal(projmps::ProjMPS, tag::String)
     mps_diagonal = Quantics.makesitediagonal(MPS(projmps), tag)
-    sites_diagonal = siteinds(all, mps_diagonal)
+    sites_diagonal = ITensors.SiteTypes.siteinds(all, mps_diagonal)
     projmps_diagonal = ProjMPS(mps_diagonal, sites_diagonal)
 
     target_positions = Quantics.findallsiteinds_by_tag(ITensors.SiteTypes.siteinds(MPS(projmps)); tag=tag)
@@ -256,7 +256,7 @@ end
 
 function Quantics.extractdiagonal(projmps::ProjMPS, tag::String)
     mps_diagonal = Quantics.extractdiagonal(MPS(projmps), tag)
-    sites_diagonal = siteinds(all, mps_diagonal)
+    sites_diagonal = ITensors.SiteTypes.siteinds(all, mps_diagonal)
     projmps_diagonal = ProjMPS(mps_diagonal, sites_diagonal)
     sites_diagonal_set = Set(Iterators.flatten(sites_diagonal))
 
