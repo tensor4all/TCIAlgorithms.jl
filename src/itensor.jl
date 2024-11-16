@@ -41,7 +41,7 @@ function ProjMPSContainer(::Type{T}, projttcont::ProjTTContainer{T}, sites) wher
 end
 
 # Conversion Functions
-ITensors.MPS(projΨ::ProjMPS) = projΨ.data
+ITensorMPS.MPS(projΨ::ProjMPS) = projΨ.data
 
 function ProjTensorTrain{T}(projΨ::ProjMPS) where {T}
     return ProjTensorTrain{T}(
@@ -211,7 +211,7 @@ end
 # Quantics Functions
 function Quantics.makesitediagonal(projmps::ProjMPS, site::Index)
     mps_diagonal = Quantics.makesitediagonal(MPS(projmps), site)
-    sites_diagonal = siteinds(all, mps_diagonal)
+    sites_diagonal = ITensors.SiteTypes.siteinds(all, mps_diagonal)
     projmps_diagonal = ProjMPS(mps_diagonal, sites_diagonal)
 
     prjsiteinds = Dict{Index{Int},Int}()
@@ -230,10 +230,12 @@ end
 
 function Quantics.makesitediagonal(projmps::ProjMPS, tag::String)
     mps_diagonal = Quantics.makesitediagonal(MPS(projmps), tag)
-    sites_diagonal = siteinds(all, mps_diagonal)
+    sites_diagonal = ITensors.SiteTypes.siteinds(all, mps_diagonal)
     projmps_diagonal = ProjMPS(mps_diagonal, sites_diagonal)
 
-    target_positions = Quantics.findallsiteinds_by_tag(siteinds(MPS(projmps)); tag=tag)
+    target_positions = Quantics.findallsiteinds_by_tag(
+        ITensors.SiteTypes.siteinds(MPS(projmps)); tag=tag
+    )
     prjsiteinds = Dict{Index{Int},Int}()
     for (p, s) in zip(projmps.projector, projmps.sites)
         for (p_, s_) in zip(p, s)
@@ -256,7 +258,7 @@ end
 
 function Quantics.extractdiagonal(projmps::ProjMPS, tag::String)
     mps_diagonal = Quantics.extractdiagonal(MPS(projmps), tag)
-    sites_diagonal = siteinds(all, mps_diagonal)
+    sites_diagonal = ITensors.SiteTypes.siteinds(all, mps_diagonal)
     projmps_diagonal = ProjMPS(mps_diagonal, sites_diagonal)
     sites_diagonal_set = Set(Iterators.flatten(sites_diagonal))
 

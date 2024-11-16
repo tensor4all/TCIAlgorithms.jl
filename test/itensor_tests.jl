@@ -6,6 +6,7 @@ using Quantics
 import TCIAlgorithms: Projector, project, ProjTensorTrain, LazyMatrixMul, makeprojectable
 
 using ITensors
+using ITensorMPS
 
 @testset "itensor" begin
     @testset "ProjMPS" begin
