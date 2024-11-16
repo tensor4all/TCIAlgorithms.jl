@@ -13,6 +13,7 @@ if nworkers() < MAX_WORKERS
     addprocs(max(0, MAX_WORKERS - nworkers()))
 end
 
+include("codequality_tests.jl")
 include("_util.jl")
 
 include("util_tests.jl")
