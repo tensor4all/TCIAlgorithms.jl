@@ -7,7 +7,7 @@ import TensorCrossInterpolation:
 using TCIITensorConversion
 using ITensors
 import ITensorMPS
-using ITensorMPS: MPO, MPS
+using ITensorMPS: MPO, MPS, linkdims
 using Quantics
 
 using OrderedCollections: OrderedDict, OrderedSet
