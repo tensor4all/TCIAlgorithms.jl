@@ -1,7 +1,7 @@
 name = "TCIAlgorithms"
 uuid = "baf62351-2e82-41dd-9129-4f5768a618e1"
 authors = ["Hiroshi Shinaoka <h.shinaoka@gmail.com> and contributors"]
-version = "0.4.7"
+version = "0.5.0"
 
 [deps]
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
