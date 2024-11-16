@@ -6,7 +6,7 @@ import TensorCrossInterpolation:
 
 using TCIITensorConversion
 using ITensors
-import ITensorMPS
+using ITensorMPS: ITensorMPS
 using ITensorMPS: MPO, MPS, linkdims, linkinds
 using Quantics
 
