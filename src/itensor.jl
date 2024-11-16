@@ -41,7 +41,7 @@ function ProjMPSContainer(::Type{T}, projttcont::ProjTTContainer{T}, sites) wher
 end
 
 # Conversion Functions
-ITensors.MPS(projΨ::ProjMPS) = projΨ.data
+ITensorMPS.MPS(projΨ::ProjMPS) = projΨ.data
 
 function ProjTensorTrain{T}(projΨ::ProjMPS) where {T}
     return ProjTensorTrain{T}(

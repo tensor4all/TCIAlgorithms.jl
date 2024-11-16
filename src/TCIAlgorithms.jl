@@ -6,6 +6,8 @@ import TensorCrossInterpolation:
 
 using TCIITensorConversion
 using ITensors
+import ITensorMPS
+using ITensorMPS: MPO, MPS
 using Quantics
 
 using OrderedCollections: OrderedDict, OrderedSet
