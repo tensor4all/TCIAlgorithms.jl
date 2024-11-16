@@ -4,7 +4,7 @@ using JET
 using TCIAlgorithms
 
 @testset "Aqua.jl" begin
-	Aqua.test_all(TCIAlgorithms, deps_compat=false)
+    Aqua.test_all(TCIAlgorithms; deps_compat=false)
 end
 
 #=
