@@ -144,4 +144,48 @@ using Random
 
         @test vec(TCIA.fulltensor(obj)) ≈ vec(TCIA.fulltensor(ptt))
     end
+
+    @testset "randompatchorder&2Dgreen" begin
+        Random.seed!(1234)
+
+        function green(kx, ky; ω=0.1, δ=0.01)
+            denominator = ω + 2 * cos(kx) + 2 * cos(ky) + im * δ
+            return real(1 / denominator)
+        end
+
+        tol = 1e-5
+        mb = 30
+        R = 8
+
+        grid = QG.DiscretizedGrid{2}(R, (-pi, -pi), (pi, pi))
+        localdims = fill(4, R)
+        sitedims = [[2, 2] for _ in 1:R]
+
+        qf = x -> green(QG.quantics_to_origcoord(grid, x)...)
+
+        pordering = TCIA.PatchOrdering(shuffle(collect(1:R)))
+
+        creator = TCIA.TCI2PatchCreator(
+            Float64,
+            TCIA.makeprojectable(Float64, qf, localdims),
+            localdims,
+            ;
+            maxbonddim=mb,
+            tolerance=tol,
+            verbosity=0,
+            ntry=10,
+        )
+        obj = TCIA.adaptiveinterpolate(creator, pordering; verbosity=2)
+
+        points = [(rand() * 2*pi - pi, rand() * 2*pi - pi) for i in 1:1000]
+
+        @assert length(obj) > localdims[1]
+
+        @test isapprox(
+            [obj(QG.origcoord_to_quantics(grid, p)) for p in points],
+            [qf(QG.origcoord_to_quantics(grid, p)) for p in points];
+            atol=1e-4,
+        )
+
+    end
 end
