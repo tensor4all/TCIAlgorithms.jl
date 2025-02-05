@@ -122,6 +122,7 @@ mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}
     checkbatchevaluatable::Bool
     loginterval::Int
     initialpivots::Vector{MultiIndex} # Make it to Vector{MMultiIndex}?
+    recyclepivots::Bool
 end
 
 function Base.show(io::IO, obj::TCI2PatchCreator{T}) where {T}
@@ -141,6 +142,7 @@ function TCI2PatchCreator{T}(obj::TCI2PatchCreator{T})::TCI2PatchCreator{T} wher
         obj.checkbatchevaluatable,
         obj.loginterval,
         obj.initialpivots,
+        obj.recyclepivots,
     )
 end
 
@@ -157,7 +159,8 @@ function TCI2PatchCreator(
     ninitialpivot=5,
     checkbatchevaluatable=false,
     loginterval=10,
-    initialpivots=Vector{MultiIndex}[],
+    initialpivots=MultiIndex[],
+    recyclepivots=false,
 )::TCI2PatchCreator{T} where {T}
     #t1 = time_ns()
     if projector === nothing
@@ -183,6 +186,7 @@ function TCI2PatchCreator(
         checkbatchevaluatable,
         loginterval,
         initialpivots,
+        recyclepivots,
     )
 end
 
@@ -206,6 +210,7 @@ function _crossinterpolate2!(
     verbosity::Int=0,
     checkbatchevaluatable=false,
     loginterval=10,
+    recyclepivots=false,
 ) where {T}
     ncheckhistory = 3
     ranks, errors = TCI.optimize!(
@@ -231,13 +236,45 @@ function _crossinterpolate2!(
     ncheckhistory_ = min(ncheckhistory, length(errors))
     maxbonddim_hist = maximum(ranks[(end - ncheckhistory_ + 1):end])
 
-    return PatchCreatorResult{T,TensorTrain{T,3}}(
-        TensorTrain(tci), TCI.maxbonderror(tci) < tolerance && maxbonddim_hist < maxbonddim
-    )
+    if recyclepivots
+        return PatchCreatorResult{T,TensorTrain{T,3}}(
+            TensorTrain(tci),
+            TCI.maxbonderror(tci) < tolerance && maxbonddim_hist < maxbonddim,
+            _globalpivots(tci),
+        )
+
+    else
+        return PatchCreatorResult{T,TensorTrain{T,3}}(
+            TensorTrain(tci),
+            TCI.maxbonderror(tci) < tolerance && maxbonddim_hist < maxbonddim,
+        )
+    end
+end
+
+# Generating global pivots from local ones
+function _globalpivots(
+    tci::TCI.TensorCI2{T}; onlydiagonal=true
+)::Vector{MultiIndex} where {T}
+    Isets = tci.Iset
+    Jsets = tci.Jset
+    L = length(Isets)
+    p = Set{MultiIndex}()
+    # Pivot matrices
+    for bondindex in 1:(L - 1)
+        if onlydiagonal
+            for (x, y) in zip(Isets[bondindex + 1], Jsets[bondindex])
+                push!(p, vcat(x, y))
+            end
+        else
+            for x in Isets[bondindex + 1], y in Jsets[bondindex]
+                push!(p, vcat(x, y))
+            end
+        end
+    end
+    return collect(p)
 end
 
 function createpatch(obj::TCI2PatchCreator{T}) where {T}
-    proj = obj.projector
     fsubset = _FuncAdapterTCI2Subset(obj.f)
 
     tci = if isapproxttavailable(obj.f)
@@ -253,21 +290,25 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
         end
         tci
     else
-        # Random initial pivots
         initialpivots = MultiIndex[]
-        let
-            mask = [!isprojectedat(proj, n) for n in 1:length(proj)]
-            for idx in obj.initialpivots
-                idx_ = [[i] for i in idx]
-                if idx_ <= proj
-                    push!(initialpivots, idx[mask])
-                end
+        if obj.recyclepivots
+            # First patching iteration: random pivots
+            if length(fsubset.localdims) == length(obj.localdims)
+                initialpivots = union(
+                    obj.initialpivots,
+                    findinitialpivots(fsubset, fsubset.localdims, obj.ninitialpivot),
+                )
+                # Next iterations: recycle previously generated pivots
+            else
+                initialpivots = copy(obj.initialpivots)
             end
+        else
+            initialpivots = union(
+                obj.initialpivots,
+                findinitialpivots(fsubset, fsubset.localdims, obj.ninitialpivot),
+            )
         end
-        append!(
-            initialpivots,
-            findinitialpivots(fsubset, fsubset.localdims, obj.ninitialpivot),
-        )
+
         if all(fsubset.(initialpivots) .== 0)
             return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
         end
@@ -282,6 +323,7 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
         verbosity=obj.verbosity,
         checkbatchevaluatable=obj.checkbatchevaluatable,
         loginterval=obj.loginterval,
+        recyclepivots=obj.recyclepivots,
     )
 end
 
@@ -301,9 +343,9 @@ function adaptiveinterpolate(
     verbosity=0,
     maxbonddim=typemax(Int),
     tolerance=1e-8,
-    initialpivots=Vector{MultiIndex}[], # Make it to Vector{MMultiIndex}?
+    initialpivots=MultiIndex[], # Make it to Vector{MMultiIndex}?
+    recyclepivots=false,
 )::ProjTTContainer{T} where {T}
-    t1 = time_ns()
     creator = TCI2PatchCreator(
         T,
         f,
@@ -313,6 +355,7 @@ function adaptiveinterpolate(
         verbosity,
         ntry=10,
         initialpivots=initialpivots,
+        recyclepivots=recyclepivots,
     )
     tmp = adaptiveinterpolate(creator, pordering; verbosity)
     return reshape(tmp, f.sitedims)

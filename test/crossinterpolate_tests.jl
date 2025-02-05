@@ -89,7 +89,7 @@ using Random
             ntry=10,
         )
 
-        obj = TCIA.adaptiveinterpolate(creator, pordering; verbosity=2)
+        obj = TCIA.adaptiveinterpolate(creator, pordering; verbosity=0)
 
         points = [(rand() * 10 - 5, rand() * 10 - 5) for i in 1:100]
 
@@ -140,7 +140,7 @@ using Random
 
         ptt = TCIA.project(TCIA.ProjTensorTrain(tt), p)
 
-        obj = TCIA.adaptiveinterpolate(ptt; verbosity=1, maxbonddim=5)
+        obj = TCIA.adaptiveinterpolate(ptt; verbosity=0, maxbonddim=5)
 
         @test vec(TCIA.fulltensor(obj)) ≈ vec(TCIA.fulltensor(ptt))
     end
@@ -175,9 +175,9 @@ using Random
             verbosity=0,
             ntry=10,
         )
-        obj = TCIA.adaptiveinterpolate(creator, pordering; verbosity=2)
+        obj = TCIA.adaptiveinterpolate(creator, pordering; verbosity=0)
 
-        points = [(rand() * 2*pi - pi, rand() * 2*pi - pi) for i in 1:1000]
+        points = [(rand() * 2 * pi - pi, rand() * 2 * pi - pi) for i in 1:1000]
 
         @assert length(obj) > localdims[1]
 
@@ -186,6 +186,85 @@ using Random
             [qf(QG.origcoord_to_quantics(grid, p)) for p in points];
             atol=1e-4,
         )
+    end
 
+    @testset "recyclepivots" begin
+        Random.seed!(1234)
+
+        function linear_gaussians(
+            x::Float64, y::Float64; centers::Vector{Vector{Float64}}=[[0.0, 0.0]]
+        )
+            N_gauss = length(centers)
+            input_vec = [x, y]
+            σ = [2.0^(-j - 1) for j in 1:N_gauss]
+            return sum(exp(-norm(input_vec - centers[j])^2 / σ[j]^2) for j in 1:N_gauss)
+        end
+
+        R = 30
+        grid = QG.DiscretizedGrid{2}(R, (-3.0, -3.0), (3.0, 3.0))
+        localdims = fill(4, R)
+        sitedims = [[2, 2] for _ in 1:R]
+
+        gauss_centers = [[-2.0, 2.0], [2.0, -2.0], [-2.0, -2.0], [2.0, 2.0]]
+        qf =
+            x -> linear_gaussians(
+                QG.quantics_to_origcoord(grid, x)...; centers=gauss_centers
+            )
+
+        pordering = TCIA.PatchOrdering(collect(1:R))
+        tol = 1e-7
+        mb = 20
+
+        # Provide very good pivots on the maximums of the function 
+        initialpivots = [
+            TCI.optfirstpivot(qf, localdims, QG.origcoord_to_quantics(grid, Tuple(c))) for
+            c in gauss_centers
+        ]
+
+        creator_recycle = TCIA.TCI2PatchCreator(
+            Float64,
+            TCIA.makeprojectable(Float64, qf, localdims),
+            localdims,
+            ;
+            maxbonddim=mb,
+            tolerance=tol,
+            recyclepivots=true,
+            initialpivots=initialpivots,
+            ninitialpivot=0,
+        )
+
+        creator_no_recycle = TCIA.TCI2PatchCreator(
+            Float64,
+            TCIA.makeprojectable(Float64, qf, localdims),
+            localdims,
+            ;
+            maxbonddim=mb,
+            tolerance=tol,
+            recyclepivots=false,
+            initialpivots=initialpivots,
+            ninitialpivot=0,
+        )
+
+        # Perform ony one patch iteration
+        _, recycle_patches = TCIA.__taskfunc(creator_recycle, pordering)
+        _, no_recycle_patches = TCIA.__taskfunc(creator_no_recycle, pordering)
+
+        # Check if the "good" pivots are conserved in each patch
+        for patch in recycle_patches
+            prj_val = collect(Iterators.flatten(patch.projector))[1]
+            patch_pivots = vcat.([prj_val], patch.initialpivots)
+
+            @test intersect(patch_pivots, initialpivots) ==
+                filter(piv -> piv[1] == prj_val, initialpivots)
+        end
+
+        # Check that the information is lost
+        for patch in no_recycle_patches
+            prj_val = collect(Iterators.flatten(patch.projector))[1]
+            patch_pivots = vcat.([prj_val], patch.initialpivots)
+
+            @test intersect(patch_pivots, initialpivots) !==
+                filter(piv -> piv[1] == prj_val, initialpivots)
+        end
     end
 end
