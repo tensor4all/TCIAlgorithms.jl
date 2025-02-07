@@ -38,6 +38,19 @@ abstract type AbstractPatchCreator{T,M} end
 mutable struct PatchCreatorResult{T,M}
     data::Union{M,Nothing}
     isconverged::Bool
+    resultpivots::Vector{MultiIndex}
+
+    function PatchCreatorResult{T,M}(
+        data::Union{M,Nothing}, isconverged::Bool, resultpivots::Vector{MultiIndex}
+    )::PatchCreatorResult{T,M} where {T,M}
+        return new{T,M}(data, isconverged, resultpivots)
+    end
+
+    function PatchCreatorResult{T,M}(
+        data::Union{M,Nothing}, isconverged::Bool
+    )::PatchCreatorResult{T,M} where {T,M}
+        return new{T,M}(data, isconverged, MultiIndex[])
+    end
 end
 
 function _reconst_prefix(projector::Projector, pordering::PatchOrdering)
@@ -63,10 +76,19 @@ function __taskfunc(creator::AbstractPatchCreator{T,M}, pordering; verbosity=0) 
         for ic in 1:creator.localdims[pordering.ordering[length(prefix) + 1]]
             prefix_ = vcat(prefix, ic)
             projector_ = makeproj(pordering, prefix_, creator.localdims)
-            #if verbosity > 0
-            ##println("Creating a task for $(prefix_) ...")
-            #end
-            push!(newtasks, project(creator, projector_))
+
+            # Pivots are shorter, pordering index is in a different position
+            active_dims_ = findall(x -> x == [0], creator.projector.data)
+            pos_ = findfirst(x -> x == pordering.ordering[length(prefix) + 1], active_dims_)
+            pivots_ = [
+                copy(piv) for piv in filter(piv -> piv[pos_] == ic, patch.resultpivots)
+            ]
+
+            if !isempty(pivots_)
+                deleteat!.(pivots_, pos_)
+            end
+
+            push!(newtasks, project(creator, projector_; pivots=pivots_))
         end
         return nothing, newtasks
     end
@@ -77,7 +99,11 @@ function _zerott(T, prefix, po::PatchOrdering, localdims::Vector{Int})
     return TensorTrain([zeros(T, 1, d, 1) for d in localdims_])
 end
 
-function project(obj::AbstractPatchCreator{T,M}, projector::Projector) where {T,M}
+function project(
+    obj::AbstractPatchCreator{T,M},
+    projector::Projector;
+    pivots::Vector{MultiIndex}=MultiIndex[],
+) where {T,M}
     projector <= obj.projector || error(
         "Projector $projector is not a subset of the original projector $(obj.f.projector)",
     )
@@ -85,6 +111,7 @@ function project(obj::AbstractPatchCreator{T,M}, projector::Projector) where {T,
     obj_copy = TCI2PatchCreator{T}(obj) # shallow copy
     obj_copy.projector = deepcopy(projector)
     obj_copy.f = project(obj_copy.f, projector)
+    obj_copy.initialpivots = deepcopy(pivots)
     return obj_copy
 end
 

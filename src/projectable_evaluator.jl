@@ -248,28 +248,31 @@ function batchevaluateprj(
     # Some of indices might be projected
     NL = length(leftmmultiidxset[1])
     NR = length(rightmmultiidxset[1])
-
-    NL + NR + M == length(obj) ||
-        error("Length mismatch NL: $NL, NR: $NR, M: $M, L: $(length(obj))")
-
     L = length(obj)
+
+    NL + NR + M == L || error("Length mismatch NL: $NL, NR: $NR, M: $M, L: $(L)")
+
+    returnshape = projectedshape(obj.projector, NL + 1, L - NR)
     result::Array{T,M + 2} = zeros(
-        T,
-        length(leftmmultiidxset),
-        prod.(obj.sitedims[(1 + NL):(L - NR)])...,
-        length(rightmmultiidxset),
+        T, length(leftmmultiidxset), returnshape..., length(rightmmultiidxset)
     )
-    result[lmask, .., rmask] .= begin
+
+    projmask = map(
+        p -> p == 0 ? Colon() : p,
+        Iterators.flatten(obj.projector[n] for n in (1 + NL):(L - NR)),
+    )
+    slice = map(
+        p -> p == 0 ? Colon() : 1,
+        Iterators.flatten(obj.projector[n] for n in (1 + NL):(L - NR)),
+    )
+
+    result[lmask, slice..., rmask] .= begin
         result_lrmask_multii = reshape(
             result_lrmask,
             size(result_lrmask)[1],
             collect(Iterators.flatten(obj.sitedims[(1 + NL):(L - NR)]))...,
             size(result_lrmask)[end],
-        )
-        projmask = map(
-            p -> p == 0 ? Colon() : p,
-            Iterators.flatten(obj.projector[n] for n in (1 + NL):(length(obj) - NR)),
-        )
+        )        # Gianluca - this step might be not needed. I leave it for safety 
         result_lrmask_multii[:, projmask..., :]
     end
     return result
