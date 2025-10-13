@@ -4,7 +4,6 @@ import TensorCrossInterpolation as TCI
 import TensorCrossInterpolation:
     TensorTrain, evaluate, TTCache, MultiIndex, LocalIndex, TensorCI2
 
-using TCIITensorConversion
 using ITensors
 using ITensorMPS: ITensorMPS
 using ITensorMPS: MPO, MPS, linkdims, linkinds
@@ -17,7 +16,6 @@ using EllipsisNotation
 import TensorCrossInterpolation as TCI
 import TensorCrossInterpolation:
     TensorTrain, evaluate, TTCache, MultiIndex, LocalIndex, TensorCI2
-using TCIITensorConversion
 import LinearAlgebra as LA
 
 import FastMPOContractions as FMPOC
