@@ -1,6 +1,6 @@
 using Test
 using Aqua
-using JET
+# using JET
 using TCIAlgorithms
 
 @testset "Aqua.jl" begin
