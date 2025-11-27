@@ -28,19 +28,19 @@ using ITensors
                 ch, model, (FermionicFreq(x), FermionicFreq(y), BosonicFreq(z))
             )
         end
-        fI_full = QG.quanticsfunction(ComplexF64, grid, fq_full)
+        fI_full = x -> fq_full(quantics_to_origcoord(grid, x)...)
 
         # we absorb 1/β^2 into the chi0 function
         function fq_chi0(x, y, z)
             return 1 / beta^2 *
                    chi0(ch, model, (FermionicFreq(x), FermionicFreq(y), BosonicFreq(z)))
         end
-        fI_chi0 = QG.quanticsfunction(ComplexF64, grid, fq_chi0)
+        fI_chi0 = x -> fq_chi0(quantics_to_origcoord(grid, x)...)
 
         function fq_gamma(x, y, z)
             return gamma(ch, model, (FermionicFreq(x), FermionicFreq(y), BosonicFreq(z)))
         end
-        fI_gamma = QG.quanticsfunction(ComplexF64, grid, fq_gamma)
+        fI_gamma = x -> fq_gamma(quantics_to_origcoord(grid, x)...)
 
         return fq_full, fq_chi0, fq_gamma, fI_full, fI_chi0, fI_gamma
     end
@@ -129,7 +129,8 @@ using ITensors
         # normal multiplication for comparison
         box = [
             (x, y, z) for x in range(-N + 1; step=2, length=N),
-            y in range(-N + 1; step=2, length=N), z in range(-N; step=2, length=N)
+            y in range(-N + 1; step=2, length=N),
+            z in range(-N; step=2, length=N)
         ]
         chi0_exact = map(splat(fq_chi0), box)
         full_exact = map(splat(fq_full), box)

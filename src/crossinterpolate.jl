@@ -1,5 +1,6 @@
 """
 # For TCI2
+
 `f` is a function that can be evaluated at full-length indices (including projected and non-projected indices). The wrapped function can be evaluated only on unprojected indices.
 """
 struct _FuncAdapterTCI2Subset{T} <: TCI.BatchEvaluator{T}
