@@ -129,8 +129,9 @@ import TCIAlgorithms:
         _random_tt() = TCI.TensorTrain([
             rand(bonddims[n], sitedims[n]..., bonddims[n + 1]) for n in 1:N
         ])
-        _random_tt(bs::BlockStructure) =
-            [project(ProjTensorTrain(_random_tt()), p) for p in bs]
+        _random_tt(bs::BlockStructure) = [
+            project(ProjTensorTrain(_random_tt()), p) for p in bs
+        ]
 
         bs = TCIA.BlockStructure(
             vec([TCIA.Projector([[i, j], [0, 0], [0, 0]], sitedims) for i in 1:2, j in 1:2])
@@ -172,8 +173,8 @@ import TCIAlgorithms:
         product = TCIA.adaptivematmul(expttpatches, expttpatches, pordering; maxbonddim=50)
 
         nested_quantics(x, y) = [
-            collect(p) for p in
-            zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
+            collect(p) for
+            p in zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
         ]
 
         points = [(rand() * 10 - 5, rand() * 10 - 5) for i in 1:100]
@@ -241,8 +242,8 @@ import TCIAlgorithms:
         )
 
         nested_quantics(x, y) = [
-            collect(p) for p in
-            zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
+            collect(p) for
+            p in zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
         ]
 
         points = [(rand(), rand()) for i in 1:100]
@@ -319,18 +320,18 @@ import TCIAlgorithms:
         )
 
         nested_quantics(x, y) = [
-            collect(p) for p in
-            zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
+            collect(p) for
+            p in zip(QG.origcoord_to_quantics(grid1, x), QG.origcoord_to_quantics(grid1, y))
         ]
 
         C = zeros(2^R, 2^R) .+ 0.0
-        for i in 0:(2^R - 1)
+        for i in 0:(2 ^ R - 1)
             C[i + 1, i + 1] = i^5
         end
 
         product_matrix = zeros(2^R, 2^R) .+ 0.0
         product_matrix_without_patches = zeros(2^R, 2^R) .+ 0.0
-        for i in 0:(2^R - 1), j in 0:(2^R - 1)
+        for i in 0:(2 ^ R - 1), j in 0:(2 ^ R - 1)
             product_matrix[i + 1, j + 1] = product(nested_quantics(i, j))
             product_matrix_without_patches[i + 1, j + 1] = product_without_patches(
                 nested_quantics(i, j)
@@ -370,19 +371,19 @@ import TCIAlgorithms:
                 return 1 / beta^2 *
                        chi0(ch, model, (FermionicFreq(2x + 1), FermionicFreq(2y + 1), m))
             end
-            fI_chi0 = QG.quanticsfunction(ComplexF64, grid, fq_chi0)
+            fI_chi0 = x -> fq_chi0(quantics_to_origcoord(grid, x)...)
 
             function fq_full(x, y)
                 return full_vertex(
                     ch, model, (FermionicFreq(2x + 1), FermionicFreq(2y + 1), m)
                 )
             end
-            fI_full = QG.quanticsfunction(ComplexF64, grid, fq_full)
+            fI_full = x -> fq_full(quantics_to_origcoord(grid, x)...)
 
             function fq_gamma(x, y)
                 return gamma(ch, model, (FermionicFreq(2x + 1), FermionicFreq(2y + 1), m))
             end
-            fI_gamma = QG.quanticsfunction(ComplexF64, grid, fq_gamma)
+            fI_gamma = x -> fq_gamma(quantics_to_origcoord(grid, x)...)
             #########################################################################
 
             initialpivots = [QG.origcoord_to_quantics(grid, (0, 0))] # approx center of grid

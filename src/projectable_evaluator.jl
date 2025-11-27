@@ -2,8 +2,9 @@
 Represents an object that can be projected on a subset of indices
 
 Attributes:
-- projector: Projector object
-- sitedims: Vector{Vector{Int}} of the dimensions of the local indices
+
+  - projector: Projector object
+  - sitedims: Vector{Vector{Int}} of the dimensions of the local indices
 """
 abstract type ProjectableEvaluator{T} <: TCI.BatchEvaluator{T} end
 
@@ -41,7 +42,7 @@ end
 Compute a tensor train approximation of the object.
 The computation should be quick because the result will be used as initial guesses for the optimization.
 Override this function
- """
+"""
 function approxtt(
     obj::ProjectableEvaluator{T}; maxbonddim=typemax(Int), tolerance=1e-14, kwargs...
 )::ProjTensorTrain{T} where {T}

@@ -7,8 +7,8 @@ using TCIAlgorithms
     Aqua.test_all(TCIAlgorithms; deps_compat=false)
 end
 
-#=
-@testset "JET.jl" begin
-    JET.test_package(TCIAlgorithms; target_defined_modules=true)
+@testset "JET" begin
+    if VERSION ≥ v"1.10"
+        JET.test_package(TCIAlgorithms; target_defined_modules=true)
+    end
 end
-=#

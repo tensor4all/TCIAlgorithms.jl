@@ -2,9 +2,10 @@
 Represents a TensorTrain object which can be projected on a subset of indices
 
 Compared to TCI.TensorTrain, this object has additional functionalities:
-* Projection
-* Multi site indices per tensor are supported.
-* Fast evaluation by caching intermediate objects of contraction
+
+  - Projection
+  - Multi site indices per tensor are supported.
+  - Fast evaluation by caching intermediate objects of contraction
 """
 mutable struct ProjTensorTrain{T} <: ProjectableEvaluator{T}
     data::TensorTrain{T}

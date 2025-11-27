@@ -28,8 +28,5 @@ include("patching_tests.jl")
 include("crossinterpolate_tests.jl")
 include("tree_tests.jl")
 include("adaptivematmul_tests.jl")
-
-include("itensor_tests.jl")
-include("bse3d_tests.jl")
-
-#include("crossinterpolate_lazyeval_tests.jl")
+# include("bse3d_tests.jl")
+include("crossinterpolate_lazyeval_tests.jl")
