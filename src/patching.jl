@@ -12,7 +12,7 @@ end
 Base.length(po::PatchOrdering) = length(po.ordering)
 
 function Base.iterate(p::PatchOrdering, state=1)
-    if state > length(p.odering)
+    if state > length(p.ordering)
         return nothing
     end
     return (p.odering[state], state + 1)
@@ -39,23 +39,33 @@ mutable struct PatchCreatorResult{T,M}
     data::Union{M,Nothing}
     isconverged::Bool
     resultpivots::Vector{MultiIndex}
+    nextsite::Union{Int,Nothing}
 
     function PatchCreatorResult{T,M}(
-        data::Union{M,Nothing}, isconverged::Bool, resultpivots::Vector{MultiIndex}
+        data::Union{M,Nothing},
+        isconverged::Bool,
+        resultpivots::Vector{MultiIndex},
+        nextsite::Union{Int,Nothing},
     )::PatchCreatorResult{T,M} where {T,M}
-        return new{T,M}(data, isconverged, resultpivots)
+        return new{T,M}(data, isconverged, resultpivots, nextsite)
     end
 
     function PatchCreatorResult{T,M}(
-        data::Union{M,Nothing}, isconverged::Bool
+        data::Union{M,Nothing}, isconverged::Bool, nextsite::Union{Int,Nothing}
     )::PatchCreatorResult{T,M} where {T,M}
-        return new{T,M}(data, isconverged, MultiIndex[])
+        return new{T,M}(data, isconverged, MultiIndex[], nextsite)
     end
 end
 
 function _reconst_prefix(projector::Projector, pordering::PatchOrdering)
-    np = Base.sum((isprojectedat(projector, n) for n in 1:length(projector)))
-    return [Base.only(projector[n]) for n in pordering.ordering[1:np]]
+    vals = Int[]
+    for n in pordering.ordering
+        v = Base.only(projector[n])
+        if v != 0
+            push!(vals, v)
+        end
+    end
+    return vals
 end
 
 function __taskfunc(creator::AbstractPatchCreator{T,M}, pordering; verbosity=0) where {T,M}
@@ -63,9 +73,9 @@ function __taskfunc(creator::AbstractPatchCreator{T,M}, pordering; verbosity=0) 
     prefix::Vector{Int} = _reconst_prefix(creator.projector, pordering)
 
     if patch.isconverged
-        projector = makeproj(pordering, prefix, creator.localdims)
+        projector = creator.projector
         tt = if patch.data === nothing
-            _zerott(T, prefix, pordering, creator.localdims)
+            _zerott(T, projector, creator.localdims)
         else
             patch.data
         end
@@ -73,29 +83,53 @@ function __taskfunc(creator::AbstractPatchCreator{T,M}, pordering; verbosity=0) 
         return ptt, nothing
     else
         newtasks = Set{AbstractPatchCreator{T,M}}()
-        for ic in 1:creator.localdims[pordering.ordering[length(prefix) + 1]]
-            prefix_ = vcat(prefix, ic)
-            projector_ = makeproj(pordering, prefix_, creator.localdims)
+        # --- Choose site according to ordering_mode ---
+        next_site::Int = 0
+        # If we are in dynamic mode and nextsite is set, use that
+        if creator isa TCI2PatchCreator &&
+            creator.ordering_mode == :dynamic &&
+            patch.nextsite !== nothing
+            next_site = patch.nextsite
+            if verbosity > 1 && !isempty(creator.ordering_history)
+                @info "Dynamic ordering selected site $next_site at prefix $(prefix) for current history $(creator.ordering_history)"
+            end
+        else
+            # Fallback / static mode: use predefined ordering
+            next_site = pordering.ordering[length(prefix) + 1]
+        end
+
+        for ic in 1:creator.localdims[next_site]
+            # Build child projector by modifying the current projector
+            projector_ = deepcopy(creator.projector)
+            projector_.data[next_site][1] = ic
 
             # Pivots are shorter, pordering index is in a different position
             active_dims_ = findall(x -> x == [0], creator.projector.data)
-            pos_ = findfirst(x -> x == pordering.ordering[length(prefix) + 1], active_dims_)
+            pos_ = findfirst(==(next_site), active_dims_)
             pivots_ = [
                 copy(piv) for piv in filter(piv -> piv[pos_] == ic, patch.resultpivots)
             ]
-
             if !isempty(pivots_)
                 deleteat!.(pivots_, pos_)
             end
 
-            push!(newtasks, project(creator, projector_; pivots=pivots_))
+            new_history = vcat(creator.ordering_history, next_site)
+
+            child = project(
+                creator, projector_; pivots=pivots_, ordering_history=new_history
+            )
+
+            push!(newtasks, child)
         end
+
         return nothing, newtasks
     end
 end
 
-function _zerott(T, prefix, po::PatchOrdering, localdims::Vector{Int})
-    localdims_ = localdims[maskactiveindices(po, length(prefix))]
+function _zerott(T, projector::Projector, localdims::Vector{Int})
+    # mask of *unprojected* sites
+    mask = [!isprojectedat(projector, n) for n in 1:length(projector)]
+    localdims_ = localdims[mask]
     return TensorTrain([zeros(T, 1, d, 1) for d in localdims_])
 end
 
@@ -103,6 +137,7 @@ function project(
     obj::AbstractPatchCreator{T,M},
     projector::Projector;
     pivots::Vector{MultiIndex}=MultiIndex[],
+    ordering_history::Vector{Int}=obj.ordering_history,
 ) where {T,M}
     projector <= obj.projector || error(
         "Projector $projector is not a subset of the original projector $(obj.f.projector)",
@@ -112,6 +147,7 @@ function project(
     obj_copy.projector = deepcopy(projector)
     obj_copy.f = project(obj_copy.f, projector)
     obj_copy.initialpivots = deepcopy(pivots)
+    obj_copy.ordering_history = deepcopy(ordering_history)
     return obj_copy
 end
 

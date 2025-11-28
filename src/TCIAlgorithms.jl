@@ -17,6 +17,7 @@ import TensorCrossInterpolation as TCI
 import TensorCrossInterpolation:
     TensorTrain, evaluate, TTCache, MultiIndex, LocalIndex, TensorCI2
 import LinearAlgebra as LA
+using LinearAlgebra: svdvals
 
 import FastMPOContractions as FMPOC
 
@@ -35,5 +36,6 @@ include("tree.jl")
 include("patching.jl")
 include("crossinterpolate.jl")
 include("adaptivematmul.jl")
+include("patch_site_selection.jl")
 
 end

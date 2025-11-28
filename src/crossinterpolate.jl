@@ -124,6 +124,8 @@ mutable struct TCI2PatchCreator{T} <: AbstractPatchCreator{T,TensorTrainState{T}
     loginterval::Int
     initialpivots::Vector{MultiIndex} # Make it to Vector{MMultiIndex}?
     recyclepivots::Bool
+    ordering_mode::Symbol   # :static, :dynamic
+    ordering_history::Vector{Int}
 end
 
 function Base.show(io::IO, obj::TCI2PatchCreator{T}) where {T}
@@ -144,6 +146,8 @@ function TCI2PatchCreator{T}(obj::TCI2PatchCreator{T})::TCI2PatchCreator{T} wher
         obj.loginterval,
         obj.initialpivots,
         obj.recyclepivots,
+        obj.ordering_mode,
+        obj.ordering_history,
     )
 end
 
@@ -162,6 +166,7 @@ function TCI2PatchCreator(
     loginterval=10,
     initialpivots=MultiIndex[],
     recyclepivots=false,
+    ordering_mode::Symbol=:static,
 )::TCI2PatchCreator{T} where {T}
     #t1 = time_ns()
     if projector === nothing
@@ -188,6 +193,8 @@ function TCI2PatchCreator(
         loginterval,
         initialpivots,
         recyclepivots,
+        ordering_mode,
+        Int[],
     )
 end
 
@@ -236,19 +243,16 @@ function _crossinterpolate2!(
 
     ncheckhistory_ = min(ncheckhistory, length(errors))
     maxbonddim_hist = maximum(ranks[(end - ncheckhistory_ + 1):end])
+    converged = TCI.maxbonderror(tci) < tolerance && maxbonddim_hist < maxbonddim
+    nextsite::Union{Int,Nothing} = nothing   # always `nothing` here
 
     if recyclepivots
         return PatchCreatorResult{T,TensorTrain{T,3}}(
-            TensorTrain(tci),
-            TCI.maxbonderror(tci) < tolerance && maxbonddim_hist < maxbonddim,
-            _globalpivots(tci),
+            TensorTrain(tci), converged, _globalpivots(tci), nextsite
         )
 
     else
-        return PatchCreatorResult{T,TensorTrain{T,3}}(
-            TensorTrain(tci),
-            TCI.maxbonderror(tci) < tolerance && maxbonddim_hist < maxbonddim,
-        )
+        return PatchCreatorResult{T,TensorTrain{T,3}}(TensorTrain(tci), converged, nextsite)
     end
 end
 
@@ -285,11 +289,11 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
             reshape(obj.projector, obj.f.sitedims),
         )
         # Converting a TT to a TCI2 object
-        tci = TensorCI2{T}(project_on_subsetsiteinds(projtt); tolerance=1e-14)
-        if tci.maxsamplevalue == 0.0
-            return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
+        tci_ = TensorCI2{T}(project_on_subsetsiteinds(projtt); tolerance=1e-14)
+        if tci_.maxsamplevalue == 0.0
+            return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true, nothing)
         end
-        tci
+        tci_
     else
         initialpivots = MultiIndex[]
         if obj.recyclepivots
@@ -311,12 +315,13 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
         end
 
         if all(fsubset.(initialpivots) .== 0)
-            return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true)
+            return PatchCreatorResult{T,TensorTrainState{T}}(nothing, true, nothing)
         end
         TensorCI2{T}(fsubset, fsubset.localdims, initialpivots)
     end
 
-    return _crossinterpolate2!(
+    # Run TCI optimization: patch_0 has data, isconverged, pivots, nextsite = nothing
+    patch_0 = _crossinterpolate2!(
         tci,
         fsubset,
         obj.tolerance;
@@ -325,6 +330,35 @@ function createpatch(obj::TCI2PatchCreator{T}) where {T}
         checkbatchevaluatable=obj.checkbatchevaluatable,
         loginterval=obj.loginterval,
         recyclepivots=obj.recyclepivots,
+    )
+
+    # If the whole TCI is zero, bail out
+    if tci.maxsamplevalue == 0.0
+        return PatchCreatorResult{T,TensorTrainState{T}}(
+            nothing, true, MultiIndex[], nothing
+        )
+    end
+
+    # If converged or ordering_mode is static, just return patch_0 (static behaviour)
+    if patch_0.isconverged || obj.ordering_mode == :static
+        return patch_0
+    end
+
+    # --- Dynamic mode: compute optimal site and fill nextsite ---
+    ℓ_loc = choose_optimal_patching_site(
+        tci,
+        fsubset;
+        τ=obj.tolerance,      # or separate rank tolerance if you want
+        rank_method=:nuclear, # or :svd
+    )
+
+    # Map TCI-local index ℓ_loc to global TT site index via projector
+    active_dims = findall(x -> x == [0], obj.projector.data)
+    site_global = active_dims[ℓ_loc]
+
+    # Construct a new PatchCreatorResult with nextsite = site_global
+    return PatchCreatorResult{T,TensorTrain{T,3}}(
+        patch_0.data, patch_0.isconverged, patch_0.resultpivots, site_global
     )
 end
 
@@ -346,6 +380,7 @@ function adaptiveinterpolate(
     tolerance=1e-8,
     initialpivots=MultiIndex[], # Make it to Vector{MMultiIndex}?
     recyclepivots=false,
+    ordering_mode::Symbol=:static,  # NEW: :static or :dynamic
 )::ProjTTContainer{T} where {T}
     creator = TCI2PatchCreator(
         T,
@@ -357,6 +392,7 @@ function adaptiveinterpolate(
         ntry=10,
         initialpivots=initialpivots,
         recyclepivots=recyclepivots,
+        ordering_mode=ordering_mode,
     )
     tmp = adaptiveinterpolate(creator, pordering; verbosity)
     return reshape(tmp, f.sitedims)
