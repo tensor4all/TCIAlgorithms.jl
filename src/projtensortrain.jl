@@ -152,7 +152,9 @@ function batchevaluateprj(
     return reshape(res, length(leftmmultiidxset), returnshape..., length(rightmmultiidxset))
 end
 
-function projectat!(A::AbstractArray{T,N}, idxpos, targetidx)::AbstractArray{T,N} where {T,N}
+function projectat!(
+    A::AbstractArray{T,N}, idxpos, targetidx
+)::AbstractArray{T,N} where {T,N}
     mask = [v != targetidx for v in 1:size(A, idxpos)]
     indices = [d == idxpos ? mask : (:) for d in 1:N]
     A[indices...] .= 0.0
