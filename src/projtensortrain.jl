@@ -152,7 +152,7 @@ function batchevaluateprj(
     return reshape(res, length(leftmmultiidxset), returnshape..., length(rightmmultiidxset))
 end
 
-function projectat!(A::Array{T,N}, idxpos, targetidx)::Array{T,N} where {T,N}
+function projectat!(A::AbstractArray{T,N}, idxpos, targetidx)::AbstractArray{T,N} where {T,N}
     mask = [v != targetidx for v in 1:size(A, idxpos)]
     indices = [d == idxpos ? mask : (:) for d in 1:N]
     A[indices...] .= 0.0
@@ -314,12 +314,12 @@ function _merge_projected(tensor_merged::Vector{Array{T,3}}, to_be_merged) where
     return tensor_merged_, to_be_merged_
 end
 
-function _merge(A::Array{T,3}, B::Array{T,3}) where {T}
+function _merge(A::AbstractArray{T,3}, B::AbstractArray{T,3}) where {T}
     AB = _contract(A, B, (3,), (1,))
     return _to_3d_array(AB)
 end
 
-function _to_3d_array(obj::Array{T,N})::Array{T,3} where {T,N}
+function _to_3d_array(obj::AbstractArray{T,N})::AbstractArray{T,3} where {T,N}
     return reshape(obj, size(obj)[1], :, size(obj)[end])
 end
 
